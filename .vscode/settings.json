@@ -1,0 +1,11 @@
+{
+    "java.project.sourcePaths": [
+        "Common/src",
+        "Server/src",
+        "Client/src"
+    ],
+    "java.project.outputPath": "bin",
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar"
+    ]
+}

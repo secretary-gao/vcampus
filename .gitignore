@@ -1,0 +1,16 @@
+# 编译输出
+bin/
+*.class
+
+# 本地数据库连接配置（含真实密码，不提交），请参考 Server/db.properties.example
+Server/db.properties
+
+# IDE / 系统产生的临时文件
+.vscode/.classpath
+.settings/
+*.log
+.DS_Store
+Thumbs.db
+
+# 本地 Claude Code 配置（个人环境相关，不需要共享）
+.claude/
