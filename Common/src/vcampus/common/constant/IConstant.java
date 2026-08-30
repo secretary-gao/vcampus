@@ -38,4 +38,10 @@ public interface IConstant {
 
     /** 状态码：服务器内部异常。 */
     String STATUS_ERROR = "500";
+
+    /** 消息名：登录请求，对应 {@link vcampus.common.vo.Message#getName()}。 */
+    String MSG_LOGIN = "login";
+
+    /** 消息名：注册请求，对应 {@link vcampus.common.vo.Message#getName()}。 */
+    String MSG_REGISTER = "register";
 }
