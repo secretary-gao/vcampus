@@ -18,7 +18,9 @@ import vcampus.common.vo.User;
  * 向服务器发起一次注册请求和一次登录请求，打印服务器返回的响应，用于
  * 确认"客户端 → Socket → 服务器 → 数据库"整条链路是否打通。
  *
- * <p>运行前请先启动 {@code vcampus.server.srv.Server}。</p>
+ * <p>
+ * 运行前请先启动 {@code vcampus.server.srv.Server}。
+ * </p>
  */
 public class UserClientSrvTest {
 
@@ -61,6 +63,11 @@ public class UserClientSrvTest {
             Message wrongResponse = userClientSrv.login(wrongUser);
             System.out.println("登录响应：statusCode=" + wrongResponse.getStatusCode()
                     + ", data=" + wrongResponse.getData());
+
+            System.out.println("=== 测试登出 ===");
+            Message logoutResponse = userClientSrv.logout(loginUser);
+            System.out.println("登出响应：statusCode=" + logoutResponse.getStatusCode()
+                    + ", data=" + logoutResponse.getData());
         } catch (Exception e) {
             System.err.println("客户端通信测试失败：" + e.getMessage());
             System.err.println("请确认服务器 vcampus.server.srv.Server 是否已启动。");

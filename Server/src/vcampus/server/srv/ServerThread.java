@@ -19,19 +19,25 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 服务线程类：{@link Server} 每接受一个客户端连接，就创建一个 ServerThread
  * 交给独立线程运行，实现"一个客户端一个线程"的多线程模型。
  *
- * <p>本线程只处理一次请求/响应：读取客户端发来的一个 {@link Message}，
- * 根据 {@code Message.getName()} 判断是登录还是注册，调用
+ * <p>
+ * 本线程只处理一次请求/响应：读取客户端发来的一个 {@link Message}，
+ * 根据 {@code Message.getName()} 通过可扩展的处理器表进行分发，调用
  * {@link UserServerSrv} 完成业务处理后，把结果封装成响应 {@link Message}
- * 写回客户端，随后关闭连接、线程结束。</p>
+ * 写回客户端，随后关闭连接、线程结束。
+ * </p>
  *
- * <p>注意：无论先读还是先写，{@link ObjectOutputStream} 都必须在
+ * <p>
+ * 注意：无论先读还是先写，{@link ObjectOutputStream} 都必须在
  * {@link ObjectInputStream} 之前创建并 flush，否则两端会互相等待对方的
- * 流头信息而卡死（这是 Java 对象序列化流的一个经典坑）。</p>
+ * 流头信息而卡死（这是 Java 对象序列化流的一个经典坑）。
+ * </p>
  */
 public class ServerThread implements Runnable {
 
@@ -41,6 +47,9 @@ public class ServerThread implements Runnable {
     /** 用户业务服务，由本线程独立持有，避免多线程共享状态。 */
     private final IUserServerSrv _userServerSrv = new UserServerSrv();
 
+    /** 请求处理器注册表。 */
+    private final Map<String, RequestHandler> _handlerMap = new HashMap<>();
+
     /**
      * 构造方法。
      *
@@ -48,6 +57,7 @@ public class ServerThread implements Runnable {
      */
     public ServerThread(Socket socket) {
         this._socket = socket;
+        registerHandlers();
     }
 
     /**
@@ -57,7 +67,7 @@ public class ServerThread implements Runnable {
     public void run() {
         String remote = String.valueOf(_socket.getRemoteSocketAddress());
         try (Socket socket = _socket;
-             ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream())) {
+                ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream())) {
             out.flush();
             ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 
@@ -83,14 +93,22 @@ public class ServerThread implements Runnable {
      */
     private Message handleRequest(Message request) {
         String name = request.getName();
-        if (IConstant.MSG_LOGIN.equals(name)) {
-            return handleLogin(request);
-        } else if (IConstant.MSG_REGISTER.equals(name)) {
-            return handleRegister(request);
+        RequestHandler handler = _handlerMap.get(name);
+        if (handler != null) {
+            return handler.handle(request);
         } else {
             return new Message(request.getUid(), name, MessageType.DATA,
                     IConstant.STATUS_ERROR, "未知的请求类型：" + name, "Server");
         }
+    }
+
+    /**
+     * 注册请求处理器。
+     */
+    private void registerHandlers() {
+        _handlerMap.put(IConstant.MSG_LOGIN, this::handleLogin);
+        _handlerMap.put(IConstant.MSG_REGISTER, this::handleRegister);
+        _handlerMap.put(IConstant.MSG_LOGOUT, this::handleLogout);
     }
 
     /**
@@ -136,5 +154,40 @@ public class ServerThread implements Runnable {
             return new Message(request.getUid(), IConstant.MSG_REGISTER, MessageType.DATA,
                     IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
         }
+    }
+
+    /**
+     * 处理登出请求。
+     *
+     * @param request 登出请求消息，{@code data} 为当前登录的 {@link User}
+     * @return 登出结果消息：{@code data} 为提示文本
+     */
+    private Message handleLogout(Message request) {
+        try {
+            User currentUser = (User) request.getData();
+            boolean ok = _userServerSrv.logout(currentUser);
+            String statusCode = ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
+            String data = ok ? "登出成功" : "登出失败，请稍后重试";
+            return new Message(request.getUid(), IConstant.MSG_LOGOUT, MessageType.DATA,
+                    statusCode, data, "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_LOGOUT, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 请求处理器函数式接口。
+     */
+    @FunctionalInterface
+    private interface RequestHandler {
+
+        /**
+         * 处理请求。
+         *
+         * @param request 请求消息
+         * @return 响应消息
+         */
+        Message handle(Message request);
     }
 }

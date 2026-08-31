@@ -42,4 +42,14 @@ public interface IUserServerSrv {
      * @throws UserExistsException 当登录ID已被注册时抛出
      */
     boolean register(User newUser) throws SQLException, IOException, UserExistsException;
+
+    /**
+     * 用户登出：当前版本只做协议闭环和业务占位，不涉及数据库持久化状态。
+     *
+     * @param currentUser 当前登录用户
+     * @return 登出成功返回 {@code true}
+     * @throws SQLException 数据库操作异常
+     * @throws IOException  数据库配置文件读取异常
+     */
+    boolean logout(User currentUser) throws SQLException, IOException;
 }

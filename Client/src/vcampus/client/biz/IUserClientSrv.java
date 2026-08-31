@@ -40,4 +40,14 @@ public interface IUserClientSrv {
      * @throws ClassNotFoundException 反序列化响应对象失败
      */
     Message register(User newUser) throws IOException, ClassNotFoundException;
+
+    /**
+     * 发起登出请求。
+     *
+     * @param currentUser 当前用户
+     * @return 服务器返回的响应消息
+     * @throws IOException            网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message logout(User currentUser) throws IOException, ClassNotFoundException;
 }

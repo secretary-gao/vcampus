@@ -50,4 +50,12 @@ public class UserServerSrv implements IUserServerSrv {
         }
         return _userDAO.insert(newUser);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean logout(User currentUser) throws SQLException, IOException {
+        return currentUser != null;
+    }
 }

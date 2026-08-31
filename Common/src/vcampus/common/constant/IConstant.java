@@ -13,8 +13,10 @@ package vcampus.common.constant;
  * 系统公共常量接口，集中定义客户端与服务器端共用的常量，包括服务器地址、
  * 监听端口，以及通信状态码。接口中的字段隐式为 {@code public static final}。
  *
- * <p>客户端与服务器端都必须引用这里的常量，确保两侧使用相同的端口和状态码
- * 约定，避免硬编码造成的不一致。</p>
+ * <p>
+ * 客户端与服务器端都必须引用这里的常量，确保两侧使用相同的端口和状态码
+ * 约定，避免硬编码造成的不一致。
+ * </p>
  */
 public interface IConstant {
 
@@ -44,4 +46,7 @@ public interface IConstant {
 
     /** 消息名：注册请求，对应 {@link vcampus.common.vo.Message#getName()}。 */
     String MSG_REGISTER = "register";
+
+    /** 消息名：登出请求，对应 {@link vcampus.common.vo.Message#getName()}。 */
+    String MSG_LOGOUT = "logout";
 }
