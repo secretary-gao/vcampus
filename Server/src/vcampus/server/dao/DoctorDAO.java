@@ -1,0 +1,108 @@
+/*
+ * DoctorDAO
+ *
+ * Version 1.0
+ *
+ * 2026-08-28
+ *
+ * Copyright (c) 2026 Vcampus Team
+ */
+package vcampus.server.dao;
+
+import vcampus.common.vo.Doctor;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 医生表（tbldoctor）的数据访问类，封装对医生表的查询操作。
+ * 对上层业务服务层屏蔽具体的 SQL 语句与数据库细节，连接统一由
+ * {@link DbHelper} 提供。
+ */
+public class DoctorDAO {
+
+    /**
+     * 查询全部医生信息
+     *
+     * @return 医生对象列表
+     * @throws SQLException 数据库操作异常
+     * @throws IOException  数据库配置文件读取异常
+     */
+    public List<Doctor> selectAll() throws SQLException, IOException {
+        String sql = "SELECT doctorId, name, department, title FROM tbldoctor";
+        List<Doctor> list = new ArrayList<>();
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                list.add(mapRow(rs));
+            }
+        }
+        return list;
+    }
+
+    /**
+     * 根据科室查询医生列表
+     *
+     * @param department 科室名称
+     * @return 同科室医生对象列表
+     * @throws SQLException 数据库操作异常
+     * @throws IOException  数据库配置文件读取异常
+     */
+    public List<Doctor> selectByDepartment(String department) throws SQLException, IOException {
+        String sql = "SELECT doctorId, name, department, title FROM tbldoctor WHERE department = ?";
+        List<Doctor> list = new ArrayList<>();
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, department);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapRow(rs));
+                }
+            }
+        }
+        return list;
+    }
+
+    /**
+     * 根据doctorId查询单个医生
+     *
+     * @param doctorId 医生编号
+     * @return 查询到的医生对象；若不存在则返回 {@code null}
+     * @throws SQLException 数据库操作异常
+     * @throws IOException  数据库配置文件读取异常
+     */
+    public Doctor findById(String doctorId) throws SQLException, IOException {
+        String sql = "SELECT doctorId, name, department, title FROM tbldoctor WHERE doctorId = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, doctorId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapRow(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 将结果集当前行映射为 Doctor 对象。
+     *
+     * @param rs 指向当前行的结果集
+     * @return 映射后的 Doctor 对象
+     * @throws SQLException 读取结果集时发生异常
+     */
+    private Doctor mapRow(ResultSet rs) throws SQLException {
+        Doctor doctor = new Doctor();
+        doctor.setDoctorId(rs.getString("doctorId"));
+        doctor.setName(rs.getString("name"));
+        doctor.setDepartment(rs.getString("department"));
+        doctor.setTitle(rs.getString("title"));
+        return doctor;
+    }
+}

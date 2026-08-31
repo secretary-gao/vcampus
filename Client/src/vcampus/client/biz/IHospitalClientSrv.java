@@ -1,66 +1,68 @@
+/*
+ * IHospitalClientSrv
+ *
+ * Version 1.0
+ *
+ * 2026-08-31
+ *
+ * Copyright (c) 2026 Vcampus Team
+ */
 package vcampus.client.biz;
 
-import vcampus.common.vo.hospital.Appointment;
-import vcampus.common.vo.hospital.Doctor;
-import java.util.ArrayList;
-import java.util.List;
+import vcampus.common.vo.Appointment;
+import vcampus.common.vo.Doctor;
+import vcampus.common.vo.Message;
+
+import java.io.IOException;
 
 /**
- * 客户端医院业务接口，对齐说明书 IHospitalClientSrv
- * 接口 + 空壳实现合并，Socket跑通后修改内部HospitalClientSrvImpl
+ * 客户端医院业务服务接口，对应共享说明书医院模块 IHospitalClientSrv。
+ * 负责把界面层（view）的操作封装成网络请求发给服务器，并把服务器
+ * 的响应原样返回给界面层解析（成功/失败、具体数据都在响应 {@link Message} 中）。
  */
 public interface IHospitalClientSrv {
 
-    Boolean queryDoctor(String department);
-    Boolean makeAppointment(String userId, String doctorId, String time);
-    Boolean cancelAppointment(String appointmentId);
-    List<Appointment> queryAppointment(String userId);
-    Boolean addDoctor(Doctor doctor);
-    Boolean updateDoctor(Doctor doctor);
-    Boolean deleteDoctor(String doctorId);
+    /**
+     * 查询全部医生
+     * @return 服务器返回的响应消息
+     * @throws IOException 网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message queryAllDoctor() throws IOException, ClassNotFoundException;
 
-    static class HospitalClientSrvImpl implements IHospitalClientSrv {
+    /**
+     * 根据科室查询医生列表
+     * @param department 科室名称
+     * @return 服务器返回的响应消息
+     * @throws IOException 网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message queryDoctorByDept(String department) throws IOException, ClassNotFoundException;
 
-        @Override
-        public Boolean queryDoctor(String department) {
-            // TODO Socket就绪，组装发送网络消息
-            return false;
-        }
+    /**
+     * 创建挂号预约
+     * @param appoint 预约对象
+     * @return 服务器返回的响应消息
+     * @throws IOException 网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message addAppointment(Appointment appoint) throws IOException, ClassNotFoundException;
 
-        @Override
-        public Boolean makeAppointment(String userId, String doctorId, String time) {
-            // TODO Socket就绪，组装发送网络消息
-            return false;
-        }
+    /**
+     * 查询当前用户的预约记录
+     * @param userId 用户id
+     * @return 服务器返回的响应消息
+     * @throws IOException 网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message queryMyAppointment(String userId) throws IOException, ClassNotFoundException;
 
-        @Override
-        public Boolean cancelAppointment(String appointmentId) {
-            // TODO Socket就绪，组装发送网络消息
-            return false;
-        }
-
-        @Override
-        public List<Appointment> queryAppointment(String userId) {
-            // TODO Socket就绪，组装发送网络消息
-            return new ArrayList<>();
-        }
-
-        @Override
-        public Boolean addDoctor(Doctor doctor) {
-            // TODO Socket就绪，组装发送网络消息
-            return false;
-        }
-
-        @Override
-        public Boolean updateDoctor(Doctor doctor) {
-            // TODO Socket就绪，组装发送网络消息
-            return false;
-        }
-
-        @Override
-        public Boolean deleteDoctor(String doctorId) {
-            // TODO Socket就绪，组装发送网络消息
-            return false;
-        }
-    }
+    /**
+     * 取消预约
+     * @param appointId 预约id
+     * @return 服务器返回的响应消息
+     * @throws IOException 网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message cancelAppointment(String appointId) throws IOException, ClassNotFoundException;
 }
