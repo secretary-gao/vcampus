@@ -46,11 +46,19 @@
 
 ## JavaFX 环境搭建（所有人半周1必须做完，照抄即可）
 
-1. 打开 https://gluonhq.com/products/javafx/ ，下载 **Windows x64 SDK**，
-   版本选 **21.x**（跟我们统一的 JDK21 对应，往上的 22/23 也能用但没必要）
+**统一用 JavaFX 21.0.12**（组长已下载验证过，编译+运行冒烟测试通过），大家都下这个版本，
+避免 6 个人版本不一样出现奇怪的兼容问题：
+
+1. 直接下载（Windows x64 SDK）：
+   https://download2.gluonhq.com/openjfx/21.0.12/openjfx-21.0.12_windows-x64_bin-sdk.zip
+   （约 50MB；如果这个链接过期了，去 https://gluonhq.com/products/javafx/ 手动选 21.0.12）
 2. 解压到自己电脑任意路径，**不要放进项目文件夹**，不需要提交进 git
-   （比如解压到 `D:\javafx-sdk-21.0.4`）
-3. 设置一个系统环境变量 `JAVAFX_HOME`，指向解压出来的那个文件夹
+   （比如解压到 `D:\javafx-sdk-21.0.12`）
+3. 设置一个**用户级**环境变量 `JAVAFX_HOME`，指向解压出来的那个文件夹，PowerShell 里：
+   ```powershell
+   [Environment]::SetEnvironmentVariable("JAVAFX_HOME", "D:\javafx-sdk-21.0.12", "User")
+   ```
+   设完之后要**开一个新终端**才会生效，当前终端里 `$env:JAVAFX_HOME` 还是空的。
 4. 编译命令（在项目根目录，PowerShell）：
    ```powershell
    javac -encoding UTF-8 --module-path "$env:JAVAFX_HOME\lib" --add-modules javafx.controls,javafx.fxml -d bin -cp "lib\mysql-connector-j-9.7.0.jar" (Get-ChildItem -Recurse -Path Common\src,Server\src,Client\src -Filter *.java).FullName
