@@ -44,4 +44,10 @@ public interface IConstant {
 
     /** 消息名：注册请求，对应 {@link vcampus.common.vo.Message#getName()}。 */
     String MSG_REGISTER = "register";
+
+    // ========== 图书馆模块消息类型 ==========
+    public static final String MSG_QUERY_BOOKS = "queryBooks";
+    public static final String MSG_BORROW_BOOK = "borrowBook";
+    public static final String MSG_RETURN_BOOK = "returnBook";
+    public static final String MSG_GET_BORROW_RECORDS = "getBorrowRecords";
 }

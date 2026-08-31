@@ -1,7 +1,7 @@
-package vcampus.server.dao;
+package vcampus.server.dao.Library;
 
-import vcampus.common.vo.Book;
-import vcampus.common.vo.BorrowRecord;
+import vcampus.common.vo.Library.Book;
+import vcampus.common.vo.Library.BorrowRecord;
 
 import java.io.IOException;
 import java.sql.SQLException;

@@ -14,6 +14,8 @@ import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.User;
 
+import vcampus.server.srv.Library.LibraryHandler;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -41,6 +43,7 @@ public class ServerThread implements Runnable {
     /** 用户业务服务，由本线程独立持有，避免多线程共享状态。 */
     private final IUserServerSrv _userServerSrv = new UserServerSrv();
 
+    private final LibraryHandler _libraryHandler = new LibraryHandler();
     /**
      * 构造方法。
      *
@@ -87,12 +90,20 @@ public class ServerThread implements Runnable {
             return handleLogin(request);
         } else if (IConstant.MSG_REGISTER.equals(name)) {
             return handleRegister(request);
-        } else {
+        } else if (IConstant.MSG_QUERY_BOOKS.equals(name) ||
+               IConstant.MSG_BORROW_BOOK.equals(name) ||
+               IConstant.MSG_RETURN_BOOK.equals(name) ||
+               IConstant.MSG_GET_BORROW_RECORDS.equals(name)) {
+            return handleLibraryRequest(request);
+        }
+        else {
             return new Message(request.getUid(), name, MessageType.DATA,
                     IConstant.STATUS_ERROR, "未知的请求类型：" + name, "Server");
         }
     }
-
+    private Message handleLibraryRequest(Message request) {
+        return _libraryHandler.handle(request);
+    }
     /**
      * 处理登录请求。
      *

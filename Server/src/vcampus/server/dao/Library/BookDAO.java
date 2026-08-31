@@ -1,6 +1,7 @@
-package vcampus.server.dao;
+package vcampus.server.dao.Library;
 
-import vcampus.common.vo.Book;
+import vcampus.common.vo.Library.Book;
+import vcampus.server.dao.DbHelper;
 
 import java.sql.*;
 import java.util.ArrayList;
