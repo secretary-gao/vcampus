@@ -50,18 +50,22 @@
 ## ⚠️ 首次拉取代码后要做的事
 
 `lib/javafx/` 目录不在仓库里（体积大，`.gitignore` 排除了），拉下代码后要
-自己下载 JavaFX 21.0.12 SDK，把它的 `lib/*.jar` 复制到项目的 `lib/javafx/`
-目录下（新建这个目录即可），否则编译会报找不到 `javafx.*` 包。
+自己下载 JavaFX 21.0.12 SDK，把它解压出来的 **`lib` 和 `bin` 两个文件夹**
+完整复制到项目的 `lib/javafx/` 目录下（保留原有目录结构，最终形如
+`lib/javafx/lib/*.jar` + `lib/javafx/bin/*.dll`），否则编译会报找不到
+`javafx.*` 包、运行时也会报 "no suitable pipeline found"（因为缺了 `bin/`
+里的原生渲染库 dll）。
 
 ## 马上要做的事（本周计划里的"半周1"）
 
 1. **界面已切到 JavaFX**，后续继续优化各模块页面风格和交互即可。
-   - JavaFX SDK 用的版本是 **21.0.12**，jar 包已经复制进项目的 `lib/javafx/`
-     目录（这个目录被 `.gitignore` 排除，不提交，每人本地要自己放一份）
+   - JavaFX SDK 用的版本是 **21.0.12**，已经把 SDK 的 `lib` 和 `bin` 两个
+     文件夹都复制进项目的 `lib/javafx/` 目录（该目录被 `.gitignore` 排除，
+     不提交，每人本地要自己放一份）
    - **不需要设置 `JAVAFX_HOME` 环境变量**——编译/运行命令直接用相对路径
-     `lib/javafx` 当 module-path，对所有人的电脑都一样，不用管 JavaFX SDK
-     解压到了哪个盘
-   - 编译命令要加：`--module-path "lib/javafx" --add-modules javafx.controls,javafx.fxml`
+     `lib/javafx/lib` 当 module-path（JavaFX 会自动去同级的 `lib/javafx/bin`
+     找原生渲染库），对所有人的电脑都一样，不用管 JavaFX SDK 解压到了哪个盘
+   - 编译命令要加：`--module-path "lib/javafx/lib" --add-modules javafx.controls,javafx.fxml`
    - 运行客户端命令也要加同样两个参数；`Server`（无界面）不需要
    - VS Code 里直接用 F5 调试也行，`.vscode/launch.json` 已经配好了
      "Run Server" 和 "Run LoginFrame" 两个启动项
