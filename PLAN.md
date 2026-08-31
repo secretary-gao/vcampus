@@ -52,25 +52,30 @@
 1. 直接下载（Windows x64 SDK）：
    https://download2.gluonhq.com/openjfx/21.0.12/openjfx-21.0.12_windows-x64_bin-sdk.zip
    （约 50MB；如果这个链接过期了，去 https://gluonhq.com/products/javafx/ 手动选 21.0.12）
-2. 解压到自己电脑任意路径，**不要放进项目文件夹**，不需要提交进 git
-   （比如解压到 `D:\javafx-sdk-21.0.12`）
-3. 设置一个**用户级**环境变量 `JAVAFX_HOME`，指向解压出来的那个文件夹，PowerShell 里：
+2. 解压到自己电脑任意路径，**不要放进项目文件夹**（先解压在别处，比如
+   `D:\javafx-sdk-21.0.12`，下一步只需要复制里面的 jar）
+3. 把解压出来的 `lib` 文件夹里所有 `.jar` 文件，复制到项目里的 `lib/javafx/`
+   目录下（这个目录自己新建，已加入 `.gitignore`，不提交，每人本地放一份）：
    ```powershell
-   [Environment]::SetEnvironmentVariable("JAVAFX_HOME", "D:\javafx-sdk-21.0.12", "User")
+   mkdir lib\javafx -Force
+   Copy-Item "D:\javafx-sdk-21.0.12\lib\*.jar" "lib\javafx\"
    ```
-   设完之后要**开一个新终端**才会生效，当前终端里 `$env:JAVAFX_HOME` 还是空的。
+   **不需要设置任何环境变量**——复制到这个固定的项目相对路径后，编译/运行
+   命令对所有人都完全一样，不用管你的 JavaFX SDK 解压到了哪个盘。
 4. 编译命令（在项目根目录，PowerShell）：
    ```powershell
-   javac -encoding UTF-8 --module-path "$env:JAVAFX_HOME\lib" --add-modules javafx.controls,javafx.fxml -d bin -cp "lib\mysql-connector-j-9.7.0.jar" (Get-ChildItem -Recurse -Path Common\src,Server\src,Client\src -Filter *.java).FullName
+   javac -encoding UTF-8 --module-path "lib\javafx" --add-modules javafx.controls,javafx.fxml -d bin -cp "lib\mysql-connector-j-9.7.0.jar" (Get-ChildItem -Recurse -Path Common\src,Server\src,Client\src -Filter *.java).FullName
    ```
 5. 运行客户端命令（比运行 Server 多两个参数）：
    ```powershell
-   java --module-path "$env:JAVAFX_HOME\lib" --add-modules javafx.controls,javafx.fxml -cp "bin;lib\mysql-connector-j-9.7.0.jar" vcampus.client.view.LoginFrame
+   java --module-path "lib\javafx" --add-modules javafx.controls,javafx.fxml -cp "bin;lib\mysql-connector-j-9.7.0.jar" vcampus.client.view.LoginFrame
    ```
    服务器端不涉及界面，不需要这两个参数，照旧：
    ```powershell
    java -cp "bin;lib\mysql-connector-j-9.7.0.jar" vcampus.server.srv.Server
    ```
+   VS Code 里也可以直接按 F5，`.vscode/launch.json` 已经配好 "Run Server" 和
+   "Run LoginFrame" 两个启动项，不用记命令行参数。
 6. **JavaFX 代码写法和 Swing 不一样**，界面类要继承 `javafx.application.Application`：
    ```java
    public class XxxFrame extends Application {
