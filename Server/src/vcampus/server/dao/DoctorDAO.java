@@ -8,7 +8,6 @@
  * Copyright (c) 2026 Vcampus Team
  */
 package vcampus.server.dao;
-
 import vcampus.common.vo.Doctor;
 import java.io.IOException;
 import java.sql.Connection;
@@ -17,14 +16,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-
 /**
- * 医生表（tbldoctor）的数据访问类，封装对医生表的查询操作。
+ * 医生表（tbldoctor）的数据访问类，封装对医生表的增删改查操作。
  * 对上层业务服务层屏蔽具体的 SQL 语句与数据库细节，连接统一由
  * {@link DbHelper} 提供。
  */
 public class DoctorDAO {
-
     /**
      * 查询全部医生信息
      *
@@ -44,7 +41,6 @@ public class DoctorDAO {
         }
         return list;
     }
-
     /**
      * 根据科室查询医生列表
      *
@@ -67,7 +63,6 @@ public class DoctorDAO {
         }
         return list;
     }
-
     /**
      * 根据doctorId查询单个医生
      *
@@ -88,6 +83,60 @@ public class DoctorDAO {
             }
         }
         return null;
+    }
+
+    /**
+     * 新增医生
+     * @param doctor
+     * @return true成功
+     * @throws SQLException
+     * @throws IOException
+     */
+    public boolean insert(Doctor doctor) throws SQLException, IOException{
+        String sql = "INSERT INTO tbldoctor(doctorId,name,department,title) VALUES (?,?,?,?)";
+        try(Connection conn = DbHelper.getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1,doctor.getDoctorId());
+            pstmt.setString(2,doctor.getName());
+            pstmt.setString(3,doctor.getDepartment());
+            pstmt.setString(4,doctor.getTitle());
+            return pstmt.executeUpdate()>0;
+        }
+    }
+
+    /**
+     * 修改医生信息
+     * @param doctor
+     * @return true成功
+     * @throws SQLException
+     * @throws IOException
+     */
+    public boolean update(Doctor doctor) throws SQLException, IOException{
+        String sql = "UPDATE tbldoctor SET name=?,department=?,title=? WHERE doctorId=?";
+        try(Connection conn = DbHelper.getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1,doctor.getName());
+            pstmt.setString(2,doctor.getDepartment());
+            pstmt.setString(3,doctor.getTitle());
+            pstmt.setString(4,doctor.getDoctorId());
+            return pstmt.executeUpdate()>0;
+        }
+    }
+
+    /**
+     * 删除医生
+     * @param doctorId
+     * @return true成功
+     * @throws SQLException
+     * @throws IOException
+     */
+    public boolean delete(String doctorId) throws SQLException, IOException{
+        String sql = "DELETE FROM tbldoctor WHERE doctorId=?";
+        try(Connection conn = DbHelper.getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1,doctorId);
+            return pstmt.executeUpdate()>0;
+        }
     }
 
     /**

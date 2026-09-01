@@ -65,4 +65,40 @@ public interface IHospitalClientSrv {
      * @throws ClassNotFoundException 反序列化响应对象失败
      */
     Message cancelAppointment(String appointId) throws IOException, ClassNotFoundException;
+
+    /**
+ * 【管理员】查询系统全部预约记录
+ * @return 服务器返回的响应消息
+ * @throws IOException
+ * @throws ClassNotFoundException
+ */
+Message queryAllAppointment() throws IOException, ClassNotFoundException;
+
+/**
+ * 【管理员】新增医生
+ * @param doctor 医生对象
+ * @return 服务器返回的响应消息
+ * @throws IOException
+ * @throws ClassNotFoundException
+ */
+Message addDoctor(Doctor doctor) throws IOException, ClassNotFoundException;
+
+/**
+ * 【管理员】修改医生
+ * @param doctor 医生对象
+ * @return 服务器返回的响应消息
+ * @throws IOException
+ * @throws ClassNotFoundException
+ */
+Message updateDoctor(Doctor doctor) throws IOException, ClassNotFoundException;
+
+/**
+ * 【管理员】删除医生
+ * @param doctorId 医生编号
+ * @return 服务器返回的响应消息
+ * @throws IOException
+ * @throws ClassNotFoundException
+ */
+Message deleteDoctor(String doctorId) throws IOException, ClassNotFoundException;
+
 }

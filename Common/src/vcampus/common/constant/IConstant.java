@@ -47,9 +47,18 @@ public interface IConstant {
     /** 取消预约 */
     String MSG_HOSPITAL_CANCEL_APPOINTMENT = "hospital_cancel_appointment";
 
+    //管理员医院模块消息
+    String MSG_HOSPITAL_QUERY_ALL_APPOINTMENT = "HOSPITAL_QUERY_ALL_APPOINTMENT";
+    String MSG_HOSPITAL_ADD_DOCTOR = "HOSPITAL_ADD_DOCTOR";
+    String MSG_HOSPITAL_UPDATE_DOCTOR = "HOSPITAL_UPDATE_DOCTOR";
+    String MSG_HOSPITAL_DELETE_DOCTOR = "HOSPITAL_DELETE_DOCTOR";
+    
     // 医院业务自定义状态码
     /** 预约记录不存在 */
     String STATUS_APPOINT_NOT_FOUND = "601";
     /** 预约取消失败 */
     String STATUS_APPOINT_CANCEL_FAIL = "602";
+
+
+
 }

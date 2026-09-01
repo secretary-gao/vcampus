@@ -20,16 +20,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.List;
-
-
-
 /**
  * 预约表（tblappointment）的数据访问类，封装对预约记录的增删改查操作。
  * 对上层业务服务层屏蔽具体的 SQL 语句与数据库细节，连接统一由
  * {@link DbHelper} 提供。
  */
 public class AppointmentDAO {
-
     /**
      * 生成12位预约编号：AP + yyMMdd(6位) + 4位随机数字，总长度固定12位
      * @return 12位 appointmentId
@@ -42,7 +38,6 @@ public class AppointmentDAO {
         String randPart = String.format("%04d", rand);
         return "AP" + datePart + randPart;
     }
-
     /**
      * 新增一条挂号预约记录
      *
@@ -56,7 +51,6 @@ public class AppointmentDAO {
         if(appointment.getAppointmentId() == null || appointment.getAppointmentId().isBlank()){
             appointment.setAppointmentId(generateAppointmentId());
         }
-
         String sql = "INSERT INTO tblappointment(appointmentId,userId,doctorId,appointmentTime,status) VALUES (?,?,?,?,?)";
         try (Connection conn = DbHelper.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -68,7 +62,6 @@ public class AppointmentDAO {
             return pstmt.executeUpdate() > 0;
         }
     }
-
     /**
      * 根据用户编号查询该用户全部预约记录
      *
@@ -87,6 +80,25 @@ public class AppointmentDAO {
                 while (rs.next()) {
                     list.add(mapRow(rs));
                 }
+            }
+        }
+        return list;
+    }
+
+    /**
+     * 查询全部预约记录（管理员使用）
+     * @return 全部预约列表
+     * @throws SQLException
+     * @throws IOException
+     */
+    public List<Appointment> selectAll() throws SQLException, IOException{
+        String sql = "SELECT appointmentId,userId,doctorId,appointmentTime,status FROM tblappointment";
+        List<Appointment> list = new ArrayList<>();
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            while(rs.next()){
+                list.add(mapRow(rs));
             }
         }
         return list;
@@ -113,7 +125,6 @@ public class AppointmentDAO {
         }
         return null;
     }
-
     /**
      * 更新预约状态
      *
@@ -132,9 +143,8 @@ public class AppointmentDAO {
             return pstmt.executeUpdate() > 0;
         }
     }
-
     /**
-     * 根据预约编号删除预约（取消预约）
+     * 根据预约编号删除预约（旧方法保留，目前业务不再使用）
      *
      * @param appointmentId 预约编号
      * @return 删除成功返回 {@code true}，否则返回 {@code false}
@@ -149,7 +159,6 @@ public class AppointmentDAO {
             return pstmt.executeUpdate() > 0;
         }
     }
-
     /**
      * 将结果集当前行映射为 Appointment 对象。
      *
@@ -166,4 +175,49 @@ public class AppointmentDAO {
         app.setStatus(rs.getString("status"));
         return app;
     }
+    /**
+     * 判断用户该时间段是否已经预约过
+     * @param userId 用户编号
+     * @param appointTime 预约时间
+     * @return true = 已经存在重复预约（不能新增）
+     * @throws SQLException
+     * @throws IOException
+     */
+    public boolean existSameTimeAppointment(String userId, java.util.Date appointTime) throws SQLException, IOException{
+        String sql = "SELECT COUNT(*) FROM tblAppointment " +
+                "WHERE userId = ? " +
+                "AND appointmentTime >= ? AND appointmentTime < DATE_ADD(?, INTERVAL 1 MINUTE) " +
+                "AND status != '已取消'";
+        try(Connection conn = DbHelper.getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql))
+        {
+            Timestamp ts = new Timestamp(appointTime.getTime());
+            pstmt.setString(1,userId);
+            pstmt.setTimestamp(2, ts);
+            pstmt.setTimestamp(3, ts);
+            ResultSet rs = pstmt.executeQuery();
+            if(rs.next()){
+                return rs.getInt(1) > 0;
+            }
+        }
+        return false;
+    }
+
+    /**
+ * 【单元测试专用】清理指定用户+时间的预约记录
+ * @param userId 用户编号
+ * @param appointTime 预约时间
+ * @throws SQLException
+ * @throws IOException
+ */
+public void cleanTestAppointment(String userId, Date appointTime) throws SQLException, IOException {
+    String sql = "DELETE FROM tblappointment WHERE userId = ? AND appointmentTime = ?";
+    try (Connection conn = DbHelper.getConnection();
+         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        pstmt.setString(1, userId);
+        pstmt.setTimestamp(2, new Timestamp(appointTime.getTime()));
+        pstmt.executeUpdate();
+    }
+}
+
 }

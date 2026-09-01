@@ -8,10 +8,10 @@
  * Copyright (c) 2026 Vcampus Team
  */
 package vcampus.server.srv;
-
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Appointment;
 import vcampus.common.vo.Doctor;
+import vcampus.common.vo.HospitalAdminReq;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 
@@ -74,13 +74,21 @@ public class ServerThread implements Runnable {
             return handleQueryMyAppointment(request);
         } else if (IConstant.MSG_HOSPITAL_CANCEL_APPOINTMENT.equals(name)) {
             return handleCancelAppointment(request);
+        } else if (IConstant.MSG_HOSPITAL_QUERY_ALL_APPOINTMENT.equals(name)) {
+            return handleQueryAllAppointment(request);
+        } else if (IConstant.MSG_HOSPITAL_ADD_DOCTOR.equals(name)) {
+            return handleAddDoctor(request);
+        } else if (IConstant.MSG_HOSPITAL_UPDATE_DOCTOR.equals(name)) {
+            return handleUpdateDoctor(request);
+        } else if (IConstant.MSG_HOSPITAL_DELETE_DOCTOR.equals(name)) {
+            return handleDeleteDoctor(request);
         } else {
             return new Message(request.getUid(), name, MessageType.DATA,
                     IConstant.STATUS_ERROR, "未知的请求类型：" + name, "Server");
         }
     }
 
-    // ====================== 医院模块处理方法 ======================
+    // ====================== 医院模块普通用户处理方法 ======================
     private Message handleQueryAllDoctor(Message request) {
         try {
             List<Doctor> list = _hospitalSrv.queryAllDoctor();
@@ -141,4 +149,84 @@ public class ServerThread implements Runnable {
                     IConstant.STATUS_ERROR, "取消预约异常：" + e.getMessage(), "Server");
         }
     }
+
+    // ====================== 医院模块【管理员】处理方法 ======================
+    /**
+     * 【待合并user模块后完善权限】
+     * 当前：request.getData() 传递登录userId字符串；
+     * 合并user分支之后：引入UserDAO，根据userId查询用户role判断是否admin。
+     */
+    private Message handleQueryAllAppointment(Message request) {
+    HospitalAdminReq adminReq = (HospitalAdminReq) request.getData();
+    String loginUserId = adminReq.getLoginUserId();
+    /*
+    //合并user分支启用权限
+    */
+    try {
+        List<Appointment> list = _hospitalSrv.queryAllAppointment();
+        // ✅data放list，状态描述放到statusCode后面的提示
+        return new Message(request.getUid(), request.getName(), MessageType.DATA,
+                IConstant.STATUS_SUCCESS, list, "Server");
+    } catch (SQLException | IOException e) {
+        return new Message(request.getUid(), request.getName(), MessageType.DATA,
+                IConstant.STATUS_ERROR, "查询全部预约异常：" + e.getMessage(), "Server");
+    }
+}
+
+
+    private Message handleAddDoctor(Message request) {
+        HospitalAdminReq adminReq = (HospitalAdminReq) request.getData();
+        String loginUserId = adminReq.getLoginUserId();
+        Doctor doctor = (Doctor) adminReq.getPayload();
+        /*
+        //合并user分支启用权限
+        */
+        try {
+            boolean ok = _hospitalSrv.addDoctor(doctor);
+            String code = ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
+            String msg = ok ? "新增医生成功" : "新增医生失败";
+            return new Message(request.getUid(), request.getName(), MessageType.DATA, code, msg, "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), request.getName(), MessageType.DATA,
+                    IConstant.STATUS_ERROR, "新增医生异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    private Message handleUpdateDoctor(Message request) {
+        HospitalAdminReq adminReq = (HospitalAdminReq) request.getData();
+        String loginUserId = adminReq.getLoginUserId();
+        Doctor doctor = (Doctor) adminReq.getPayload();
+        /*
+        //合并user分支启用权限
+        */
+        try {
+            boolean ok = _hospitalSrv.updateDoctor(doctor);
+            String code = ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
+            String msg = ok ? "修改医生成功" : "修改医生失败";
+            return new Message(request.getUid(), request.getName(), MessageType.DATA, code, msg, "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), request.getName(), MessageType.DATA,
+                    IConstant.STATUS_ERROR, "修改医生异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    private Message handleDeleteDoctor(Message request) {
+        HospitalAdminReq adminReq = (HospitalAdminReq) request.getData();
+        String loginUserId = adminReq.getLoginUserId();
+        String doctorId = (String) adminReq.getPayload();
+        /*
+        //合并user分支启用权限
+        */
+        try {
+            boolean ok = _hospitalSrv.deleteDoctor(doctorId);
+            String code = ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
+            String msg = ok ? "删除医生成功" : "删除医生失败";
+            return new Message(request.getUid(), request.getName(), MessageType.DATA, code, msg, "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), request.getName(), MessageType.DATA,
+                    IConstant.STATUS_ERROR, "删除医生异常：" + e.getMessage(), "Server");
+        }
+    }
+
+
 }

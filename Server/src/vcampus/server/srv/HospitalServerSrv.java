@@ -8,7 +8,6 @@
  * Copyright (c) 2026 Vcampus Team
  */
 package vcampus.server.srv;
-
 import vcampus.common.vo.Appointment;
 import vcampus.common.vo.Doctor;
 import vcampus.server.dao.AppointmentDAO;
@@ -37,6 +36,12 @@ public class HospitalServerSrv implements IHospitalServerSrv {
 
     @Override
     public boolean addAppointment(Appointment appoint) throws SQLException, IOException {
+        // 【新增业务校验】同一个用户同一时间不能重复预约
+        boolean repeat = _appointDAO.existSameTimeAppointment(appoint.getUserId(), appoint.getAppointmentTime());
+        if(repeat){
+            // 重复预约，直接返回false，不执行插入
+            return false;
+        }
         return _appointDAO.insert(appoint);
     }
 
@@ -46,7 +51,38 @@ public class HospitalServerSrv implements IHospitalServerSrv {
     }
 
     @Override
+    public List<Appointment> queryAllAppointment() throws SQLException, IOException {
+        return _appointDAO.selectAll();
+    }
+
+    @Override
     public boolean cancelAppointment(String appointId) throws SQLException, IOException {
-        return _appointDAO.deleteById(appointId);
+        // 1. 查询这条预约记录（注意方法名 findById）
+        Appointment apt = _appointDAO.findById(appointId);
+        if(apt == null){
+            // 单号不存在
+            return false;
+        }
+        // 2. 判断：只有待就诊才允许取消
+        if(!"待就诊".equals(apt.getStatus())){
+            return false;
+        }
+        // 3. 更新状态为已取消，不是删除！
+        return _appointDAO.updateStatus(appointId, "已取消");
+    }
+
+    @Override
+    public boolean addDoctor(Doctor doctor) throws SQLException, IOException {
+        return _doctorDAO.insert(doctor);
+    }
+
+    @Override
+    public boolean updateDoctor(Doctor doctor) throws SQLException, IOException {
+        return _doctorDAO.update(doctor);
+    }
+
+    @Override
+    public boolean deleteDoctor(String doctorId) throws SQLException, IOException {
+        return _doctorDAO.delete(doctorId);
     }
 }
