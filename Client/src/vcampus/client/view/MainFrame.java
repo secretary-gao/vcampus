@@ -11,6 +11,7 @@ package vcampus.client.view;
 
 import vcampus.client.biz.IUserClientSrv;
 import vcampus.client.biz.UserClientSrv;
+import vcampus.client.view.Library.LibraryPanel;
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.User;
@@ -308,6 +309,10 @@ public class MainFrame extends Application {
      * @param color      强调色
      */
     private void showModulePage(String moduleName, String moduleDesc, String moduleKey, String color) {
+        if ("library".equals(moduleKey)) {
+            showLibraryPage();
+            return;
+        }
         VBox page = new VBox(16);
         page.setPadding(new Insets(22));
         page.setMaxWidth(820);
@@ -351,6 +356,32 @@ public class MainFrame extends Application {
         page.getChildren().addAll(title, desc, infoGrid, featureBox, bottomBar);
 
         _contentStack.getChildren().setAll(page);
+    }
+
+    /**
+     * 打开图书馆模块的真实业务界面（{@link LibraryPanel}），而不是通用占位页。
+     */
+    private void showLibraryPage() {
+        LibraryPanel libraryPanel = new LibraryPanel();
+
+        Button backButton = new Button("返回总览");
+        backButton.setStyle("-fx-background-color: #73c553; -fx-text-fill: white;"
+                + " -fx-background-radius: 20; -fx-font-weight: bold; -fx-cursor: hand;");
+        backButton.setOnAction(e -> showDashboard());
+
+        HBox bottomBar = new HBox(backButton);
+        bottomBar.setAlignment(Pos.CENTER_RIGHT);
+        bottomBar.setPadding(new Insets(10, 0, 0, 0));
+
+        VBox wrapper = new VBox(0, libraryPanel, bottomBar);
+        wrapper.setMaxWidth(900);
+        wrapper.setStyle("-fx-background-color: rgba(255,255,255,0.98);"
+                + "-fx-background-radius: 20;"
+                + "-fx-border-radius: 20;"
+                + "-fx-border-color: rgba(45,106,159,0.18);"
+                + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 22, 0.12, 0, 8);");
+
+        _contentStack.getChildren().setAll(wrapper);
     }
 
     /**
