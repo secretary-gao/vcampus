@@ -363,6 +363,9 @@ public class MainFrame extends Application {
      */
     private void showLibraryPage() {
         LibraryPanel libraryPanel = new LibraryPanel();
+        if (_currentUser != null) {
+            libraryPanel.setCurrentUserId(_currentUser.getUId());
+        }
 
         Button backButton = new Button("返回总览");
         backButton.setStyle("-fx-background-color: #73c553; -fx-text-fill: white;"

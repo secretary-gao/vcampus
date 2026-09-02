@@ -354,6 +354,7 @@ public class LibraryPanel extends VBox {
 
     // ========== 表格设置 ==========
 
+    @SuppressWarnings("unchecked")
     private void setupBookTable(TableView<Book> table) {
         table.setItems(bookData);
 
@@ -388,9 +389,10 @@ public class LibraryPanel extends VBox {
         });
         
         table.getColumns().addAll(idCol, nameCol, authorCol, categoryCol, availCol);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
     }
 
+    @SuppressWarnings("unchecked")
     private void setupRecordTable(TableView<BorrowRecord> table) {
         table.setItems(recordData);
 
@@ -482,7 +484,7 @@ public class LibraryPanel extends VBox {
         // 将新创建的操作列添加到表格中
         table.getColumns().addAll(idCol, bookIdCol, statusCol, borrowDateCol, dueDateCol);
         table.getColumns().add(actionCol);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
     }
 
     // ========== 工具方法 ==========
