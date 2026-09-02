@@ -1,7 +1,7 @@
 # Vcampus 数据库连接配置模板
 # 使用方法：复制这个文件为同目录下的 db.properties，并填入你本地 MySQL 的真实密码。
 # db.properties 已加入 .gitignore，不会被提交到仓库。
-jdbc.url=jdbc:mysql://localhost:3306/vCampus?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8
+jdbc.url=jdbc:mysql://localhost:3306/vCampus?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
 jdbc.driver=com.mysql.cj.jdbc.Driver
 jdbc.username=root
 jdbc.password=your_local_mysql_password
