@@ -14,6 +14,8 @@ import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.User;
 
+import vcampus.server.srv.Library.LibraryHandler;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -46,6 +48,9 @@ public class ServerThread implements Runnable {
 
     /** 用户业务服务，由本线程独立持有，避免多线程共享状态。 */
     private final IUserServerSrv _userServerSrv = new UserServerSrv();
+
+    /** 图书馆模块业务服务，由本线程独立持有，避免多线程共享状态。 */
+    private final LibraryHandler _libraryHandler = new LibraryHandler();
 
     /** 请求处理器注册表。 */
     private final Map<String, RequestHandler> _handlerMap = new HashMap<>();
@@ -103,12 +108,27 @@ public class ServerThread implements Runnable {
     }
 
     /**
-     * 注册请求处理器。
+     * 处理图书馆模块请求，转发给 {@link LibraryHandler}。
+     *
+     * @param request 图书馆相关请求消息
+     * @return 图书馆模块的处理结果
+     */
+    private Message handleLibraryRequest(Message request) {
+        return _libraryHandler.handle(request);
+    }
+
+    /**
+     * 注册请求处理器。各模块按 {@code Message.getName()} 的取值把自己的处理
+     * 方法注册进来，新增模块时只需在这里加一行，不用改 {@link #handleRequest}。
      */
     private void registerHandlers() {
         _handlerMap.put(IConstant.MSG_LOGIN, this::handleLogin);
         _handlerMap.put(IConstant.MSG_REGISTER, this::handleRegister);
         _handlerMap.put(IConstant.MSG_LOGOUT, this::handleLogout);
+        _handlerMap.put(IConstant.MSG_QUERY_BOOKS, this::handleLibraryRequest);
+        _handlerMap.put(IConstant.MSG_BORROW_BOOK, this::handleLibraryRequest);
+        _handlerMap.put(IConstant.MSG_RETURN_BOOK, this::handleLibraryRequest);
+        _handlerMap.put(IConstant.MSG_GET_BORROW_RECORDS, this::handleLibraryRequest);
     }
 
     /**
