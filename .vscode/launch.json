@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Run Server",
+            "request": "launch",
+            "mainClass": "vcampus.server.srv.Server",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java",
+            "name": "Run LoginFrame",
+            "request": "launch",
+            "mainClass": "vcampus.client.view.LoginFrame",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "vmArgs": "--module-path \"${workspaceFolder}\\lib\\javafx\\lib\" --add-modules javafx.controls,javafx.fxml"
+        }
+    ]
+}

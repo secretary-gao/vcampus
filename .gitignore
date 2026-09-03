@@ -2,6 +2,9 @@
 bin/
 *.class
 
+# JavaFX SDK 的 jar（体积较大，不提交；每人从自己的 JavaFX SDK 复制到这里）
+lib/javafx/
+
 # 本地数据库连接配置（含真实密码，不提交），请参考 Server/db.properties.example
 Server/db.properties
 
