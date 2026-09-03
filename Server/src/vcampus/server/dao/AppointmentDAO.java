@@ -51,6 +51,10 @@ public class AppointmentDAO {
         if(appointment.getAppointmentId() == null || appointment.getAppointmentId().isBlank()){
             appointment.setAppointmentId(generateAppointmentId());
         }
+        // 新增：status为null/空，默认赋值待就诊
+        if(appointment.getStatus() == null || appointment.getStatus().isBlank()){
+            appointment.setStatus("待就诊");
+        }
         String sql = "INSERT INTO tblappointment(appointmentId,userId,doctorId,appointmentTime,status) VALUES (?,?,?,?,?)";
         try (Connection conn = DbHelper.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -84,7 +88,6 @@ public class AppointmentDAO {
         }
         return list;
     }
-
     /**
      * 查询全部预约记录（管理员使用）
      * @return 全部预约列表
@@ -103,7 +106,6 @@ public class AppointmentDAO {
         }
         return list;
     }
-
     /**
      * 根据预约编号查询单条预约记录
      *
@@ -202,22 +204,20 @@ public class AppointmentDAO {
         }
         return false;
     }
-
     /**
- * 【单元测试专用】清理指定用户+时间的预约记录
- * @param userId 用户编号
- * @param appointTime 预约时间
- * @throws SQLException
- * @throws IOException
- */
-public void cleanTestAppointment(String userId, Date appointTime) throws SQLException, IOException {
-    String sql = "DELETE FROM tblappointment WHERE userId = ? AND appointmentTime = ?";
-    try (Connection conn = DbHelper.getConnection();
-         PreparedStatement pstmt = conn.prepareStatement(sql)) {
-        pstmt.setString(1, userId);
-        pstmt.setTimestamp(2, new Timestamp(appointTime.getTime()));
-        pstmt.executeUpdate();
+     * 【单元测试专用】清理指定用户+时间的预约记录
+     * @param userId 用户编号
+     * @param appointTime 预约时间
+     * @throws SQLException
+     * @throws IOException
+     */
+    public void cleanTestAppointment(String userId, Date appointTime) throws SQLException, IOException {
+        String sql = "DELETE FROM tblappointment WHERE userId = ? AND appointmentTime = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, userId);
+            pstmt.setTimestamp(2, new Timestamp(appointTime.getTime()));
+            pstmt.executeUpdate();
+        }
     }
-}
-
 }

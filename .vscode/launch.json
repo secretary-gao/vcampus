@@ -1,0 +1,38 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "HospitalClientSrvTest",
+            "request": "launch",
+            "mainClass": "vcampus.client.biz.HospitalClientSrvTest",
+            "projectName": "vcampus_7d04b298"
+        },
+        {
+            "type": "java",
+            "name": "Run Server",
+            "request": "launch",
+            "mainClass": "vcampus.server.srv.Server",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java",
+            "name": "Run LoginFrame",
+            "request": "launch",
+            "mainClass": "vcampus.client.view.LoginFrame",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "vmArgs": "--module-path \"${workspaceFolder}\\lib\\javafx\\lib\" --add-modules javafx.controls,javafx.fxml"
+        },
+        {
+            "type": "java",
+            "name": "Run HospitalFrame",
+            "request": "launch",
+            "mainClass": "vcampus.client.view.HospitalFrame",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "vmArgs": "--module-path \"${workspaceFolder}\\lib\\javafx\\lib\" --add-modules javafx.controls,javafx.fxml"
+        }
+    ]
+}

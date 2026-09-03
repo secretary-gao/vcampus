@@ -15,7 +15,6 @@ import vcampus.server.dao.DoctorDAO;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
-
 /**
  * {@link IHospitalServerSrv} 的实现类，承载医院模块业务逻辑，
  * 数据库读写委托给 DoctorDAO 和 AppointmentDAO。
@@ -28,12 +27,10 @@ public class HospitalServerSrv implements IHospitalServerSrv {
     public List<Doctor> queryAllDoctor() throws SQLException, IOException {
         return _doctorDAO.selectAll();
     }
-
     @Override
     public List<Doctor> queryDoctorByDept(String department) throws SQLException, IOException {
         return _doctorDAO.selectByDepartment(department);
     }
-
     @Override
     public boolean addAppointment(Appointment appoint) throws SQLException, IOException {
         // 【新增业务校验】同一个用户同一时间不能重复预约
@@ -44,30 +41,35 @@ public class HospitalServerSrv implements IHospitalServerSrv {
         }
         return _appointDAO.insert(appoint);
     }
-
     @Override
     public List<Appointment> queryMyAppointment(String userId) throws SQLException, IOException {
         return _appointDAO.selectByUserId(userId);
     }
-
     @Override
     public List<Appointment> queryAllAppointment() throws SQLException, IOException {
         return _appointDAO.selectAll();
     }
 
     @Override
-    public boolean cancelAppointment(String appointId) throws SQLException, IOException {
-        // 1. 查询这条预约记录（注意方法名 findById）
+    public Appointment findById(String appointId) throws SQLException, IOException {
+        return _appointDAO.findById(appointId);
+    }
+
+    @Override
+    public boolean cancelAppointment(String loginUserId, String appointId) throws SQLException, IOException {
         Appointment apt = _appointDAO.findById(appointId);
+        //记录不存在
         if(apt == null){
-            // 单号不存在
             return false;
         }
-        // 2. 判断：只有待就诊才允许取消
+        //权限：只能取消自己的预约
+        if(!loginUserId.equals(apt.getUserId())){
+            return false;
+        }
+        //状态：只有待就诊可以取消
         if(!"待就诊".equals(apt.getStatus())){
             return false;
         }
-        // 3. 更新状态为已取消，不是删除！
         return _appointDAO.updateStatus(appointId, "已取消");
     }
 
@@ -75,12 +77,10 @@ public class HospitalServerSrv implements IHospitalServerSrv {
     public boolean addDoctor(Doctor doctor) throws SQLException, IOException {
         return _doctorDAO.insert(doctor);
     }
-
     @Override
     public boolean updateDoctor(Doctor doctor) throws SQLException, IOException {
         return _doctorDAO.update(doctor);
     }
-
     @Override
     public boolean deleteDoctor(String doctorId) throws SQLException, IOException {
         return _doctorDAO.delete(doctorId);

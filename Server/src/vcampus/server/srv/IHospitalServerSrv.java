@@ -22,12 +22,16 @@ public interface IHospitalServerSrv {
      * @throws IOException
      */
     List<Appointment> queryAllAppointment() throws SQLException, IOException;
+
+    Appointment findById(String appointId) throws SQLException, IOException;
+
     /**
      * 取消预约：仅待就诊可以取消，更新状态为已取消，不删除数据
+     * @param loginUserId 当前登录用户ID
      * @param appointId 预约编号
-     * @return true取消成功；false：不存在/状态不允许取消
+     * @return true取消成功；false：不存在/不是本人/状态不允许取消
      */
-    boolean cancelAppointment(String appointId) throws SQLException, IOException;
+    boolean cancelAppointment(String loginUserId,String appointId) throws SQLException, IOException;
 
     // 管理员维护医生
     boolean addDoctor(Doctor doctor) throws SQLException, IOException;
