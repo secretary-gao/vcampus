@@ -85,4 +85,26 @@ public class HospitalServerSrv implements IHospitalServerSrv {
     public boolean deleteDoctor(String doctorId) throws SQLException, IOException {
         return _doctorDAO.delete(doctorId);
     }
+
+    @Override
+   public List<Doctor> queryCanDeleteDoctor() throws SQLException, IOException {
+    DoctorDAO doctorDAO = new DoctorDAO();
+    return doctorDAO.selectCanDeleteDoctor();
+}
+
+    @Override
+    public boolean deleteCancelAppointment(String appointId) throws SQLException, IOException {
+        Appointment apt = _appointDAO.findById(appointId);
+        // 记录不存在
+        if(apt == null){
+            return false;
+        }
+        // 业务校验：**只允许删除状态为已取消的记录**
+        if(!"已取消".equals(apt.getStatus())){
+            return false;
+        }
+        return _appointDAO.deleteById(appointId);
+    }
+
+
 }

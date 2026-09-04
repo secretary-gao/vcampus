@@ -73,6 +73,7 @@ public interface IHospitalClientSrv {
  * @throws ClassNotFoundException
  */
 Message queryAllAppointment() throws IOException, ClassNotFoundException;
+    Message deleteCancelAppointment(String appointId) throws IOException, ClassNotFoundException;
 
 /**
  * 【管理员】新增医生
@@ -100,5 +101,8 @@ Message updateDoctor(Doctor doctor) throws IOException, ClassNotFoundException;
  * @throws ClassNotFoundException
  */
 Message deleteDoctor(String doctorId) throws IOException, ClassNotFoundException;
+Message queryCanDeleteDoctor() throws IOException, ClassNotFoundException;
+
+
 
 }

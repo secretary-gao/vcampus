@@ -7,6 +7,7 @@ import java.util.List;
 
 public interface IHospitalServerSrv {
     List<Doctor> queryAllDoctor() throws SQLException, IOException;
+    List<Doctor> queryCanDeleteDoctor() throws SQLException, IOException;
     List<Doctor> queryDoctorByDept(String department) throws SQLException, IOException;
     /**
      * 新增预约：内部会校验同一用户相同时段不可重复预约
@@ -32,6 +33,14 @@ public interface IHospitalServerSrv {
      * @return true取消成功；false：不存在/不是本人/状态不允许取消
      */
     boolean cancelAppointment(String loginUserId,String appointId) throws SQLException, IOException;
+
+        /**
+     * 删除预约：只允许删除状态为【已取消】的预约记录
+     * @param appointId 预约编号
+     * @return true删除成功；false：状态不允许/记录不存在
+     */
+    boolean deleteCancelAppointment(String appointId) throws SQLException, IOException;
+
 
     // 管理员维护医生
     boolean addDoctor(Doctor doctor) throws SQLException, IOException;

@@ -251,4 +251,56 @@ public class HospitalClientSrv {
             if(socket!=null) socket.close();
         }
     }
+
+    public Message queryCanDeleteDoctor() throws IOException, ClassNotFoundException {
+    Socket socket = null;
+    ObjectOutputStream out = null;
+    ObjectInputStream in = null;
+    try {
+        socket = new Socket(IConstant.SERVER_HOST, IConstant.SERVER_PORT);
+        out = new ObjectOutputStream(socket.getOutputStream());
+        in = new ObjectInputStream(socket.getInputStream());
+        Message req = new Message();
+        req.setUid(System.currentTimeMillis());
+        req.setName(IConstant.MSG_HOSPITAL_QUERY_CAN_DELETE_DOCTOR);
+        req.setType(MessageType.DATA);
+        req.setStatusCode(null);
+        req.setData(null);
+        req.setSender("Client");
+        out.writeObject(req);
+        out.flush();
+        return (Message) in.readObject();
+    } finally {
+        if(in!=null) in.close();
+        if(out!=null) out.close();
+        if(socket!=null) socket.close();
+    }
+}
+
+    public Message deleteCancelAppointment(String appointId) throws IOException, ClassNotFoundException {
+        Socket socket = null;
+        ObjectOutputStream out = null;
+        ObjectInputStream in = null;
+        try {
+            socket = new Socket(IConstant.SERVER_HOST, IConstant.SERVER_PORT);
+            out = new ObjectOutputStream(socket.getOutputStream());
+            in = new ObjectInputStream(socket.getInputStream());
+            Message req = new Message();
+            req.setUid(System.currentTimeMillis());
+            req.setName(IConstant.MSG_HOSPITAL_DELETE_CANCEL_APPOINT);
+            req.setType(MessageType.DATA);
+            req.setStatusCode(null);
+            req.setData(appointId);
+            req.setSender("Client");
+            out.writeObject(req);
+            out.flush();
+            return (Message) in.readObject();
+        } finally {
+            if(in!=null) in.close();
+            if(out!=null) out.close();
+            if(socket!=null) socket.close();
+        }
+    }
+
+
 }

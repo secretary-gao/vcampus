@@ -146,7 +146,7 @@ public class DoctorDAO {
      * @return 映射后的 Doctor 对象
      * @throws SQLException 读取结果集时发生异常
      */
-    private Doctor mapRow(ResultSet rs) throws SQLException {
+    private Doctor mapRow(ResultSet rs) throws SQLException, IOException {
         Doctor doctor = new Doctor();
         doctor.setDoctorId(rs.getString("doctorId"));
         doctor.setName(rs.getString("name"));
@@ -154,4 +154,39 @@ public class DoctorDAO {
         doctor.setTitle(rs.getString("title"));
         return doctor;
     }
+
+    /**
+ * 查询所有不存在待就诊预约的医生（允许管理员安全删除）
+ */
+/**
+ * 查询所有【完全没有任何预约记录】的医生（允许管理员安全删除）
+ * 只要tblappointment存在该医生任意记录（已取消/待就诊都算）就不会出现在列表
+ */
+public List<Doctor> selectCanDeleteDoctor() throws SQLException, IOException {
+    List<Doctor> doctorList = new ArrayList<>();
+    // 去掉 AND a.status='待就诊'，只要存在任意一条预约记录就排除
+    String sql = "SELECT d.doctorId, d.name, d.department, d.title " +
+            "FROM tbldoctor d " +
+            "WHERE NOT EXISTS (" +
+            "    SELECT 1 FROM tblappointment a " +
+            "    WHERE a.doctorId = d.doctorId" +
+            ")";
+    try (Connection conn = DbHelper.getConnection();
+         PreparedStatement pstmt = conn.prepareStatement(sql);
+         ResultSet rs = pstmt.executeQuery()) {
+        while (rs.next()) {
+            Doctor doctor = new Doctor();
+            doctor.setDoctorId(rs.getString("doctorId"));
+            doctor.setName(rs.getString("name"));
+            doctor.setDepartment(rs.getString("department"));
+            doctor.setTitle(rs.getString("title"));
+            doctorList.add(doctor);
+        }
+    }
+    return doctorList;
 }
+
+
+}
+
+

@@ -220,4 +220,23 @@ public class AppointmentDAO {
             pstmt.executeUpdate();
         }
     }
+
+    /**
+ * 判断医生是否存在待就诊预约
+ * @param doctorId 医生编号
+ * @return true=有待就诊预约，false=无
+ */
+    public boolean hasPendingAppointment(String doctorId) throws SQLException, IOException {
+    String sql = "SELECT COUNT(*) AS cnt FROM tblappointment WHERE doctorId = ? AND status = '待就诊'";
+    try (Connection conn = DbHelper.getConnection();
+         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        pstmt.setString(1, doctorId);
+        ResultSet rs = pstmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt("cnt") > 0;
+        }
+    }
+    return false;
+}
+
 }

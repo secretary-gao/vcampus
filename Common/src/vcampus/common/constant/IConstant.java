@@ -52,6 +52,11 @@ public interface IConstant {
     String MSG_HOSPITAL_ADD_DOCTOR = "HOSPITAL_ADD_DOCTOR";
     String MSG_HOSPITAL_UPDATE_DOCTOR = "HOSPITAL_UPDATE_DOCTOR";
     String MSG_HOSPITAL_DELETE_DOCTOR = "HOSPITAL_DELETE_DOCTOR";
+    public static final String MSG_HOSPITAL_QUERY_CAN_DELETE_DOCTOR = "HOSPITAL_QUERY_CAN_DELETE_DOCTOR";
+        // 新增：删除【已取消】预约记录
+    String MSG_HOSPITAL_DELETE_CANCEL_APPOINT = "HOSPITAL_DELETE_CANCEL_APPOINT";
+
+
     
     // 医院业务自定义状态码
     /** 预约记录不存在 */
