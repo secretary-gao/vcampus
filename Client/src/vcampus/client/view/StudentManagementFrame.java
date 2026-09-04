@@ -87,18 +87,12 @@ public class StudentManagementFrame extends Application {
     private final List<Button> _operationButtons = new ArrayList<>();
     private final Map<TextField, String> _fieldErrors = new LinkedHashMap<>();
     private boolean _operationRunning;
+    private BorderPane _root;
 
     @Override
     public void start(Stage stage) {
         stage.setTitle("Vcampus 学生学籍管理");
-        configureFields();
-        configureTable();
-
-        BorderPane root = new BorderPane();
-        root.getStyleClass().add("app-root");
-        root.setTop(createHeader());
-        root.setCenter(createWorkspace());
-        root.setBottom(createStatusBar());
+        BorderPane root = createView();
 
         double availableWidth = Screen.getPrimary().getVisualBounds().getWidth();
         double availableHeight = Screen.getPrimary().getVisualBounds().getHeight();
@@ -111,6 +105,33 @@ public class StudentManagementFrame extends Application {
         stage.setScene(scene);
         stage.centerOnScreen();
         stage.show();
+        refreshStudents();
+    }
+
+    /**
+     * 创建可嵌入主界面的学籍管理面板。
+     *
+     * @return 学籍管理根面板
+     */
+    public BorderPane createView() {
+        if (_root != null) {
+            return _root;
+        }
+        configureFields();
+        configureTable();
+
+        _root = new BorderPane();
+        _root.getStyleClass().add("app-root");
+        _root.setTop(createHeader());
+        _root.setCenter(createWorkspace());
+        _root.setBottom(createStatusBar());
+        return _root;
+    }
+
+    /**
+     * 刷新学生列表，供主界面嵌入后调用。
+     */
+    public void refresh() {
         refreshStudents();
     }
 
@@ -557,7 +578,9 @@ public class StudentManagementFrame extends Application {
         _statusLabel.setText(runningText);
         _statusLabel.getStyleClass().removeAll("status-error", "status-success");
         _statusLabel.setTooltip(null);
-        _table.getScene().setCursor(Cursor.WAIT);
+        if (_table.getScene() != null) {
+            _table.getScene().setCursor(Cursor.WAIT);
+        }
         setBusy(true);
 
         Task<T> task = new Task<>() {
@@ -609,7 +632,9 @@ public class StudentManagementFrame extends Application {
     private void finishOperation() {
         _operationRunning = false;
         setBusy(false);
-        _table.getScene().setCursor(Cursor.DEFAULT);
+        if (_table.getScene() != null) {
+            _table.getScene().setCursor(Cursor.DEFAULT);
+        }
     }
 
     private void updateEditingButtons() {
@@ -628,15 +653,29 @@ public class StudentManagementFrame extends Application {
         _countLabel.setText("共 " + _students.size() + " 条");
     }
 
-    private void attachStyleSheet(Scene scene) {
+    /**
+     * 将学籍模块样式表附加到指定场景，支持独立窗口和主界面嵌入两种用法。
+     *
+     * @param scene 要附加样式的场景
+     */
+    public void attachStyleSheet(Scene scene) {
+        if (scene == null) {
+            return;
+        }
         URL resource = getClass().getResource("student-management.css");
         if (resource != null) {
-            scene.getStylesheets().add(resource.toExternalForm());
+            String stylesheet = resource.toExternalForm();
+            if (!scene.getStylesheets().contains(stylesheet)) {
+                scene.getStylesheets().add(stylesheet);
+            }
             return;
         }
         Path sourceFile = Path.of(STYLE_FILE);
         if (Files.exists(sourceFile)) {
-            scene.getStylesheets().add(sourceFile.toUri().toString());
+            String stylesheet = sourceFile.toUri().toString();
+            if (!scene.getStylesheets().contains(stylesheet)) {
+                scene.getStylesheets().add(stylesheet);
+            }
         }
     }
 

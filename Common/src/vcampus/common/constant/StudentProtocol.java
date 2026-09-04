@@ -3,8 +3,11 @@ package vcampus.common.constant;
 /** 学籍模块客户端和服务器端共同使用的通信常量。 */
 public final class StudentProtocol {
 
-    public static final String DEFAULT_HOST = "127.0.0.1";
-    public static final int DEFAULT_PORT = 8888;
+    /** 默认服务器地址，统一复用系统公共常量。 */
+    public static final String DEFAULT_HOST = IConstant.SERVER_HOST;
+
+    /** 默认服务器端口，统一复用系统公共常量。 */
+    public static final int DEFAULT_PORT = IConstant.SERVER_PORT;
 
     public static final String LIST = "student.list";
     public static final String QUERY_BY_ID = "student.query.id";
@@ -14,11 +17,11 @@ public final class StudentProtocol {
     public static final String UPDATE = "student.update";
     public static final String DELETE = "student.delete";
 
-    public static final String STATUS_SUCCESS = "200";
+    public static final String STATUS_SUCCESS = IConstant.STATUS_SUCCESS;
     public static final String STATUS_BAD_REQUEST = "400";
-    public static final String STATUS_NOT_FOUND = "404";
-    public static final String STATUS_CONFLICT = "409";
-    public static final String STATUS_ERROR = "500";
+    public static final String STATUS_NOT_FOUND = IConstant.STATUS_USER_NOT_FOUND;
+    public static final String STATUS_CONFLICT = IConstant.STATUS_USER_EXISTS;
+    public static final String STATUS_ERROR = IConstant.STATUS_ERROR;
 
     private StudentProtocol() {
     }
