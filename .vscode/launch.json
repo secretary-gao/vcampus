@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "MainFrame",
+            "request": "launch",
+            "mainClass": "vcampus.client.view.MainFrame",
+            "projectName": "vcampus_7d04b298"
+        },
+        {
+            "type": "java",
             "name": "Run Server",
             "request": "launch",
             "mainClass": "vcampus.server.srv.Server",

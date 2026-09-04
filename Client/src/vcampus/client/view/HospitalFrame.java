@@ -1,20 +1,18 @@
 /*
  * HospitalFrame
  *
- * Version 1.9 管理员全部预约表格增加【已取消行删除按钮】
+ * Version 2.0 改造为可嵌入主界面面板，不再独立Application
  *
  * 2026-09-04
  *
  * Copyright (c) 2026 Vcampus Team
  */
 package vcampus.client.view;
-
 import vcampus.client.biz.HospitalClientSrv;
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Appointment;
 import vcampus.common.vo.Doctor;
 import vcampus.common.vo.Message;
-import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -31,7 +29,6 @@ import javafx.scene.paint.Stop;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -41,12 +38,19 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class HospitalFrame extends Application {
-    private Stage _stage;
+/**
+ * 医院挂号管理面板，改造为可嵌入MainFrame，不再独立Application。
+ * 使用方式：
+ * HospitalFrame hospitalFrame = new HospitalFrame(userId,role);
+ * BorderPane view = hospitalFrame.createView();
+ * hospitalFrame.attachStyleSheet(scene);
+ * Platform.runLater(hospitalFrame::refresh);
+ */
+public class HospitalFrame {
+    private BorderPane _root;
     private final String _loginUserId;
     private final String _loginUserRole;
     private final HospitalClientSrv _hospitalSrv = new HospitalClientSrv();
-
     // 导航按钮
     private Button btnQueryAllDoctor;
     private Button btnQueryByDept;
@@ -58,65 +62,49 @@ public class HospitalFrame extends Application {
     private Button btnUpdateDoctor;
     private Button btnDeleteDoctor;
     private StackPane _contentPane;
-
     // ---------------------- 面板控件（TableView） ----------------------
     private VBox panelQueryAllDoctor;
     private TableView<Doctor> tableAllDoctor;
-
     private VBox panelQueryDept;
     private TextField tfDept;
     private TableView<Doctor> tableDeptDoctor;
-
     private VBox panelAddAppoint;
-
     private VBox panelMyAppoint;
     private TableView<Appointment> tableMyAppoint;
-
     private VBox panelCancelAppoint;
-
     private VBox panelQueryAllAppoint;
     private TableView<Appointment> tableAllAppoint;
-
     private VBox panelAddDoctor;
     private TextField tfAddDocId;
     private TextField tfAddDocName;
     private TextField tfAddDocDept;
     private TextField tfAddDocTitle;
-
     private VBox panelUpdateDoctor;
     private TextField tfUpdDocId;
     private TextField tfUpdDocName;
     private TextField tfUpdDocDept;
     private TextField tfUpdDocTitle;
-
     private VBox panelDeleteDoctor;
-
 
     public HospitalFrame(String loginUserId, String loginUserRole) {
         this._loginUserId = loginUserId;
         this._loginUserRole = loginUserRole;
     }
 
-    @Override
-    public void start(Stage stage) {
-        this._stage = stage;
-        buildUi(stage);
-        stage.setTitle("🏥 医院挂号管理系统 - " + _loginUserId);
-        stage.setResizable(false);
-        stage.centerOnScreen();
-        stage.setOnCloseRequest(e -> {
-        });
-        stage.show();
-    }
-
-    private void buildUi(Stage stage) {
-        BorderPane root = new BorderPane();
-        root.setBackground(new Background(new BackgroundFill(
+    /**
+     * 创建可嵌入主界面的根面板，对应学籍模块 createView()
+     * @return BorderPane 根UI
+     */
+    public BorderPane createView() {
+        if (_root != null) {
+            return _root;
+        }
+        _root = new BorderPane();
+        _root.setBackground(new Background(new BackgroundFill(
                 new LinearGradient(0, 0, 1, 1, true, CycleMethod.NO_CYCLE,
                         new Stop(0, Color.web("#f4f8fb")),
                         new Stop(1, Color.web("#e8f0f7"))),
                 CornerRadii.EMPTY, Insets.EMPTY)));
-
         HBox topBanner = buildTopBanner();
         VBox mainContainer = new VBox(0);
         BorderPane bodyPane = new BorderPane();
@@ -124,14 +112,25 @@ public class HospitalFrame extends Application {
         _contentPane = new StackPane();
         _contentPane.setPadding(new Insets(20));
         bodyPane.setCenter(_contentPane);
-
         mainContainer.getChildren().addAll(topBanner, bodyPane);
-        root.setCenter(mainContainer);
-
+        _root.setCenter(mainContainer);
         initAllPanels();
         switchPanel(panelQueryAllDoctor);
-        Scene scene = new Scene(root, 1280, 820);
-        stage.setScene(scene);
+        return _root;
+    }
+
+    /**
+     * 嵌入完成后调用刷新初始数据，对应学籍 refresh()
+     */
+    public void refresh() {
+        actionQueryAllDoctor();
+    }
+
+    /**
+     * 样式表附加接口，当前医院无独立css，预留接口，和学籍模块保持一致
+     */
+    public void attachStyleSheet(Scene scene) {
+        // 本模块无独立css文件，预留接口
     }
 
     private HBox buildTopBanner() {
@@ -139,22 +138,26 @@ public class HospitalFrame extends Application {
         banner.setAlignment(Pos.CENTER_LEFT);
         banner.setPadding(new Insets(12, 30, 12, 30));
         banner.setStyle("-fx-background-color:#ffffff;-fx-border-color:#cce0ed;-fx-border-width:0 0 1 0;");
-
-        Image logoImg = new Image(getClass().getResource("seu_logo.jpeg").toExternalForm(), 120, 120, true, true, false);
+        Image logoImg;
+        try {
+            logoImg = new Image(getClass().getResource("seu_logo.jpeg").toExternalForm(), 120, 120, true, true, false);
+        } catch (Exception e) {
+            logoImg = null;
+        }
         ImageView logoView = new ImageView(logoImg);
-
         Label systemTitle = new Label("🏥 医院挂号管理系统");
         systemTitle.setFont(Font.font("System", FontWeight.BOLD, 24));
         systemTitle.setTextFill(Color.web("#194b75"));
-
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-
         Label userTopTip = new Label("使用者：" + _loginUserId + " | " + _loginUserRole);
         userTopTip.setFont(Font.font("System", 14));
         userTopTip.setTextFill(Color.web("#446078"));
-
-        banner.getChildren().addAll(logoView, new Region(), systemTitle, spacer, userTopTip);
+        if (logoImg != null) {
+            banner.getChildren().addAll(logoView, new Region(), systemTitle, spacer, userTopTip);
+        } else {
+            banner.getChildren().addAll(systemTitle, spacer, userTopTip);
+        }
         HBox.setMargin(systemTitle, new Insets(0, 0, 0, 40));
         return banner;
     }
@@ -170,32 +173,25 @@ public class HospitalFrame extends Application {
         Label title = new Label("功能导航");
         title.setFont(Font.font("System", FontWeight.BOLD, 19));
         title.setTextFill(Color.web("#194b75"));
-
         Separator sep1 = new Separator();
         sep1.setPadding(new Insets(10, 0, 10, 0));
-
         Label lblUserFunc = new Label("▷ 用户操作");
         lblUserFunc.setFont(Font.font("System", FontWeight.BOLD, 14));
         lblUserFunc.setTextFill(Color.web("#235782"));
-
         btnQueryAllDoctor = new Button("查询全部医生");
         btnQueryByDept = new Button("按科室查询医生");
         btnAddAppoint = new Button("预约挂号");
         btnMyAppoint = new Button("我的预约记录");
         btnCancelAppoint = new Button("取消预约");
-
         Separator sep2 = new Separator();
         sep2.setPadding(new Insets(10, 0, 10, 0));
-
         Label lblAdminFunc = new Label("▷ 管理员操作");
         lblAdminFunc.setFont(Font.font("System", FontWeight.BOLD, 14));
         lblAdminFunc.setTextFill(Color.web("#235782"));
-
         btnQueryAllAppoint = new Button("查询全部预约");
         btnAddDoctor = new Button("新增医生");
         btnUpdateDoctor = new Button("修改医生");
         btnDeleteDoctor = new Button("删除医生");
-
         Button[] btns = {
                 btnQueryAllDoctor, btnQueryByDept, btnAddAppoint, btnMyAppoint, btnCancelAppoint,
                 btnQueryAllAppoint, btnAddDoctor, btnUpdateDoctor, btnDeleteDoctor
@@ -207,7 +203,6 @@ public class HospitalFrame extends Application {
             b.setOnMouseEntered(e -> b.setStyle("-fx-background-color:#2b648c;-fx-text-fill:white;-fx-font-size:13px;-fx-background-radius:6;-fx-cursor:hand;"));
             b.setOnMouseExited(e -> b.setStyle("-fx-background-color:#367ba9;-fx-text-fill:white;-fx-font-size:13px;-fx-background-radius:6;-fx-cursor:hand;"));
         }
-
         // =========权限控制：管理员隐藏预约挂号、我的预约、取消预约=========
         if (!"管理员".equals(_loginUserRole)) {
             //普通用户：隐藏管理员按钮，显示全部用户按钮
@@ -223,7 +218,6 @@ public class HospitalFrame extends Application {
             btnMyAppoint.setVisible(false);
             btnCancelAppoint.setVisible(false);
         }
-
         btnQueryAllDoctor.setOnAction(e -> switchPanel(panelQueryAllDoctor));
         btnQueryByDept.setOnAction(e -> switchPanel(panelQueryDept));
         btnAddAppoint.setOnAction(e -> switchPanel(panelAddAppoint));
@@ -233,7 +227,6 @@ public class HospitalFrame extends Application {
         btnAddDoctor.setOnAction(e -> switchPanel(panelAddDoctor));
         btnUpdateDoctor.setOnAction(e -> switchPanel(panelUpdateDoctor));
         btnDeleteDoctor.setOnAction(e -> switchPanel(panelDeleteDoctor));
-
         side.getChildren().addAll(title, sep1,
                 lblUserFunc,
                 btnQueryAllDoctor, btnQueryByDept, btnAddAppoint, btnMyAppoint, btnCancelAppoint,
@@ -287,7 +280,6 @@ public class HospitalFrame extends Application {
         colDept.setPrefWidth(220);
         colTitle.setPrefWidth(220);
         panelQueryAllDoctor.getChildren().addAll(lab1, btnLoadAllDoc, tableAllDoctor);
-
         // ==========2.按科室查询医生 ==========
         panelQueryDept = new VBox(14);
         panelQueryDept.setAlignment(Pos.TOP_LEFT);
@@ -315,7 +307,6 @@ public class HospitalFrame extends Application {
         c3.setPrefWidth(220);
         c4.setPrefWidth(220);
         panelQueryDept.getChildren().addAll(lab2, tfDept, btnQDept, tableDeptDoctor);
-
         // ==========3.预约挂号 ==========
         panelAddAppoint = new VBox(14);
         panelAddAppoint.setAlignment(Pos.TOP_LEFT);
@@ -328,7 +319,6 @@ public class HospitalFrame extends Application {
         Button btnMakeAppoint = new Button("打开预约选择弹窗");
         btnMakeAppoint.setOnAction(e -> actionAddAppointment());
         panelAddAppoint.getChildren().addAll(lab3, tipAppoint, btnMakeAppoint);
-
         // ==========4.我的预约记录 ==========
         panelMyAppoint = new VBox(14);
         panelMyAppoint.setAlignment(Pos.TOP_LEFT);
@@ -369,7 +359,6 @@ public class HospitalFrame extends Application {
         atime.setPrefWidth(200);
         stat.setPrefWidth(140);
         panelMyAppoint.getChildren().addAll(lab4, btnRefreshMy, tableMyAppoint);
-
         // ==========5.取消预约 ==========
         panelCancelAppoint = new VBox(14);
         panelCancelAppoint.setAlignment(Pos.TOP_LEFT);
@@ -382,7 +371,6 @@ public class HospitalFrame extends Application {
         Button btnCancel = new Button("打开取消预约选择弹窗");
         btnCancel.setOnAction(e -> actionCancelAppointment());
         panelCancelAppoint.getChildren().addAll(lab5, tipCancel, btnCancel);
-
         // ==========管理员：全部预约表格【增加操作删除列】 ==========
         panelQueryAllAppoint = new VBox(14);
         panelQueryAllAppoint.setAlignment(Pos.TOP_LEFT);
@@ -417,7 +405,6 @@ public class HospitalFrame extends Application {
             }
         });
         tableAllAppoint.getColumns().addAll(aa, uu, dd, tt, ss);
-
         //新增操作删除按钮列：仅状态=已取消显示
         TableColumn<Appointment, Void> colOpt = new TableColumn<>("操作");
         colOpt.setPrefWidth(110);
@@ -451,7 +438,6 @@ public class HospitalFrame extends Application {
                     }
                 });
             }
-
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
@@ -468,14 +454,12 @@ public class HospitalFrame extends Application {
             }
         });
         tableAllAppoint.getColumns().add(colOpt);
-
         aa.setPrefWidth(140);
         uu.setPrefWidth(110);
         dd.setPrefWidth(110);
         tt.setPrefWidth(200);
         ss.setPrefWidth(140);
         panelQueryAllAppoint.getChildren().addAll(labA1, btnLoadAllAppoint, tableAllAppoint);
-
         // ==========管理员新增医生 ==========
         panelAddDoctor = new VBox(14);
         panelAddDoctor.setAlignment(Pos.TOP_LEFT);
@@ -497,7 +481,6 @@ public class HospitalFrame extends Application {
         Button btnAddDoc = new Button("提交新增");
         btnAddDoc.setOnAction(e -> actionAddDoctor());
         panelAddDoctor.getChildren().addAll(labA2, tfAddDocId, tfAddDocName, tfAddDocDept, tfAddDocTitle, btnAddDoc);
-
         // ==========管理员修改医生 ==========
         panelUpdateDoctor = new VBox(14);
         panelUpdateDoctor.setAlignment(Pos.TOP_LEFT);
@@ -519,7 +502,6 @@ public class HospitalFrame extends Application {
         Button btnUpdDoc = new Button("提交修改");
         btnUpdDoc.setOnAction(e -> actionUpdateDoctor());
         panelUpdateDoctor.getChildren().addAll(labA3, tfUpdDocId, tfUpdDocName, tfUpdDocDept, tfUpdDocTitle, btnUpdDoc);
-
         // ==========管理员删除医生 ==========
         panelDeleteDoctor = new VBox(14);
         panelDeleteDoctor.setAlignment(Pos.TOP_LEFT);
@@ -548,7 +530,6 @@ public class HospitalFrame extends Application {
         Dialog<Appointment> dialog = new Dialog<>();
         dialog.setTitle("选择预约信息");
         dialog.setHeaderText("请选择医生与就诊时间");
-
         ComboBox<Doctor> cbDoctor = new ComboBox<>();
         cbDoctor.setPromptText("请选择医生");
         try {
@@ -576,12 +557,10 @@ public class HospitalFrame extends Application {
             showAlert(Alert.AlertType.ERROR, "加载医生失败", e.getMessage());
             return Optional.empty();
         }
-
         DatePicker datePicker = new DatePicker();
         ComboBox<String> cbTime = new ComboBox<>();
         cbTime.getItems().addAll("08:30", "09:00", "09:30", "10:00", "10:30", "14:00", "14:30", "15:00", "15:30");
         cbTime.setPromptText("选择就诊时刻");
-
         GridPane grid = new GridPane();
         grid.setHgap(15);
         grid.setVgap(12);
@@ -592,10 +571,8 @@ public class HospitalFrame extends Application {
         grid.add(datePicker, 1, 1);
         grid.add(new Label("选择就诊时段："), 0, 2);
         grid.add(cbTime, 1, 2);
-
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
         dialog.setResultConverter(btn -> {
             if (btn == ButtonType.OK) {
                 Doctor selectDoc = cbDoctor.getValue();
@@ -622,7 +599,6 @@ public class HospitalFrame extends Application {
         Dialog<String> dialog = new Dialog<>();
         dialog.setTitle("选择要取消的预约记录");
         dialog.setHeaderText("仅显示【待就诊】状态的预约单");
-
         TableView<Appointment> table = new TableView<>();
         TableColumn<Appointment, String> colId = new TableColumn<>("预约编号");
         colId.setCellValueFactory(new PropertyValueFactory<>("appointmentId"));
@@ -632,7 +608,6 @@ public class HospitalFrame extends Application {
         colDoc.setCellValueFactory(new PropertyValueFactory<>("doctorId"));
         table.getColumns().addAll(colId, colTime, colDoc);
         table.setPrefSize(600, 320);
-
         try {
             Message resp = _hospitalSrv.queryMyAppointment(_loginUserId);
             if (IConstant.STATUS_SUCCESS.equals(resp.getStatusCode())) {
@@ -646,7 +621,6 @@ public class HospitalFrame extends Application {
             showAlert(Alert.AlertType.ERROR, "加载预约失败", e.getMessage());
             return Optional.empty();
         }
-
         dialog.getDialogPane().setContent(table);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
         dialog.setResultConverter(btn -> {
@@ -714,7 +688,6 @@ public class HospitalFrame extends Application {
         });
         return dialog.showAndWait();
     }
-
 
     private void actionQueryAllDoctor() {
         new Thread(() -> {
@@ -941,19 +914,5 @@ public class HospitalFrame extends Application {
         alert.setHeaderText(null);
         alert.setContentText(content);
         alert.showAndWait();
-    }
-
-    public static void main(String[] args) {
-        Application.launch(TestLauncher.class);
-    }
-
-    /**
-     * 测试账号：admin001=管理员；09010210=普通用户
-     */
-    public static class TestLauncher extends Application {
-        @Override
-        public void start(Stage primaryStage) throws Exception {
-            new HospitalFrame("admin001", "管理员").start(primaryStage);
-        }
     }
 }
