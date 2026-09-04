@@ -13,6 +13,7 @@ import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.server.dao.CourseDAO;
 import vcampus.server.dao.CourseScheduleDAO;
+import vcampus.server.dao.CourseTestData;
 import vcampus.server.dao.SelectCourseDAO;
 
 import java.time.LocalTime;
@@ -25,6 +26,7 @@ public class CourseScheduleServerSrvTest {
     private static final String COURSE_B = "T_SCH_SRV_B_0904";
     private static final String COURSE_C = "T_SCH_SRV_C_0904";
     private static final String STUDENT_ID = "SCH0904001";
+    private static final String USER_ID = "CSCH0904";
 
     /** 程序入口。 */
     public static void main(String[] args) throws Exception {
@@ -35,6 +37,7 @@ public class CourseScheduleServerSrvTest {
 
         cleanup(courseDAO, selectDAO, scheduleDAO);
         try {
+            CourseTestData.prepareStudent(USER_ID, STUDENT_ID);
             require(courseDAO.insertCourse(new Course(
                     COURSE_A, "排课课程 A", "同一教师", 2, 20, 0)), "准备课程 A");
             require(courseDAO.insertCourse(new Course(
@@ -100,6 +103,7 @@ public class CourseScheduleServerSrvTest {
         deleteCourse(courseDAO, COURSE_A);
         deleteCourse(courseDAO, COURSE_B);
         deleteCourse(courseDAO, COURSE_C);
+        CourseTestData.cleanupStudent(USER_ID, STUDENT_ID);
     }
 
     /** 统计测试残留。 */
@@ -114,6 +118,7 @@ public class CourseScheduleServerSrvTest {
         count += scheduleDAO.findAll().stream()
                 .filter(s -> List.of(COURSE_A, COURSE_B, COURSE_C).contains(s.getCourseId()))
                 .count();
+        count += CourseTestData.countResidue(USER_ID, STUDENT_ID);
         return count;
     }
 

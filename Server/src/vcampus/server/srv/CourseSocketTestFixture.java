@@ -12,6 +12,7 @@ package vcampus.server.srv;
 import vcampus.common.vo.Course;
 import vcampus.server.dao.CourseDAO;
 import vcampus.server.dao.CourseScheduleDAO;
+import vcampus.server.dao.CourseTestData;
 import vcampus.server.dao.DbHelper;
 import vcampus.server.dao.SelectCourseDAO;
 
@@ -30,6 +31,8 @@ public class CourseSocketTestFixture {
     public static final String ROLLBACK_COURSE_ID = "T_E2E_ROLL_0904";
     public static final String STUDENT_A = "E2E0904001";
     public static final String STUDENT_B = "E2E0904002";
+    private static final String USER_A = "CE2EA904";
+    private static final String USER_B = "CE2EB904";
     private static final String FAILURE_TRIGGER = "trgCourseE2ERollback";
 
     /**
@@ -53,6 +56,8 @@ public class CourseSocketTestFixture {
     /** 准备三门测试课程及回滚故障触发器。 */
     private static void setup() throws Exception {
         cleanup();
+        CourseTestData.prepareStudent(USER_A, STUDENT_A);
+        CourseTestData.prepareStudent(USER_B, STUDENT_B);
         CourseDAO courseDAO = new CourseDAO();
         courseDAO.insertCourse(new Course(
                 NORMAL_COURSE_ID, "Socket 正常课程", "共同教师", 2, 2, 0));
@@ -98,6 +103,8 @@ public class CourseSocketTestFixture {
         deleteIfPresent(courseDAO, NORMAL_COURSE_ID);
         deleteIfPresent(courseDAO, FULL_COURSE_ID);
         deleteIfPresent(courseDAO, ROLLBACK_COURSE_ID);
+        CourseTestData.cleanupStudent(USER_A, STUDENT_A);
+        CourseTestData.cleanupStudent(USER_B, STUDENT_B);
         System.out.println("COURSE_SOCKET_FIXTURE_CLEANUP=PASS");
     }
 
@@ -117,6 +124,8 @@ public class CourseSocketTestFixture {
                         || schedule.getCourseId().equals(FULL_COURSE_ID)
                         || schedule.getCourseId().equals(ROLLBACK_COURSE_ID))
                 .count();
+        residue += CourseTestData.countResidue(USER_A, STUDENT_A);
+        residue += CourseTestData.countResidue(USER_B, STUDENT_B);
 
         try (Connection conn = DbHelper.getConnection();
              Statement stmt = conn.createStatement();

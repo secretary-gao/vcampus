@@ -11,6 +11,7 @@ package vcampus.server.srv;
 
 import vcampus.common.vo.Course;
 import vcampus.server.dao.CourseDAO;
+import vcampus.server.dao.CourseTestData;
 import vcampus.server.dao.SelectCourseDAO;
 
 import java.io.IOException;
@@ -34,6 +35,9 @@ public class CourseServerSrvTest {
     /** 第二位测试学生。 */
     private static final String STUDENT_B = "SRV0904002";
 
+    private static final String USER_A = "CSRA0904";
+    private static final String USER_B = "CSRB0904";
+
     /**
      * 程序入口。
      *
@@ -47,6 +51,8 @@ public class CourseServerSrvTest {
 
         cleanup(courseDAO, selectDAO);
         try {
+            CourseTestData.prepareStudent(USER_A, STUDENT_A);
+            CourseTestData.prepareStudent(USER_B, STUDENT_B);
             require(courseDAO.insertCourse(new Course(
                     TEST_COURSE_ID, "事务测试课程", "测试教师", 2, 1, 0)),
                     "准备容量为 1 的课程");
@@ -113,6 +119,8 @@ public class CourseServerSrvTest {
         if (courseDAO.findById(ROLLBACK_COURSE_ID) != null) {
             courseDAO.deleteCourse(ROLLBACK_COURSE_ID);
         }
+        CourseTestData.cleanupStudent(USER_A, STUDENT_A);
+        CourseTestData.cleanupStudent(USER_B, STUDENT_B);
     }
 
     /** 统计测试数据残留数量。 */
@@ -123,6 +131,8 @@ public class CourseServerSrvTest {
         count += courseDAO.findById(ROLLBACK_COURSE_ID) == null ? 0 : 1;
         count += selectDAO.findByStudentAndCourse(STUDENT_A, TEST_COURSE_ID) == null ? 0 : 1;
         count += selectDAO.findByStudentAndCourse(STUDENT_B, ROLLBACK_COURSE_ID) == null ? 0 : 1;
+        count += CourseTestData.countResidue(USER_A, STUDENT_A);
+        count += CourseTestData.countResidue(USER_B, STUDENT_B);
         return count;
     }
 

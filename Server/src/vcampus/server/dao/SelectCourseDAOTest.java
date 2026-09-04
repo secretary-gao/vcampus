@@ -22,8 +22,7 @@ import java.util.List;
  * 删除以及数据库 UNIQUE(studentId, courseId) 约束。测试数据始终在
  * {@code finally} 中清理，避免污染正式数据库。
  *
- * <p>当前 tblStudent 外键尚未接入，所以本测试只准备关联课程，不创建或依赖假的
- * Student 实现。</p>
+ * <p>测试同时准备正式 {@code tblStudent} 夹具，验证选课记录满足学生外键。</p>
  */
 public class SelectCourseDAOTest {
 
@@ -32,6 +31,9 @@ public class SelectCourseDAOTest {
 
     /** 本测试专用学号。 */
     private static final String TEST_STUDENT_ID = "TST0904001";
+
+    /** 本测试专用用户 ID。 */
+    private static final String TEST_USER_ID = "SCDA0904";
 
     /** 本测试第一条选课记录号。 */
     private static final String TEST_SELECT_ID = "T_SEL_20260904";
@@ -52,6 +54,7 @@ public class SelectCourseDAOTest {
 
         cleanup(courseDAO, selectCourseDAO);
         try {
+            CourseTestData.prepareStudent(TEST_USER_ID, TEST_STUDENT_ID);
             Course course = new Course(
                     TEST_COURSE_ID, "选课 DAO 测试课程", "测试教师", 1, 5, 0);
             require(courseDAO.insertCourse(course), "准备测试课程");
@@ -109,6 +112,7 @@ public class SelectCourseDAOTest {
             if (courseDAO.findById(TEST_COURSE_ID) != null) {
                 residue++;
             }
+            residue += CourseTestData.countResidue(TEST_USER_ID, TEST_STUDENT_ID);
             System.out.println("SELECT_COURSE_DAO_TEST_RESIDUE=" + residue);
             if (residue != 0) {
                 throw new IllegalStateException("SelectCourseDAOTest 清理失败");
@@ -130,6 +134,7 @@ public class SelectCourseDAOTest {
         if (courseDAO.findById(TEST_COURSE_ID) != null) {
             courseDAO.deleteCourse(TEST_COURSE_ID);
         }
+        CourseTestData.cleanupStudent(TEST_USER_ID, TEST_STUDENT_ID);
     }
 
     /**

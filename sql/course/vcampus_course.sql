@@ -30,14 +30,11 @@ CREATE TABLE IF NOT EXISTS tblCourse (
 -- ------------------------------------------------------------
 -- tblSelectCourse：学生选课记录表
 --
--- 学生模块集成说明：截至本脚本创建时，origin/dev/student 尚未提供正式的
--- tblStudent 表实现，因此本阶段不能安全创建 studentId 外键。待学生模块合并后，
--- 在确认 tblStudent.studentId 的类型、索引和存储引擎一致后，再添加该外键；
--- 禁止为满足依赖而创建假的 tblStudent 表。
+-- 依赖：先执行 sql/Student/BuildTbl.sql 创建正式 tblStudent。
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tblSelectCourse (
     selectId   VARCHAR(20) NOT NULL COMMENT '选课记录号（PK）',
-    studentId  VARCHAR(10) NOT NULL COMMENT '学号，后续外键->tblStudent.studentId',
+    studentId  VARCHAR(10) NOT NULL COMMENT '学号，外键->tblStudent.studentId',
     courseId   VARCHAR(20) NOT NULL COMMENT '课程号，外键->tblCourse.courseId',
     selectTime DATETIME    NOT NULL COMMENT '选课时间',
     PRIMARY KEY (selectId),
@@ -45,15 +42,12 @@ CREATE TABLE IF NOT EXISTS tblSelectCourse (
     CONSTRAINT fk_tblSelectCourse_course FOREIGN KEY (courseId)
         REFERENCES tblCourse(courseId)
         ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_tblSelectCourse_student FOREIGN KEY (studentId)
+        REFERENCES tblStudent(studentId)
+        ON DELETE RESTRICT
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学生选课记录表';
-
--- 学生模块正式表合并后，由集成人员执行等价迁移（先检查历史数据是否满足约束）：
--- ALTER TABLE tblSelectCourse
---     ADD CONSTRAINT fk_tblSelectCourse_student FOREIGN KEY (studentId)
---         REFERENCES tblStudent(studentId)
---         ON DELETE RESTRICT
---         ON UPDATE CASCADE;
 
 -- ------------------------------------------------------------
 -- tblCourseSchedule：课程排课表
