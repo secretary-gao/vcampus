@@ -49,4 +49,10 @@ public interface IConstant {
 
     /** 消息名：登出请求，对应 {@link vcampus.common.vo.Message#getName()}。 */
     String MSG_LOGOUT = "logout";
+
+    // ========== 图书馆模块消息类型 ==========
+    String MSG_QUERY_BOOKS = "queryBooks";
+    String MSG_BORROW_BOOK = "borrowBook";
+    String MSG_RETURN_BOOK = "returnBook";
+    String MSG_GET_BORROW_RECORDS = "getBorrowRecords";
 }
