@@ -338,6 +338,7 @@ public class StoreFrame extends Application {
     /**
      * 加载商品列表并刷新表格。
      */
+    @SuppressWarnings("unchecked") // 服务器返回的 List 元素类型在运行时是确定的，此处强转安全
     private void loadGoods() {
         String keyword = _searchField.getText().trim();
         String category = _categoryBox.getValue();
@@ -361,6 +362,7 @@ public class StoreFrame extends Application {
     /**
      * 加载购买记录并刷新表格。
      */
+    @SuppressWarnings("unchecked") // 服务器返回的 List 元素类型在运行时是确定的，此处强转安全
     private void loadRecords() {
         String userId = isAdmin() ? null : _currentUser.getUId();
         try {
