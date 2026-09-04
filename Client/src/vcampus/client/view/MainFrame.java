@@ -396,6 +396,10 @@ public class MainFrame extends Application {
             showLibraryPage();
             return;
         }
+        if ("student".equals(moduleKey)) {
+            showStudentPage();
+            return;
+        }
         VBox page = new VBox(16);
         page.setPadding(new Insets(22));
         page.setMaxWidth(820);
@@ -464,6 +468,36 @@ public class MainFrame extends Application {
                 + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 22, 0.12, 0, 8);");
 
         _contentStack.getChildren().setAll(wrapper);
+    }
+
+    /**
+     * 打开学籍模块的真实业务界面，并复用主界面的统一服务器连接。
+     */
+    private void showStudentPage() {
+        StudentManagementFrame studentFrame = new StudentManagementFrame();
+        BorderPane studentPanel = studentFrame.createView();
+
+        Button backButton = new Button("返回总览");
+        backButton.setStyle("-fx-background-color: #73c553; -fx-text-fill: white;"
+                + " -fx-background-radius: 20; -fx-font-weight: bold; -fx-cursor: hand;");
+        backButton.setOnAction(e -> showDashboard());
+
+        HBox bottomBar = new HBox(backButton);
+        bottomBar.setAlignment(Pos.CENTER_RIGHT);
+        bottomBar.setPadding(new Insets(10, 0, 0, 0));
+
+        VBox wrapper = new VBox(0, studentPanel, bottomBar);
+        wrapper.setMaxWidth(1120);
+        wrapper.setMaxHeight(Double.MAX_VALUE);
+        wrapper.setStyle("-fx-background-color: rgba(255,255,255,0.98);"
+                + "-fx-background-radius: 20;"
+                + "-fx-border-radius: 20;"
+                + "-fx-border-color: rgba(45,106,159,0.18);"
+                + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 22, 0.12, 0, 8);");
+
+        _contentStack.getChildren().setAll(wrapper);
+        studentFrame.attachStyleSheet(_stage.getScene());
+        Platform.runLater(studentFrame::refresh);
     }
 
     /**

@@ -10,6 +10,7 @@
 package vcampus.server.srv;
 
 import vcampus.common.constant.IConstant;
+import vcampus.common.constant.StudentProtocol;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.User;
@@ -51,6 +52,9 @@ public class ServerThread implements Runnable {
 
     /** 图书馆模块业务服务，由本线程独立持有，避免多线程共享状态。 */
     private final LibraryHandler _libraryHandler = new LibraryHandler();
+
+    /** 学籍模块请求处理器，由统一服务器负责分发请求。 */
+    private final StudentRequestHandler _studentRequestHandler = new StudentRequestHandler();
 
     /** 请求处理器注册表。 */
     private final Map<String, RequestHandler> _handlerMap = new HashMap<>();
@@ -118,6 +122,16 @@ public class ServerThread implements Runnable {
     }
 
     /**
+     * 处理学籍模块请求，转发给 {@link StudentRequestHandler}。
+     *
+     * @param request 学籍模块请求消息
+     * @return 学籍模块处理结果
+     */
+    private Message handleStudentRequest(Message request) {
+        return _studentRequestHandler.handle(request);
+    }
+
+    /**
      * 注册请求处理器。各模块按 {@code Message.getName()} 的取值把自己的处理
      * 方法注册进来，新增模块时只需在这里加一行，不用改 {@link #handleRequest}。
      */
@@ -129,6 +143,13 @@ public class ServerThread implements Runnable {
         _handlerMap.put(IConstant.MSG_BORROW_BOOK, this::handleLibraryRequest);
         _handlerMap.put(IConstant.MSG_RETURN_BOOK, this::handleLibraryRequest);
         _handlerMap.put(IConstant.MSG_GET_BORROW_RECORDS, this::handleLibraryRequest);
+        _handlerMap.put(StudentProtocol.LIST, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.QUERY_BY_ID, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.QUERY_BY_CARD, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.QUERY_BY_NAME, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.ADD, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.UPDATE, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.DELETE, this::handleStudentRequest);
     }
 
     /**
@@ -147,6 +168,9 @@ public class ServerThread implements Runnable {
             }
             return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
                     IConstant.STATUS_SUCCESS, found, "Server");
+        } catch (IllegalArgumentException e) {
+            return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
+                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
         } catch (SQLException | IOException e) {
             return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
                     IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
@@ -167,6 +191,9 @@ public class ServerThread implements Runnable {
             String data = ok ? "注册成功" : "注册失败，请稍后重试";
             return new Message(request.getUid(), IConstant.MSG_REGISTER, MessageType.DATA,
                     statusCode, data, "Server");
+        } catch (IllegalArgumentException e) {
+            return new Message(request.getUid(), IConstant.MSG_REGISTER, MessageType.DATA,
+                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
         } catch (UserExistsException e) {
             return new Message(request.getUid(), IConstant.MSG_REGISTER, MessageType.DATA,
                     IConstant.STATUS_USER_EXISTS, e.getMessage(), "Server");

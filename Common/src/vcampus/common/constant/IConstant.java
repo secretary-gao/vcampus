@@ -35,6 +35,9 @@ public interface IConstant {
     /** 状态码：用户不存在。 */
     String STATUS_USER_NOT_FOUND = "404";
 
+    /** 状态码：请求参数不符合业务要求。 */
+    String STATUS_BAD_REQUEST = "400";
+
     /** 状态码：注册时用户名已存在。 */
     String STATUS_USER_EXISTS = "409";
 
