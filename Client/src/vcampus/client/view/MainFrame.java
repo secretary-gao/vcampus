@@ -46,7 +46,7 @@ import java.io.IOException;
 
 /**
  * 登录成功后的客户端主界面骨架。界面参照东南大学"一网通办"综合服务大厅
- * 的视觉风格：顶部蓝色导航条（校徽 + 标题 + 搜索占位 + 用户身份），
+ * 的视觉风格：顶部蓝色导航条（校徽 + 标题 + 用户身份），
  * 下方左侧是登录信息卡片，右侧是图标化的功能分区网格，
  * 点击图标进入对应业务模块占位页。
  */
@@ -119,8 +119,7 @@ public class MainFrame extends Application {
     }
 
     /**
-     * 构建顶部导航条：左侧校徽与标题，中间搜索占位，右侧当前用户身份，
-     * 呼应真实"一网通办"门户顶栏的三段式布局。
+     * 构建顶部导航条：左侧校徽与标题，右侧当前用户身份。
      *
      * @return 导航条面板
      */
@@ -145,18 +144,6 @@ public class MainFrame extends Application {
         HBox left = new HBox(12, smallEmblem, titleBlock);
         left.setAlignment(Pos.CENTER_LEFT);
         nav.setLeft(left);
-
-        Label searchPlaceholder = new Label("搜索校园服务");
-        searchPlaceholder.setTextFill(Color.web("#e6f0fb"));
-        searchPlaceholder.setFont(Font.font("System", 12.5));
-        HBox searchBox = new HBox(searchPlaceholder);
-        searchBox.setAlignment(Pos.CENTER_LEFT);
-        searchBox.setPadding(new Insets(0, 0, 0, 18));
-        searchBox.setPrefWidth(300);
-        searchBox.setPrefHeight(34);
-        searchBox.setStyle("-fx-background-color: rgba(255,255,255,0.16); -fx-background-radius: 17;");
-        nav.setCenter(searchBox);
-        BorderPane.setAlignment(searchBox, Pos.CENTER);
 
         nav.setRight(buildUserChip());
         return nav;
