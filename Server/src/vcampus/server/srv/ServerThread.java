@@ -168,6 +168,9 @@ public class ServerThread implements Runnable {
             }
             return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
                     IConstant.STATUS_SUCCESS, found, "Server");
+        } catch (IllegalArgumentException e) {
+            return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
+                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
         } catch (SQLException | IOException e) {
             return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
                     IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
@@ -188,6 +191,9 @@ public class ServerThread implements Runnable {
             String data = ok ? "注册成功" : "注册失败，请稍后重试";
             return new Message(request.getUid(), IConstant.MSG_REGISTER, MessageType.DATA,
                     statusCode, data, "Server");
+        } catch (IllegalArgumentException e) {
+            return new Message(request.getUid(), IConstant.MSG_REGISTER, MessageType.DATA,
+                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
         } catch (UserExistsException e) {
             return new Message(request.getUid(), IConstant.MSG_REGISTER, MessageType.DATA,
                     IConstant.STATUS_USER_EXISTS, e.getMessage(), "Server");

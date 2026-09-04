@@ -303,6 +303,10 @@ public class LoginFrame extends Application {
             showAlert(Alert.AlertType.WARNING, "提示", "登录ID和密码不能为空");
             return null;
         }
+        if (uid.length() != 8) {
+            showAlert(Alert.AlertType.WARNING, "提示", "登录ID必须为8位");
+            return null;
+        }
 
         User user = new User();
         user.setUId(uid);
