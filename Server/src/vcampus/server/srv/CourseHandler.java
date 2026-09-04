@@ -12,6 +12,7 @@ package vcampus.server.srv;
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
+import vcampus.common.vo.CourseSchedule;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -54,6 +55,16 @@ public class CourseHandler {
                 case IConstant.MSG_COURSE_DROP -> handleDrop(request);
                 case IConstant.MSG_COURSE_SELECTED_QUERY -> success(
                         request, _courseServerSrv.querySelectedCourse((String) request.getData()));
+                case IConstant.MSG_COURSE_SCHEDULE_QUERY -> success(
+                        request, _courseServerSrv.querySchedule());
+                case IConstant.MSG_COURSE_SCHEDULE_ADD -> success(
+                        request, _courseServerSrv.addSchedule((CourseSchedule) request.getData()));
+                case IConstant.MSG_COURSE_SCHEDULE_UPDATE -> success(
+                        request, _courseServerSrv.updateSchedule((CourseSchedule) request.getData()));
+                case IConstant.MSG_COURSE_SCHEDULE_DELETE -> success(
+                        request, _courseServerSrv.deleteSchedule((String) request.getData()));
+                case IConstant.MSG_STUDENT_TIMETABLE_QUERY -> success(
+                        request, _courseServerSrv.queryStudentSchedule((String) request.getData()));
                 default -> response(request, IConstant.STATUS_BAD_REQUEST,
                         "未知的选课操作：" + request.getName());
             };

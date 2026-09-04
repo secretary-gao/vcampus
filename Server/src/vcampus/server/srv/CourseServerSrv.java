@@ -10,8 +10,10 @@
 package vcampus.server.srv;
 
 import vcampus.common.vo.Course;
+import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.SelectCourse;
 import vcampus.server.dao.CourseDAO;
+import vcampus.server.dao.CourseScheduleDAO;
 import vcampus.server.dao.DbHelper;
 import vcampus.server.dao.SelectCourseDAO;
 
@@ -20,6 +22,8 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -34,11 +38,14 @@ public class CourseServerSrv implements ICourseServerSrv {
     /** 选课记录数据访问对象。 */
     private final SelectCourseDAO _selectCourseDAO;
 
+    /** 排课数据访问对象。 */
+    private final CourseScheduleDAO _courseScheduleDAO;
+
     /**
      * 使用默认 DAO 创建业务服务。
      */
     public CourseServerSrv() {
-        this(new CourseDAO(), new SelectCourseDAO());
+        this(new CourseDAO(), new SelectCourseDAO(), new CourseScheduleDAO());
     }
 
     /**
@@ -48,8 +55,15 @@ public class CourseServerSrv implements ICourseServerSrv {
      * @param selectCourseDAO 选课记录 DAO
      */
     CourseServerSrv(CourseDAO courseDAO, SelectCourseDAO selectCourseDAO) {
+        this(courseDAO, selectCourseDAO, new CourseScheduleDAO());
+    }
+
+    /** 注入全部 DAO，供业务层测试复用。 */
+    CourseServerSrv(CourseDAO courseDAO, SelectCourseDAO selectCourseDAO,
+                    CourseScheduleDAO courseScheduleDAO) {
         this._courseDAO = courseDAO;
         this._selectCourseDAO = selectCourseDAO;
+        this._courseScheduleDAO = courseScheduleDAO;
     }
 
     /** {@inheritDoc} */
@@ -150,6 +164,147 @@ public class CourseServerSrv implements ICourseServerSrv {
             throw new CourseServiceException("学号不能为空");
         }
         return _selectCourseDAO.findByStudentId(studentId.trim());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<CourseSchedule> querySchedule() throws SQLException, IOException {
+        return _courseScheduleDAO.findAll();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public CourseSchedule addSchedule(CourseSchedule schedule)
+            throws SQLException, IOException, CourseServiceException {
+        validateSchedule(schedule, false);
+        if (schedule.getScheduleId() == null || schedule.getScheduleId().isBlank()) {
+            schedule.setScheduleId(newScheduleId());
+        }
+
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                Course course = requireCourseForSchedule(conn, schedule.getCourseId());
+                checkScheduleConflicts(conn, schedule, course.getTeacher(), null);
+                if (!_courseScheduleDAO.insertSchedule(conn, schedule)) {
+                    throw new SQLException("插入排课记录失败");
+                }
+                conn.commit();
+                return schedule;
+            } catch (SQLException | CourseServiceException | RuntimeException e) {
+                rollback(conn, e);
+                throw e;
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean updateSchedule(CourseSchedule schedule)
+            throws SQLException, IOException, CourseServiceException {
+        validateSchedule(schedule, true);
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                if (_courseScheduleDAO.findById(conn, schedule.getScheduleId()) == null) {
+                    throw new CourseServiceException("排课记录不存在");
+                }
+                Course course = requireCourseForSchedule(conn, schedule.getCourseId());
+                checkScheduleConflicts(
+                        conn, schedule, course.getTeacher(), schedule.getScheduleId());
+                if (!_courseScheduleDAO.updateSchedule(conn, schedule)) {
+                    throw new SQLException("更新排课记录失败");
+                }
+                conn.commit();
+                return true;
+            } catch (SQLException | CourseServiceException | RuntimeException e) {
+                rollback(conn, e);
+                throw e;
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean deleteSchedule(String scheduleId)
+            throws SQLException, IOException, CourseServiceException {
+        if (scheduleId == null || scheduleId.isBlank()) {
+            throw new CourseServiceException("排课记录号不能为空");
+        }
+        if (!_courseScheduleDAO.deleteSchedule(scheduleId.trim())) {
+            throw new CourseServiceException("排课记录不存在");
+        }
+        return true;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<CourseSchedule> queryStudentSchedule(String studentId)
+            throws SQLException, IOException, CourseServiceException {
+        List<SelectCourse> selected = querySelectedCourse(studentId);
+        Set<String> courseIds = new LinkedHashSet<>();
+        for (SelectCourse record : selected) {
+            courseIds.add(record.getCourseId());
+        }
+        return _courseScheduleDAO.findByCourseIds(courseIds);
+    }
+
+    /** 校验排课字段。 */
+    private void validateSchedule(CourseSchedule schedule, boolean requireId)
+            throws CourseServiceException {
+        if (schedule == null) {
+            throw new CourseServiceException("排课信息不能为空");
+        }
+        if (requireId && (schedule.getScheduleId() == null
+                || schedule.getScheduleId().isBlank())) {
+            throw new CourseServiceException("排课记录号不能为空");
+        }
+        if (schedule.getCourseId() == null || schedule.getCourseId().isBlank()) {
+            throw new CourseServiceException("课程号不能为空");
+        }
+        if (schedule.getClassroom() == null || schedule.getClassroom().isBlank()) {
+            throw new CourseServiceException("教室不能为空");
+        }
+        if (schedule.getDayOfWeek() < 1 || schedule.getDayOfWeek() > 7) {
+            throw new CourseServiceException("星期必须在 1 到 7 之间");
+        }
+        if (schedule.getStartTime() == null || schedule.getEndTime() == null
+                || !schedule.getStartTime().isBefore(schedule.getEndTime())) {
+            throw new CourseServiceException("开始时间必须早于结束时间");
+        }
+        schedule.setCourseId(schedule.getCourseId().trim());
+        schedule.setClassroom(schedule.getClassroom().trim());
+        if (schedule.getScheduleId() != null) {
+            schedule.setScheduleId(schedule.getScheduleId().trim());
+        }
+    }
+
+    /** 查询并锁定排课引用的课程。 */
+    private Course requireCourseForSchedule(Connection conn, String courseId)
+            throws SQLException, CourseServiceException {
+        Course course = _courseDAO.findByIdForUpdate(conn, courseId);
+        if (course == null) {
+            throw new CourseServiceException("课程不存在：" + courseId);
+        }
+        return course;
+    }
+
+    /** 检查教室和教师的时间区间冲突。 */
+    private void checkScheduleConflicts(Connection conn, CourseSchedule schedule,
+                                        String teacher, String excludeScheduleId)
+            throws SQLException, CourseServiceException {
+        if (_courseScheduleDAO.hasClassroomConflict(conn, schedule, excludeScheduleId)) {
+            throw new CourseServiceException("该教室在所选时间已有课程");
+        }
+        if (_courseScheduleDAO.hasTeacherConflict(
+                conn, schedule, teacher, excludeScheduleId)) {
+            throw new CourseServiceException("该教师在所选时间已有课程");
+        }
+    }
+
+    /** 生成不超过 varchar(20) 的排课记录号。 */
+    private String newScheduleId() {
+        return "CSH" + UUID.randomUUID().toString().replace("-", "").substring(0, 17);
     }
 
     /** 校验选课和退课使用的业务标识。 */

@@ -10,6 +10,7 @@
 package vcampus.server.srv;
 
 import vcampus.common.vo.Course;
+import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.SelectCourse;
 
 import java.io.IOException;
@@ -67,5 +68,24 @@ public interface ICourseServerSrv {
      * @throws CourseServiceException 学号无效
      */
     List<SelectCourse> querySelectedCourse(String studentId)
+            throws SQLException, IOException, CourseServiceException;
+
+    /** 查询全部排课。 */
+    List<CourseSchedule> querySchedule() throws SQLException, IOException;
+
+    /** 新增排课并返回带记录号的对象。 */
+    CourseSchedule addSchedule(CourseSchedule schedule)
+            throws SQLException, IOException, CourseServiceException;
+
+    /** 修改排课。 */
+    boolean updateSchedule(CourseSchedule schedule)
+            throws SQLException, IOException, CourseServiceException;
+
+    /** 删除排课。 */
+    boolean deleteSchedule(String scheduleId)
+            throws SQLException, IOException, CourseServiceException;
+
+    /** 查询学生已选课程对应的课程表。 */
+    List<CourseSchedule> queryStudentSchedule(String studentId)
             throws SQLException, IOException, CourseServiceException;
 }

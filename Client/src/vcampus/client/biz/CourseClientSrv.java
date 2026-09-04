@@ -11,6 +11,7 @@ package vcampus.client.biz;
 
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Course;
+import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.SelectCourse;
@@ -62,6 +63,53 @@ public class CourseClientSrv implements ICourseClientSrv {
     public List<SelectCourse> querySelectedCourse(String studentId)
             throws IOException, ClassNotFoundException {
         Message response = send(IConstant.MSG_COURSE_SELECTED_QUERY, studentId, studentId);
+        ensureSuccess(response);
+        return castList(response.getData());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<CourseSchedule> querySchedule() throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_SCHEDULE_QUERY, null, "Client");
+        ensureSuccess(response);
+        return castList(response.getData());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public CourseSchedule addSchedule(CourseSchedule schedule)
+            throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_SCHEDULE_ADD, schedule, "Admin");
+        ensureSuccess(response);
+        if (!(response.getData() instanceof CourseSchedule added)) {
+            throw new CourseClientException(IConstant.STATUS_ERROR, "服务器响应格式错误");
+        }
+        return added;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean updateSchedule(CourseSchedule schedule)
+            throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_SCHEDULE_UPDATE, schedule, "Admin");
+        ensureSuccess(response);
+        return true;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean deleteSchedule(String scheduleId)
+            throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_SCHEDULE_DELETE, scheduleId, "Admin");
+        ensureSuccess(response);
+        return true;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<CourseSchedule> queryStudentSchedule(String studentId)
+            throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_STUDENT_TIMETABLE_QUERY, studentId, studentId);
         ensureSuccess(response);
         return castList(response.getData());
     }

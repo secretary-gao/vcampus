@@ -136,6 +136,11 @@ public class ServerThread implements Runnable {
         _handlerMap.put(IConstant.MSG_COURSE_SELECT, this::handleCourseRequest);
         _handlerMap.put(IConstant.MSG_COURSE_DROP, this::handleCourseRequest);
         _handlerMap.put(IConstant.MSG_COURSE_SELECTED_QUERY, this::handleCourseRequest);
+        _handlerMap.put(IConstant.MSG_COURSE_SCHEDULE_QUERY, this::handleCourseRequest);
+        _handlerMap.put(IConstant.MSG_COURSE_SCHEDULE_ADD, this::handleCourseRequest);
+        _handlerMap.put(IConstant.MSG_COURSE_SCHEDULE_UPDATE, this::handleCourseRequest);
+        _handlerMap.put(IConstant.MSG_COURSE_SCHEDULE_DELETE, this::handleCourseRequest);
+        _handlerMap.put(IConstant.MSG_STUDENT_TIMETABLE_QUERY, this::handleCourseRequest);
     }
 
     /**

@@ -54,3 +54,27 @@ CREATE TABLE IF NOT EXISTS tblSelectCourse (
 --         REFERENCES tblStudent(studentId)
 --         ON DELETE RESTRICT
 --         ON UPDATE CASCADE;
+
+-- ------------------------------------------------------------
+-- tblCourseSchedule：课程排课表
+-- 教师信息以 tblCourse.teacher 为唯一来源，不在本表重复保存。
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tblCourseSchedule (
+    scheduleId VARCHAR(20) NOT NULL COMMENT '排课记录号（PK）',
+    courseId   VARCHAR(20) NOT NULL COMMENT '课程号，外键->tblCourse.courseId',
+    classroom  VARCHAR(30) NOT NULL COMMENT '教室',
+    dayOfWeek  TINYINT     NOT NULL COMMENT '星期（1=星期一，7=星期日）',
+    startTime  TIME        NOT NULL COMMENT '开始时间',
+    endTime    TIME        NOT NULL COMMENT '结束时间',
+    PRIMARY KEY (scheduleId),
+    CONSTRAINT uk_tblCourseSchedule_course_slot
+        UNIQUE (courseId, dayOfWeek, startTime, endTime),
+    CONSTRAINT fk_tblCourseSchedule_course FOREIGN KEY (courseId)
+        REFERENCES tblCourse(courseId)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    CONSTRAINT chk_tblCourseSchedule_day CHECK (dayOfWeek BETWEEN 1 AND 7),
+    CONSTRAINT chk_tblCourseSchedule_time CHECK (startTime < endTime),
+    INDEX idx_tblCourseSchedule_room_time (dayOfWeek, classroom, startTime, endTime),
+    INDEX idx_tblCourseSchedule_course_time (courseId, dayOfWeek, startTime, endTime)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程排课表';

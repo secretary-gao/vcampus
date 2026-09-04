@@ -61,6 +61,11 @@ public interface IConstant {
     String MSG_COURSE_SELECT = "courseSelect";
     String MSG_COURSE_DROP = "courseDrop";
     String MSG_COURSE_SELECTED_QUERY = "courseSelectedQuery";
+    String MSG_COURSE_SCHEDULE_QUERY = "courseScheduleQuery";
+    String MSG_COURSE_SCHEDULE_ADD = "courseScheduleAdd";
+    String MSG_COURSE_SCHEDULE_UPDATE = "courseScheduleUpdate";
+    String MSG_COURSE_SCHEDULE_DELETE = "courseScheduleDelete";
+    String MSG_STUDENT_TIMETABLE_QUERY = "studentTimetableQuery";
 
     /** 状态码：请求参数或业务条件不满足。 */
     String STATUS_BAD_REQUEST = "400";
