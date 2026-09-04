@@ -31,7 +31,7 @@ public class CourseSocketTestFixture {
     public static final String ROLLBACK_COURSE_ID = "T_E2E_ROLL_0904";
     public static final String STUDENT_A = "E2E0904001";
     public static final String STUDENT_B = "E2E0904002";
-    private static final String USER_A = "CE2EA904";
+    public static final String USER_A = "CE2EA904";
     private static final String USER_B = "CE2EB904";
     private static final String FAILURE_TRIGGER = "trgCourseE2ERollback";
 

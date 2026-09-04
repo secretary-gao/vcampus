@@ -69,6 +69,14 @@ public class CourseClientSrv implements ICourseClientSrv {
 
     /** {@inheritDoc} */
     @Override
+    public String queryStudentId(String userId) throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_STUDENT_ID_QUERY, userId, userId);
+        ensureSuccess(response);
+        return response.getData() == null ? null : String.valueOf(response.getData());
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public List<CourseSchedule> querySchedule() throws IOException, ClassNotFoundException {
         Message response = send(IConstant.MSG_COURSE_SCHEDULE_QUERY, null, "Client");
         ensureSuccess(response);

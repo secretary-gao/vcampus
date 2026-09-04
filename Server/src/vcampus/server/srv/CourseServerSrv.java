@@ -14,6 +14,7 @@ import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.SelectCourse;
 import vcampus.server.dao.CourseDAO;
 import vcampus.server.dao.CourseScheduleDAO;
+import vcampus.server.dao.CourseStudentDAO;
 import vcampus.server.dao.DbHelper;
 import vcampus.server.dao.SelectCourseDAO;
 
@@ -40,6 +41,9 @@ public class CourseServerSrv implements ICourseServerSrv {
 
     /** 排课数据访问对象。 */
     private final CourseScheduleDAO _courseScheduleDAO;
+
+    /** 登录用户与正式学号映射查询。 */
+    private final CourseStudentDAO _courseStudentDAO = new CourseStudentDAO();
 
     /**
      * 使用默认 DAO 创建业务服务。
@@ -164,6 +168,16 @@ public class CourseServerSrv implements ICourseServerSrv {
             throw new CourseServiceException("学号不能为空");
         }
         return _selectCourseDAO.findByStudentId(studentId.trim());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String queryStudentId(String userId)
+            throws SQLException, IOException, CourseServiceException {
+        if (userId == null || userId.isBlank()) {
+            throw new CourseServiceException("用户 ID 不能为空");
+        }
+        return _courseStudentDAO.findStudentIdByUserId(userId.trim());
     }
 
     /** {@inheritDoc} */

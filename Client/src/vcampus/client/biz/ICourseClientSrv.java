@@ -34,6 +34,9 @@ public interface ICourseClientSrv {
     List<SelectCourse> querySelectedCourse(String studentId)
             throws IOException, ClassNotFoundException;
 
+    /** 查询登录用户对应的正式学号。 */
+    String queryStudentId(String userId) throws IOException, ClassNotFoundException;
+
     /** 查询全部排课。 */
     List<CourseSchedule> querySchedule() throws IOException, ClassNotFoundException;
 

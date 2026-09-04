@@ -12,6 +12,7 @@ package vcampus.client.view;
 import vcampus.client.biz.IUserClientSrv;
 import vcampus.client.biz.UserClientSrv;
 import vcampus.client.view.Library.LibraryPanel;
+import vcampus.client.view.course.CoursePanel;
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.User;
@@ -404,6 +405,10 @@ public class MainFrame extends Application {
             openStore();
             return;
         }
+        if ("edu".equals(moduleKey)) {
+            showCoursePage();
+            return;
+        }
         VBox page = new VBox(16);
         page.setPadding(new Insets(22));
         page.setMaxWidth(820);
@@ -520,6 +525,26 @@ public class MainFrame extends Application {
         _contentStack.getChildren().setAll(wrapper);
         studentFrame.attachStyleSheet(_stage.getScene());
         Platform.runLater(studentFrame::refresh);
+    }
+
+    /** 在主界面内容区嵌入 Course 模块，并保留统一的返回入口。 */
+    private void showCoursePage() {
+        CoursePanel coursePanel = new CoursePanel(_currentUser);
+        Button backButton = new Button("返回总览");
+        backButton.setStyle("-fx-background-color: #e0a53b; -fx-text-fill: white;"
+                + " -fx-background-radius: 20; -fx-font-weight: bold; -fx-cursor: hand;");
+        backButton.setOnAction(event -> showDashboard());
+
+        HBox bottomBar = new HBox(backButton);
+        bottomBar.setAlignment(Pos.CENTER_RIGHT);
+        bottomBar.setPadding(new Insets(8, 0, 0, 0));
+
+        VBox wrapper = new VBox(0, coursePanel, bottomBar);
+        VBox.setVgrow(coursePanel, javafx.scene.layout.Priority.ALWAYS);
+        wrapper.setMaxWidth(1120);
+        wrapper.setMaxHeight(Double.MAX_VALUE);
+        wrapper.setStyle(CARD_STYLE);
+        _contentStack.getChildren().setAll(wrapper);
     }
 
     /**

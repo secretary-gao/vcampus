@@ -25,6 +25,7 @@ public class CourseClientSrvTest {
     private static final String ROLLBACK_COURSE_ID = "T_E2E_ROLL_0904";
     private static final String STUDENT_A = "E2E0904001";
     private static final String STUDENT_B = "E2E0904002";
+    private static final String USER_A = "CE2EA904";
 
     /**
      * 程序入口。
@@ -34,6 +35,9 @@ public class CourseClientSrvTest {
      */
     public static void main(String[] args) throws Exception {
         ICourseClientSrv client = new CourseClientSrv();
+
+        require(STUDENT_A.equals(client.queryStudentId(USER_A)),
+                "Socket 登录用户映射正式学号");
 
         List<Course> courses = client.queryCourse("Socket");
         require(findCourse(courses, NORMAL_COURSE_ID) != null, "Socket 查询课程");

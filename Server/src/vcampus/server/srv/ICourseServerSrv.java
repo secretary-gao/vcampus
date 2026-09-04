@@ -70,6 +70,18 @@ public interface ICourseServerSrv {
     List<SelectCourse> querySelectedCourse(String studentId)
             throws SQLException, IOException, CourseServiceException;
 
+    /**
+     * 查询登录用户对应的正式学号。
+     *
+     * @param userId 登录用户 ID
+     * @return 正式学号；尚未建立学籍时返回 {@code null}
+     * @throws SQLException 数据库操作异常
+     * @throws IOException 数据库配置文件读取异常
+     * @throws CourseServiceException 用户 ID 无效
+     */
+    String queryStudentId(String userId)
+            throws SQLException, IOException, CourseServiceException;
+
     /** 查询全部排课。 */
     List<CourseSchedule> querySchedule() throws SQLException, IOException;
 

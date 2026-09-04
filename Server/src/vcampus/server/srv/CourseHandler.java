@@ -49,6 +49,7 @@ public class CourseHandler implements ModuleHandler {
                 IConstant.MSG_COURSE_SELECT,
                 IConstant.MSG_COURSE_DROP,
                 IConstant.MSG_COURSE_SELECTED_QUERY,
+                IConstant.MSG_COURSE_STUDENT_ID_QUERY,
                 IConstant.MSG_COURSE_SCHEDULE_QUERY,
                 IConstant.MSG_COURSE_SCHEDULE_ADD,
                 IConstant.MSG_COURSE_SCHEDULE_UPDATE,
@@ -73,6 +74,8 @@ public class CourseHandler implements ModuleHandler {
                 case IConstant.MSG_COURSE_DROP -> handleDrop(request);
                 case IConstant.MSG_COURSE_SELECTED_QUERY -> success(
                         request, _courseServerSrv.querySelectedCourse((String) request.getData()));
+                case IConstant.MSG_COURSE_STUDENT_ID_QUERY -> success(
+                        request, _courseServerSrv.queryStudentId((String) request.getData()));
                 case IConstant.MSG_COURSE_SCHEDULE_QUERY -> success(
                         request, _courseServerSrv.querySchedule());
                 case IConstant.MSG_COURSE_SCHEDULE_ADD -> success(
