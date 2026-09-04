@@ -1,9 +1,9 @@
 /*
  * HospitalFrame
  *
- * Version 1.4 医院主题UI改版，业务逻辑不变
+ * Version 1.5 增加东南大学校徽顶部横幅，原有功能全部保留
  *
- * 2026-09-03
+ * 2026-09-04
  *
  * Copyright (c) 2026 Vcampus Team
  */
@@ -20,6 +20,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.CycleMethod;
@@ -111,15 +113,53 @@ public class HospitalFrame extends Application {
                         new Stop(0, Color.web("#f4f8fb")),
                         new Stop(1, Color.web("#e8f0f7"))),
                 CornerRadii.EMPTY, Insets.EMPTY)));
-        root.setLeft(buildSideBar());
+
+        // ========== 新增顶部横幅：东南大学校徽 + 系统标题 ==========
+        HBox topBanner = buildTopBanner();
+        VBox mainContainer = new VBox(0);
+        BorderPane bodyPane = new BorderPane();
+        bodyPane.setLeft(buildSideBar());
         _contentPane = new StackPane();
         _contentPane.setPadding(new Insets(20));
-        root.setCenter(_contentPane);
+        bodyPane.setCenter(_contentPane);
+
+        mainContainer.getChildren().addAll(topBanner, bodyPane);
+        root.setCenter(mainContainer);
+
         initAllPanels();
         switchPanel(panelQueryAllDoctor);
-        Scene scene = new Scene(root, 1280, 780);
+        Scene scene = new Scene(root, 1280, 820);
         stage.setScene(scene);
     }
+
+    /**
+     * 构建顶部校徽标题栏
+     */
+    private HBox buildTopBanner(){
+    HBox banner = new HBox();
+    banner.setAlignment(Pos.CENTER_LEFT);
+    banner.setPadding(new Insets(12,30,12,30));
+    banner.setStyle("-fx-background-color:#ffffff;-fx-border-color:#cce0ed;-fx-border-width:0 0 1 0;");
+
+    // 从当前类所在包读取图片（和HospitalFrame同目录）
+    Image logoImg = new Image(getClass().getResource("seu_logo.jpeg").toExternalForm(),120,120,true,true,false);
+    ImageView logoView = new ImageView(logoImg);
+
+    Label systemTitle = new Label("🏥 医院挂号管理系统");
+    systemTitle.setFont(Font.font("System", FontWeight.BOLD,24));
+    systemTitle.setTextFill(Color.web("#194b75"));
+
+    Region spacer = new Region();
+    HBox.setHgrow(spacer, Priority.ALWAYS);
+
+    Label userTopTip = new Label("使用者："+_loginUserId+" | "+_loginUserRole);
+    userTopTip.setFont(Font.font("System",14));
+    userTopTip.setTextFill(Color.web("#446078"));
+
+    banner.getChildren().addAll(logoView,new Region(),systemTitle,spacer,userTopTip);
+    HBox.setMargin(systemTitle,new Insets(0,0,0,40));
+    return banner;
+}
 
     private VBox buildSideBar() {
         VBox side = new VBox(12);
@@ -130,13 +170,9 @@ public class HospitalFrame extends Application {
                 + "-fx-border-color:#cce0ed;"
                 + "-fx-border-width:0 1 0 0;"
                 + "-fx-effect: dropshadow(gaussian, rgba(80,130,170,0.08),10,0.1,1,0);");
-        Label title = new Label("🏥 医院挂号管理系统");
+        Label title = new Label("功能导航");
         title.setFont(Font.font("System", FontWeight.BOLD,19));
         title.setTextFill(Color.web("#194b75"));
-
-        Label userInfo = new Label("当前账号："+_loginUserId+"｜"+_loginUserRole);
-        userInfo.setFont(Font.font("System",13));
-        userInfo.setTextFill(Color.web("#446078"));
 
         Separator sep1 = new Separator();
         sep1.setPadding(new Insets(10,0,10,0));
@@ -196,7 +232,7 @@ public class HospitalFrame extends Application {
         btnUpdateDoctor.setOnAction(e->switchPanel(panelUpdateDoctor));
         btnDeleteDoctor.setOnAction(e->switchPanel(panelDeleteDoctor));
 
-        side.getChildren().addAll(title,userInfo,sep1,
+        side.getChildren().addAll(title,sep1,
                 lblUserFunc,
                 btnQueryAllDoctor,btnQueryByDept,btnAddAppoint,btnMyAppoint,btnCancelAppoint,
                 sep2,lblAdminFunc,
@@ -682,9 +718,9 @@ public class HospitalFrame extends Application {
     }
     public static class TestLauncher extends Application{
         @Override
-        public void start(Stage primaryStage) throws Exception {
-            //切换账号在这里改："09010210","学生"  / "admin001","管理员"
-            new HospitalFrame("admin001","管理员").start(primaryStage);
-        }
+    public void start(Stage primaryStage) throws Exception {
+        // 普通用户：用户ID 09010210，角色为普通用户
+        new HospitalFrame("09010210","普通用户").start(primaryStage);
+    }
     }
 }
