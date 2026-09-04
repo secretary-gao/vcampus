@@ -55,4 +55,13 @@ public interface IConstant {
     String MSG_BORROW_BOOK = "borrowBook";
     String MSG_RETURN_BOOK = "returnBook";
     String MSG_GET_BORROW_RECORDS = "getBorrowRecords";
+
+    // ========== 选课模块消息类型 ==========
+    String MSG_COURSE_QUERY = "courseQuery";
+    String MSG_COURSE_SELECT = "courseSelect";
+    String MSG_COURSE_DROP = "courseDrop";
+    String MSG_COURSE_SELECTED_QUERY = "courseSelectedQuery";
+
+    /** 状态码：请求参数或业务条件不满足。 */
+    String STATUS_BAD_REQUEST = "400";
 }

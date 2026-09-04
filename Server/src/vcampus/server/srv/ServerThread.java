@@ -52,6 +52,9 @@ public class ServerThread implements Runnable {
     /** 图书馆模块业务服务，由本线程独立持有，避免多线程共享状态。 */
     private final LibraryHandler _libraryHandler = new LibraryHandler();
 
+    /** 选课模块请求处理器。 */
+    private final CourseHandler _courseHandler = new CourseHandler();
+
     /** 请求处理器注册表。 */
     private final Map<String, RequestHandler> _handlerMap = new HashMap<>();
 
@@ -129,6 +132,20 @@ public class ServerThread implements Runnable {
         _handlerMap.put(IConstant.MSG_BORROW_BOOK, this::handleLibraryRequest);
         _handlerMap.put(IConstant.MSG_RETURN_BOOK, this::handleLibraryRequest);
         _handlerMap.put(IConstant.MSG_GET_BORROW_RECORDS, this::handleLibraryRequest);
+        _handlerMap.put(IConstant.MSG_COURSE_QUERY, this::handleCourseRequest);
+        _handlerMap.put(IConstant.MSG_COURSE_SELECT, this::handleCourseRequest);
+        _handlerMap.put(IConstant.MSG_COURSE_DROP, this::handleCourseRequest);
+        _handlerMap.put(IConstant.MSG_COURSE_SELECTED_QUERY, this::handleCourseRequest);
+    }
+
+    /**
+     * 处理选课模块请求，转发给 {@link CourseHandler}。
+     *
+     * @param request 选课模块请求
+     * @return 选课模块响应
+     */
+    private Message handleCourseRequest(Message request) {
+        return _courseHandler.handle(request);
     }
 
     /**

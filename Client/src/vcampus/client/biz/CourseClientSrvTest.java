@@ -1,0 +1,112 @@
+/*
+ * CourseClientSrvTest
+ *
+ * Version 1.0
+ *
+ * 2026-09-04
+ *
+ * Copyright (c) 2026 Vcampus Team
+ */
+package vcampus.client.biz;
+
+import vcampus.common.vo.Course;
+import vcampus.common.vo.SelectCourse;
+
+import java.util.List;
+
+/**
+ * Course 模块无界面 Socket 端到端测试。运行前先启动服务器并执行服务端测试夹具 setup。
+ * 本类只调用 {@link ICourseClientSrv}，不访问 DAO 或 MySQL。
+ */
+public class CourseClientSrvTest {
+
+    private static final String NORMAL_COURSE_ID = "T_E2E_NORMAL_0904";
+    private static final String FULL_COURSE_ID = "T_E2E_FULL_0904";
+    private static final String ROLLBACK_COURSE_ID = "T_E2E_ROLL_0904";
+    private static final String STUDENT_A = "E2E0904001";
+    private static final String STUDENT_B = "E2E0904002";
+
+    /**
+     * 程序入口。
+     *
+     * @param args 命令行参数（未使用）
+     * @throws Exception 端到端测试失败
+     */
+    public static void main(String[] args) throws Exception {
+        ICourseClientSrv client = new CourseClientSrv();
+
+        List<Course> courses = client.queryCourse("Socket");
+        require(findCourse(courses, NORMAL_COURSE_ID) != null, "Socket 查询课程");
+
+        require(client.selectCourse(STUDENT_A, NORMAL_COURSE_ID), "Socket 正常选课");
+        List<SelectCourse> selected = client.querySelectedCourse(STUDENT_A);
+        require(selected.stream().anyMatch(r -> NORMAL_COURSE_ID.equals(r.getCourseId())),
+                "Socket 查询本人已选课程");
+
+        expectFailure(() -> client.selectCourse(STUDENT_A, NORMAL_COURSE_ID), "400",
+                "Socket 重复选课失败");
+        Course normalAfterDuplicate = findCourse(client.queryCourse(NORMAL_COURSE_ID), NORMAL_COURSE_ID);
+        require(normalAfterDuplicate != null && normalAfterDuplicate.getSelectedCount() == 1,
+                "重复选课后 selectedCount 仍为 1");
+
+        expectFailure(() -> client.selectCourse(STUDENT_B, FULL_COURSE_ID), "400",
+                "Socket 满员课程选课失败");
+        Course fullCourse = findCourse(client.queryCourse(FULL_COURSE_ID), FULL_COURSE_ID);
+        require(fullCourse != null && fullCourse.getSelectedCount() == 1,
+                "满员失败后 selectedCount 不变");
+
+        expectFailure(() -> client.selectCourse(STUDENT_B, ROLLBACK_COURSE_ID), "500",
+                "Socket 人为第二步失败");
+        require(client.querySelectedCourse(STUDENT_B).stream()
+                        .noneMatch(r -> ROLLBACK_COURSE_ID.equals(r.getCourseId())),
+                "Socket 回滚后无选课记录");
+        Course rollbackCourse = findCourse(
+                client.queryCourse(ROLLBACK_COURSE_ID), ROLLBACK_COURSE_ID);
+        require(rollbackCourse != null && rollbackCourse.getSelectedCount() == 0,
+                "Socket 回滚后 selectedCount 为 0");
+
+        require(client.dropCourse(STUDENT_A, NORMAL_COURSE_ID), "Socket 正常退课");
+        require(client.querySelectedCourse(STUDENT_A).stream()
+                        .noneMatch(r -> NORMAL_COURSE_ID.equals(r.getCourseId())),
+                "Socket 退课后已选列表无记录");
+        Course normalAfterDrop = findCourse(client.queryCourse(NORMAL_COURSE_ID), NORMAL_COURSE_ID);
+        require(normalAfterDrop != null && normalAfterDrop.getSelectedCount() == 0,
+                "Socket 退课后 selectedCount 为 0");
+
+        System.out.println("COURSE_SOCKET_E2E_TEST=PASS");
+    }
+
+    /** 查找指定课程。 */
+    private static Course findCourse(List<Course> courses, String courseId) {
+        return courses.stream()
+                .filter(course -> courseId.equals(course.getCourseId()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /** 断言客户端调用以指定状态码失败。 */
+    private static void expectFailure(CheckedAction action, String statusCode, String description)
+            throws Exception {
+        boolean failed = false;
+        try {
+            action.run();
+        } catch (CourseClientException expected) {
+            failed = statusCode.equals(expected.getStatusCode());
+        }
+        require(failed, description);
+    }
+
+    /** 断言测试步骤成功。 */
+    private static void require(boolean condition, String description) {
+        if (!condition) {
+            throw new IllegalStateException("FAIL: " + description);
+        }
+        System.out.println("PASS: " + description);
+    }
+
+    /** 可抛异常的客户端动作。 */
+    @FunctionalInterface
+    private interface CheckedAction {
+        void run() throws Exception;
+    }
+}
