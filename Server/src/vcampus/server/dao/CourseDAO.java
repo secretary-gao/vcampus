@@ -78,11 +78,24 @@ public class CourseDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public boolean updateCourse(Course course) throws SQLException, IOException {
+        try (Connection conn = DbHelper.getConnection()) {
+            return updateCourse(conn, course);
+        }
+    }
+
+    /**
+     * 使用调用方提供的连接修改课程，用于跨 DAO 事务。
+     *
+     * @param conn   当前事务使用的连接
+     * @param course 待修改的课程对象（以 courseId 定位）
+     * @return 修改成功返回 {@code true}；课程不存在时返回 {@code false}
+     * @throws SQLException 数据库操作异常
+     */
+    public boolean updateCourse(Connection conn, Course course) throws SQLException {
         String sql = "UPDATE tblCourse SET courseName = ?, teacher = ?, credit = ?, "
                 + "capacity = ?, selectedCount = ? WHERE courseId = ?";
 
-        try (Connection conn = DbHelper.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, course.getCourseName());
             pstmt.setString(2, course.getTeacher());
             pstmt.setInt(3, course.getCredit());
@@ -102,14 +115,80 @@ public class CourseDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public Course findById(String courseId) throws SQLException, IOException {
+        try (Connection conn = DbHelper.getConnection()) {
+            return findById(conn, courseId);
+        }
+    }
+
+    /**
+     * 使用调用方提供的连接根据课程号查询课程。
+     *
+     * @param conn     当前事务使用的连接
+     * @param courseId 课程号
+     * @return 查询到的课程对象；若不存在则返回 {@code null}
+     * @throws SQLException 数据库操作异常
+     */
+    public Course findById(Connection conn, String courseId) throws SQLException {
         String sql = "SELECT courseId, courseName, teacher, credit, capacity, selectedCount "
                 + "FROM tblCourse WHERE courseId = ?";
 
-        try (Connection conn = DbHelper.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, courseId);
             try (ResultSet rs = pstmt.executeQuery()) {
                 return rs.next() ? mapRow(rs) : null;
+            }
+        }
+    }
+
+    /**
+     * 在当前事务中查询课程并锁定该行，防止并发选课导致超选。
+     *
+     * @param conn     当前事务使用的连接
+     * @param courseId 课程号
+     * @return 查询到的课程对象；若不存在则返回 {@code null}
+     * @throws SQLException 数据库操作异常
+     */
+    public Course findByIdForUpdate(Connection conn, String courseId) throws SQLException {
+        String sql = "SELECT courseId, courseName, teacher, credit, capacity, selectedCount "
+                + "FROM tblCourse WHERE courseId = ? FOR UPDATE";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, courseId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next() ? mapRow(rs) : null;
+            }
+        }
+    }
+
+    /**
+     * 按课程号、课程名或教师模糊查询课程。
+     *
+     * @param keyword 查询关键字；{@code null} 或空串表示查询全部
+     * @return 匹配的课程列表
+     * @throws SQLException 数据库操作异常
+     * @throws IOException  数据库配置文件读取异常
+     */
+    public List<Course> findByKeyword(String keyword) throws SQLException, IOException {
+        if (keyword == null || keyword.isBlank()) {
+            return findAll();
+        }
+
+        String sql = "SELECT courseId, courseName, teacher, credit, capacity, selectedCount "
+                + "FROM tblCourse WHERE courseId LIKE ? OR courseName LIKE ? OR teacher LIKE ? "
+                + "ORDER BY courseId";
+        String like = "%" + keyword.trim() + "%";
+
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, like);
+            pstmt.setString(2, like);
+            pstmt.setString(3, like);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                List<Course> courses = new ArrayList<>();
+                while (rs.next()) {
+                    courses.add(mapRow(rs));
+                }
+                return courses;
             }
         }
     }

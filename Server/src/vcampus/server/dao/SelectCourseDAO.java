@@ -43,11 +43,24 @@ public class SelectCourseDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public boolean insertSelectCourse(SelectCourse selectCourse) throws SQLException, IOException {
+        try (Connection conn = DbHelper.getConnection()) {
+            return insertSelectCourse(conn, selectCourse);
+        }
+    }
+
+    /**
+     * 使用调用方提供的连接插入选课记录，用于跨 DAO 事务。
+     *
+     * @param conn         当前事务使用的连接
+     * @param selectCourse 待插入的选课记录
+     * @return 插入成功返回 {@code true}，否则返回 {@code false}
+     * @throws SQLException 数据库操作异常
+     */
+    public boolean insertSelectCourse(Connection conn, SelectCourse selectCourse) throws SQLException {
         String sql = "INSERT INTO tblSelectCourse (selectId, studentId, courseId, selectTime) "
                 + "VALUES (?, ?, ?, ?)";
 
-        try (Connection conn = DbHelper.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, selectCourse.getSelectId());
             pstmt.setString(2, selectCourse.getStudentId());
             pstmt.setString(3, selectCourse.getCourseId());
@@ -66,10 +79,25 @@ public class SelectCourseDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public boolean deleteSelectCourse(String studentId, String courseId) throws SQLException, IOException {
+        try (Connection conn = DbHelper.getConnection()) {
+            return deleteSelectCourse(conn, studentId, courseId);
+        }
+    }
+
+    /**
+     * 使用调用方提供的连接删除选课记录，用于跨 DAO 事务。
+     *
+     * @param conn      当前事务使用的连接
+     * @param studentId 学号
+     * @param courseId  课程号
+     * @return 删除成功返回 {@code true}；记录不存在时返回 {@code false}
+     * @throws SQLException 数据库操作异常
+     */
+    public boolean deleteSelectCourse(Connection conn, String studentId, String courseId)
+            throws SQLException {
         String sql = "DELETE FROM tblSelectCourse WHERE studentId = ? AND courseId = ?";
 
-        try (Connection conn = DbHelper.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, studentId);
             pstmt.setString(2, courseId);
             return pstmt.executeUpdate() > 0;
@@ -87,10 +115,25 @@ public class SelectCourseDAO {
      */
     public SelectCourse findByStudentAndCourse(String studentId, String courseId)
             throws SQLException, IOException {
+        try (Connection conn = DbHelper.getConnection()) {
+            return findByStudentAndCourse(conn, studentId, courseId);
+        }
+    }
+
+    /**
+     * 使用调用方提供的连接查询唯一选课记录。
+     *
+     * @param conn      当前事务使用的连接
+     * @param studentId 学号
+     * @param courseId  课程号
+     * @return 查询到的选课记录；若不存在则返回 {@code null}
+     * @throws SQLException 数据库操作异常
+     */
+    public SelectCourse findByStudentAndCourse(Connection conn, String studentId, String courseId)
+            throws SQLException {
         String sql = SELECT_FIELDS + "WHERE studentId = ? AND courseId = ?";
 
-        try (Connection conn = DbHelper.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, studentId);
             pstmt.setString(2, courseId);
             try (ResultSet rs = pstmt.executeQuery()) {
