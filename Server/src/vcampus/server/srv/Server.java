@@ -8,13 +8,10 @@
  * Copyright (c) 2026 Vcampus Team
  */
 package vcampus.server.srv;
-
 import vcampus.common.constant.IConstant;
-
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-
 /**
  * 服务器程序入口。主线程创建 {@link ServerSocket} 并绑定固定端口
  * （见 {@link IConstant#SERVER_PORT}），循环监听客户端连接请求；
@@ -23,7 +20,6 @@ import java.net.Socket;
  * "一个客户端一个线程"的并发模型。
  */
 public class Server {
-
     /**
      * 程序入口：启动服务器并进入accept循环。
      *
