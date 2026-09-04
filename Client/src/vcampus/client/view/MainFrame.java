@@ -400,6 +400,10 @@ public class MainFrame extends Application {
             showStudentPage();
             return;
         }
+        if ("shop".equals(moduleKey)) {
+            openStore();
+            return;
+        }
         VBox page = new VBox(16);
         page.setPadding(new Insets(22));
         page.setMaxWidth(820);
@@ -439,6 +443,24 @@ public class MainFrame extends Application {
         page.getChildren().addAll(title, desc, infoGrid, featureBox, bottomBar);
 
         _contentStack.getChildren().setAll(page);
+    }
+
+    /**
+     * 打开虚拟商店模块的真实业务界面（{@link StoreFrame}）。商店窗口是独立的
+     * {@code Application}（不像 {@link LibraryPanel} 是可嵌入的 {@code VBox}），
+     * 所以这里新开一个 {@link Stage} 承载它，而不是嵌入 {@code _contentStack}。
+     */
+    private void openStore() {
+        try {
+            Stage storeStage = new Stage();
+            new StoreFrame(_currentUser).start(storeStage);
+        } catch (Exception e) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("错误");
+            alert.setHeaderText(null);
+            alert.setContentText("打开商店模块失败：" + e.getMessage());
+            alert.showAndWait();
+        }
     }
 
     /**

@@ -9,8 +9,8 @@
  */
 package vcampus.server.srv;
 
-import vcampus.common.constant.IConstant;
 import vcampus.common.constant.StudentProtocol;
+import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.User;
@@ -22,7 +22,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,9 +33,10 @@ import java.util.Map;
  *
  * <p>
  * 本线程只处理一次请求/响应：读取客户端发来的一个 {@link Message}，
- * 根据 {@code Message.getName()} 通过可扩展的处理器表进行分发，调用
- * {@link UserServerSrv} 完成业务处理后，把结果封装成响应 {@link Message}
- * 写回客户端，随后关闭连接、线程结束。
+ * 根据 {@code Message.getName()} 进行分发。用户管理、图书馆、学籍模块
+ * 沿用注册表（{@code _handlerMap}）方式；其余业务模块（如商店）则通过
+ * {@link ModuleHandler} 处理器列表接入（见 {@link StoreModuleHandler}），
+ * 处理完成后把结果封装成响应 {@link Message} 写回客户端，随后关闭连接、线程结束。
  * </p>
  *
  * <p>
@@ -56,7 +59,10 @@ public class ServerThread implements Runnable {
     /** 学籍模块请求处理器，由统一服务器负责分发请求。 */
     private final StudentRequestHandler _studentRequestHandler = new StudentRequestHandler();
 
-    /** 请求处理器注册表。 */
+    /** 各业务模块的请求处理器列表（模块化接入，见 {@link ModuleHandler}）。 */
+    private final List<ModuleHandler> _moduleHandlers = new ArrayList<>();
+
+    /** 用户管理/图书馆/学籍模块的请求处理器注册表。 */
     private final Map<String, RequestHandler> _handlerMap = new HashMap<>();
 
     /**
@@ -67,6 +73,7 @@ public class ServerThread implements Runnable {
     public ServerThread(Socket socket) {
         this._socket = socket;
         registerHandlers();
+        _moduleHandlers.add(new StoreModuleHandler());
     }
 
     /**
@@ -105,10 +112,14 @@ public class ServerThread implements Runnable {
         RequestHandler handler = _handlerMap.get(name);
         if (handler != null) {
             return handler.handle(request);
-        } else {
-            return new Message(request.getUid(), name, MessageType.DATA,
-                    IConstant.STATUS_ERROR, "未知的请求类型：" + name, "Server");
         }
+        for (ModuleHandler moduleHandler : _moduleHandlers) {
+            if (moduleHandler.supportedMessages().contains(name)) {
+                return moduleHandler.handle(request);
+            }
+        }
+        return new Message(request.getUid(), name, MessageType.DATA,
+                IConstant.STATUS_ERROR, "未知的请求类型：" + name, "Server");
     }
 
     /**
@@ -134,6 +145,8 @@ public class ServerThread implements Runnable {
     /**
      * 注册请求处理器。各模块按 {@code Message.getName()} 的取值把自己的处理
      * 方法注册进来，新增模块时只需在这里加一行，不用改 {@link #handleRequest}。
+     * 不方便用固定消息名列表接入的模块（如商店），改用 {@link #_moduleHandlers}
+     * 列表接入，见构造方法。
      */
     private void registerHandlers() {
         _handlerMap.put(IConstant.MSG_LOGIN, this::handleLogin);
