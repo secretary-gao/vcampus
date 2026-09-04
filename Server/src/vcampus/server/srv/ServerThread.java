@@ -10,11 +10,8 @@
 package vcampus.server.srv;
 
 import vcampus.common.constant.IConstant;
-import vcampus.common.vo.Goods;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
-import vcampus.common.vo.PurchaseRecord;
-import vcampus.common.vo.ShopRequest;
 import vcampus.common.vo.User;
 
 import java.io.IOException;
@@ -22,6 +19,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,9 +30,10 @@ import java.util.Map;
  *
  * <p>
  * 本线程只处理一次请求/响应：读取客户端发来的一个 {@link Message}，
- * 根据 {@code Message.getName()} 通过可扩展的处理器表进行分发，调用
- * {@link UserServerSrv} 完成业务处理后，把结果封装成响应 {@link Message}
- * 写回客户端，随后关闭连接、线程结束。
+ * 根据 {@code Message.getName()} 进行分发。用户管理模块（login/register/logout）
+ * 沿用注册表（{@code _handlerMap}）方式；其余业务模块（如商店）则通过
+ * {@link ModuleHandler} 处理器列表接入（见 {@link StoreModuleHandler}），
+ * 处理完成后把结果封装成响应 {@link Message} 写回客户端，随后关闭连接、线程结束。
  * </p>
  *
  * <p>
@@ -48,13 +47,13 @@ public class ServerThread implements Runnable {
     /** 与客户端建立的连接。 */
     private final Socket _socket;
 
-    /** 用户业务服务，由本线程独立持有，避免多线程共享状态。 */
+    /** 用户管理业务服务，由本线程独立持有，避免多线程共享状态。 */
     private final IUserServerSrv _userServerSrv = new UserServerSrv();
 
-    /** 商店业务服务，由本线程独立持有，避免多线程共享状态。 */
-    private final IStoreServerSrv _storeServerSrv = new StoreServerSrv();
+    /** 各业务模块的请求处理器列表（模块化接入，见 {@link ModuleHandler}）。 */
+    private final List<ModuleHandler> _moduleHandlers = new ArrayList<>();
 
-    /** 请求处理器注册表。 */
+    /** 用户管理模块的请求处理器注册表。 */
     private final Map<String, RequestHandler> _handlerMap = new HashMap<>();
 
     /**
@@ -65,6 +64,7 @@ public class ServerThread implements Runnable {
     public ServerThread(Socket socket) {
         this._socket = socket;
         registerHandlers();
+        _moduleHandlers.add(new StoreModuleHandler());
     }
 
     /**
@@ -103,25 +103,23 @@ public class ServerThread implements Runnable {
         RequestHandler handler = _handlerMap.get(name);
         if (handler != null) {
             return handler.handle(request);
-        } else {
-            return new Message(request.getUid(), name, MessageType.DATA,
-                    IConstant.STATUS_ERROR, "未知的请求类型：" + name, "Server");
         }
+        for (ModuleHandler moduleHandler : _moduleHandlers) {
+            if (moduleHandler.supportedMessages().contains(name)) {
+                return moduleHandler.handle(request);
+            }
+        }
+        return new Message(request.getUid(), name, MessageType.DATA,
+                IConstant.STATUS_ERROR, "未知的请求类型：" + name, "Server");
     }
 
     /**
-     * 注册请求处理器。
+     * 注册用户管理模块的请求处理器。
      */
     private void registerHandlers() {
         _handlerMap.put(IConstant.MSG_LOGIN, this::handleLogin);
         _handlerMap.put(IConstant.MSG_REGISTER, this::handleRegister);
         _handlerMap.put(IConstant.MSG_LOGOUT, this::handleLogout);
-        _handlerMap.put(IConstant.MSG_SHOP_QUERY_GOODS, this::handleShopQueryGoods);
-        _handlerMap.put(IConstant.MSG_SHOP_PURCHASE, this::handleShopPurchase);
-        _handlerMap.put(IConstant.MSG_SHOP_QUERY_RECORDS, this::handleShopQueryRecords);
-        _handlerMap.put(IConstant.MSG_SHOP_ADD_GOODS, this::handleShopAddGoods);
-        _handlerMap.put(IConstant.MSG_SHOP_UPDATE_GOODS, this::handleShopUpdateGoods);
-        _handlerMap.put(IConstant.MSG_SHOP_DELETE_GOODS, this::handleShopDeleteGoods);
     }
 
     /**
@@ -185,126 +183,6 @@ public class ServerThread implements Runnable {
                     statusCode, data, "Server");
         } catch (SQLException | IOException e) {
             return new Message(request.getUid(), IConstant.MSG_LOGOUT, MessageType.DATA,
-                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
-        }
-    }
-
-    /**
-     * 处理商店"查询商品"请求。
-     *
-     * @param request 查询请求消息，{@code data} 为 {@link ShopRequest}（含关键字/类别）
-     * @return 查询结果消息：成功时 {@code data} 为 {@code List<Goods>}
-     */
-    private Message handleShopQueryGoods(Message request) {
-        try {
-            ShopRequest req = (ShopRequest) request.getData();
-            List<Goods> goods = _storeServerSrv.queryGoods(req.getKeyword(), req.getCategory());
-            return new Message(request.getUid(), IConstant.MSG_SHOP_QUERY_GOODS, MessageType.DATA,
-                    IConstant.STATUS_SUCCESS, goods, "Server");
-        } catch (SQLException | IOException e) {
-            return new Message(request.getUid(), IConstant.MSG_SHOP_QUERY_GOODS, MessageType.DATA,
-                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
-        }
-    }
-
-    /**
-     * 处理商店"购买商品"请求。
-     *
-     * @param request 购买请求消息，{@code data} 为 {@link ShopRequest}（含购买人/商品/数量）
-     * @return 购买结果消息：成功时 {@code data} 为 {@link PurchaseRecord}
-     */
-    private Message handleShopPurchase(Message request) {
-        try {
-            ShopRequest req = (ShopRequest) request.getData();
-            PurchaseRecord record = _storeServerSrv.purchaseGoods(req.getUserId(), req.getGoodsId(), req.getQuantity());
-            return new Message(request.getUid(), IConstant.MSG_SHOP_PURCHASE, MessageType.DATA,
-                    IConstant.STATUS_SUCCESS, record, "Server");
-        } catch (ShopException e) {
-            return new Message(request.getUid(), IConstant.MSG_SHOP_PURCHASE, MessageType.DATA,
-                    e.getStatusCode(), e.getMessage(), "Server");
-        } catch (SQLException | IOException e) {
-            return new Message(request.getUid(), IConstant.MSG_SHOP_PURCHASE, MessageType.DATA,
-                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
-        }
-    }
-
-    /**
-     * 处理商店"查询购买记录"请求。
-     *
-     * @param request 查询记录请求，{@code data} 为 {@link ShopRequest}（含 userId）
-     * @return 查询结果消息：成功时 {@code data} 为 {@code List<PurchaseRecord>}
-     */
-    private Message handleShopQueryRecords(Message request) {
-        try {
-            ShopRequest req = (ShopRequest) request.getData();
-            List<PurchaseRecord> records = _storeServerSrv.queryPurchaseRecords(req.getUserId());
-            return new Message(request.getUid(), IConstant.MSG_SHOP_QUERY_RECORDS, MessageType.DATA,
-                    IConstant.STATUS_SUCCESS, records, "Server");
-        } catch (SQLException | IOException e) {
-            return new Message(request.getUid(), IConstant.MSG_SHOP_QUERY_RECORDS, MessageType.DATA,
-                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
-        }
-    }
-
-    /**
-     * 处理商店"新增商品"请求（管理员）。
-     *
-     * @param request 新增商品请求，{@code data} 为 {@link ShopRequest}（含商品对象）
-     * @return 新增结果消息：成功时 {@code data} 为 {@link Goods}
-     */
-    private Message handleShopAddGoods(Message request) {
-        try {
-            ShopRequest req = (ShopRequest) request.getData();
-            Goods goods = _storeServerSrv.addGoods(req.getGoods());
-            return new Message(request.getUid(), IConstant.MSG_SHOP_ADD_GOODS, MessageType.DATA,
-                    IConstant.STATUS_SUCCESS, goods, "Server");
-        } catch (ShopException e) {
-            return new Message(request.getUid(), IConstant.MSG_SHOP_ADD_GOODS, MessageType.DATA,
-                    e.getStatusCode(), e.getMessage(), "Server");
-        } catch (SQLException | IOException e) {
-            return new Message(request.getUid(), IConstant.MSG_SHOP_ADD_GOODS, MessageType.DATA,
-                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
-        }
-    }
-
-    /**
-     * 处理商店"修改商品"请求（管理员）。
-     *
-     * @param request 修改商品请求，{@code data} 为 {@link ShopRequest}（含商品对象）
-     * @return 修改结果消息：成功时 {@code data} 为 {@link Goods}
-     */
-    private Message handleShopUpdateGoods(Message request) {
-        try {
-            ShopRequest req = (ShopRequest) request.getData();
-            Goods goods = _storeServerSrv.updateGoods(req.getGoods());
-            return new Message(request.getUid(), IConstant.MSG_SHOP_UPDATE_GOODS, MessageType.DATA,
-                    IConstant.STATUS_SUCCESS, goods, "Server");
-        } catch (ShopException e) {
-            return new Message(request.getUid(), IConstant.MSG_SHOP_UPDATE_GOODS, MessageType.DATA,
-                    e.getStatusCode(), e.getMessage(), "Server");
-        } catch (SQLException | IOException e) {
-            return new Message(request.getUid(), IConstant.MSG_SHOP_UPDATE_GOODS, MessageType.DATA,
-                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
-        }
-    }
-
-    /**
-     * 处理商店"删除商品"请求（管理员）。
-     *
-     * @param request 删除商品请求，{@code data} 为 {@link ShopRequest}（含 goodsId）
-     * @return 删除结果消息：成功时 {@code data} 为提示文本
-     */
-    private Message handleShopDeleteGoods(Message request) {
-        try {
-            ShopRequest req = (ShopRequest) request.getData();
-            boolean ok = _storeServerSrv.deleteGoods(req.getGoodsId());
-            return new Message(request.getUid(), IConstant.MSG_SHOP_DELETE_GOODS, MessageType.DATA,
-                    ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR, ok ? "删除成功" : "删除失败", "Server");
-        } catch (ShopException e) {
-            return new Message(request.getUid(), IConstant.MSG_SHOP_DELETE_GOODS, MessageType.DATA,
-                    e.getStatusCode(), e.getMessage(), "Server");
-        } catch (SQLException | IOException e) {
-            return new Message(request.getUid(), IConstant.MSG_SHOP_DELETE_GOODS, MessageType.DATA,
                     IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
         }
     }

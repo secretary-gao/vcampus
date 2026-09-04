@@ -2,7 +2,8 @@
 -- Vcampus 虚拟校园系统 - 商店模块数据库脚本
 -- 对应 standard/共享说明书.docx 商店模块 tblGoods / tblPurchase 表设计
 -- 用法：mysql -u root -p --default-character-set=utf8mb4 < sql/shop/vcampus_shop.sql
--- 依赖：先执行过 sql/vcampus_schema.sql（已建 vCampus 库与 tblUser 表）
+-- 依赖：先执行过 sql/vcampus_schema.sql（已建 vCampus 库与 tblUser 表）；
+--       购买/拿订单演示需要示例用户，请先执行 sql/seed_demo_data.sql
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS vCampus
