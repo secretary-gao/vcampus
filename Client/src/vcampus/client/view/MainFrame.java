@@ -401,6 +401,10 @@ public class MainFrame extends Application {
             showStudentPage();
             return;
         }
+        if ("hospital".equals(moduleKey)) {
+            openHospital();
+            return;
+        }
         if ("shop".equals(moduleKey)) {
             openStore();
             return;
@@ -464,6 +468,22 @@ public class MainFrame extends Application {
             alert.setTitle("错误");
             alert.setHeaderText(null);
             alert.setContentText("打开商店模块失败：" + e.getMessage());
+            alert.showAndWait();
+        }
+    }
+
+    /** 打开医院模块的真实业务界面，并传入当前登录身份。 */
+    private void openHospital() {
+        try {
+            String userId = _currentUser == null ? "" : safeText(_currentUser.getUId());
+            String role = _currentUser == null ? "" : safeText(_currentUser.getURole());
+            Stage hospitalStage = new Stage();
+            new HospitalFrame(userId, role).start(hospitalStage);
+        } catch (Exception e) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("错误");
+            alert.setHeaderText(null);
+            alert.setContentText("打开医院模块失败：" + e.getMessage());
             alert.showAndWait();
         }
     }

@@ -1,7 +1,7 @@
 # Course 模块开发与演示说明
 
 Course 模块已完成课程查询、选课/退课、教务排课、学生课程表及 JavaFX 页面，
-并接入当前 `origin/dev/user` 的 User / Library / Student / Shop 四模块集成架构。
+并接入当前 `origin/main` 的 User / Library / Student / Shop / Hospital 五模块集成架构。
 
 ## 1. 调用链与职责
 
