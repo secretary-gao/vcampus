@@ -30,9 +30,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
-import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.CornerRadii;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -40,9 +38,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.paint.CycleMethod;
 import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Stop;
-import javafx.scene.shape.Circle;
-import javafx.scene.shape.Line;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
@@ -52,7 +47,8 @@ import java.io.IOException;
 /**
  * 客户端登录/注册窗口。用户填写登录ID、密码、角色后，点击"登录"或"注册"
  * 按钮，通过 {@link UserClientSrv} 把请求发给服务器，并根据响应弹窗提示
- * 成功或失败。这是用户管理模块本周要跑通的完整链路的界面入口。
+ * 成功或失败。界面参照东南大学"身份认证中心"统一登录页的视觉风格：
+ * 居中的单张白色卡片 + 校徽 + 简洁表单。
  */
 public class LoginFrame extends Application {
 
@@ -81,20 +77,18 @@ public class LoginFrame extends Application {
     }
 
     /**
-     * 搭建窗口上的各个控件与布局。
+     * 搭建窗口上的各个控件与布局：浅色渐变背景上居中放置一张登录卡片。
      */
     private void buildUi(Stage stage) {
-        BorderPane root = new BorderPane();
+        StackPane root = new StackPane();
         root.setBackground(new Background(new BackgroundFill(
                 new LinearGradient(0, 0, 1, 1, true, CycleMethod.NO_CYCLE,
-                        new Stop(0, Color.web("#f7f9fc")),
-                        new Stop(1, Color.web("#e9f1fb"))),
+                        new Stop(0, Color.web("#eef3f8")),
+                        new Stop(1, Color.web("#dde8f4"))),
                 CornerRadii.EMPTY, Insets.EMPTY)));
+        root.getChildren().add(buildLoginCard());
 
-        root.setLeft(buildBrandPanel());
-        root.setCenter(buildLoginPanel());
-
-        Scene scene = new Scene(root, 1200, 760);
+        Scene scene = new Scene(root, 1200, 780);
         stage.setTitle("东南大学 Vcampus 身份认证中心");
         stage.setResizable(false);
         stage.setScene(scene);
@@ -103,163 +97,149 @@ public class LoginFrame extends Application {
     }
 
     /**
-     * 构建左侧品牌区。
+     * 构建居中的登录卡片：校徽品牌区 + 表单区 + 操作按钮。
      *
-     * @return 品牌面板
+     * @return 登录卡片
      */
-    private VBox buildBrandPanel() {
-        VBox panel = new VBox(18);
-        panel.setPrefWidth(360);
-        panel.setPadding(new Insets(54, 34, 56, 48));
-        panel.setAlignment(Pos.TOP_LEFT);
-        panel.setStyle("-fx-background-color: rgba(255,255,255,0.96);"
-                + "-fx-background-radius: 0 42 42 0;"
-                + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 24, 0.18, 2, 0);");
+    private VBox buildLoginCard() {
+        VBox card = new VBox(22);
+        card.setMaxWidth(440);
+        card.setPrefWidth(440);
+        card.setPadding(new Insets(42, 44, 40, 44));
+        card.setAlignment(Pos.TOP_CENTER);
+        card.setStyle("-fx-background-color: white;"
+                + "-fx-background-radius: 22;"
+                + "-fx-effect: dropshadow(gaussian, rgba(15,40,70,0.18), 34, 0.18, 0, 14);");
 
-        StackPane emblem = new StackPane();
-        emblem.setPrefSize(118, 118);
-
-        Circle outer = new Circle(52, Color.web("#f3cf57"));
-        outer.setStroke(Color.web("#9b7815"));
-        outer.setStrokeWidth(3);
-
-        Circle inner = new Circle(41, Color.web("#fff8db"));
-        inner.setStroke(Color.web("#d7b243"));
-        inner.setStrokeWidth(1.5);
-
-        Rectangle tower = new Rectangle(16, 26, Color.web("#b98516"));
-        tower.setArcWidth(2);
-        tower.setArcHeight(2);
-        tower.setTranslateY(4);
-
-        Rectangle roof = new Rectangle(30, 8, Color.web("#b98516"));
-        roof.setArcWidth(2);
-        roof.setArcHeight(2);
-        roof.setTranslateY(-12);
-
-        Rectangle base = new Rectangle(44, 8, Color.web("#b98516"));
-        base.setArcWidth(2);
-        base.setArcHeight(2);
-        base.setTranslateY(16);
-
-        Line leftWing = new Line(-16, 2, -34, -10);
-        leftWing.setStroke(Color.web("#b98516"));
-        leftWing.setStrokeWidth(3);
-        Line rightWing = new Line(16, 2, 34, -10);
-        rightWing.setStroke(Color.web("#b98516"));
-        rightWing.setStrokeWidth(3);
-
-        Label sealText = new Label("东南");
-        sealText.setTextFill(Color.web("#9b7815"));
-        sealText.setFont(Font.font("System", FontWeight.BOLD, 18));
-        sealText.setTranslateY(34);
-
-        emblem.getChildren().addAll(outer, inner, roof, tower, base, leftWing, rightWing, sealText);
-
-        VBox titleBlock = new VBox(2);
-        Label school = new Label("东南大学");
-        school.setFont(Font.font("KaiTi", FontWeight.BOLD, 30));
-        school.setTextFill(Color.web("#151515"));
-
-        Label english = new Label("SOUTHEAST UNIVERSITY");
-        english.setFont(Font.font("System", FontWeight.BOLD, 12));
-        english.setTextFill(Color.web("#7a8696"));
-
-        titleBlock.getChildren().addAll(school, english);
-
-        Label center = new Label("身份认证中心");
-        center.setFont(Font.font("System", FontWeight.BOLD, 28));
-        center.setTextFill(Color.web("#111111"));
-
-        Label desc = new Label("欢迎登录 Vcampus 系列作品\n统一管理校园服务入口");
-        desc.setTextFill(Color.web("#5a6472"));
-        desc.setFont(Font.font("System", 15));
-        desc.setLineSpacing(6);
-
-        panel.getChildren().addAll(emblem, titleBlock, center, desc);
-        return panel;
+        card.getChildren().addAll(buildHeader(), buildForm(), buildOptionRow(), buildButtonBlock());
+        return card;
     }
 
     /**
-     * 构建中间登录区。
+     * 构建头部：校徽 + 校名 + "身份认证中心" + 副标题，全部居中，
+     * 呼应真实统一登录页"校徽居中、标题居中"的样式。
      *
-     * @return 登录面板
+     * @return 头部面板
      */
-    private StackPane buildLoginPanel() {
-        StackPane wrapper = new StackPane();
-        wrapper.setPadding(new Insets(36, 18, 36, 18));
+    private VBox buildHeader() {
+        StackPane emblem = SeuEmblem.build(76);
 
-        VBox card = new VBox(18);
-        card.setMaxWidth(380);
-        card.setPrefWidth(380);
-        card.setPadding(new Insets(30, 28, 28, 28));
-        card.setAlignment(Pos.CENTER_LEFT);
-        card.setStyle("-fx-background-color: rgba(255,255,255,0.98);"
-                + "-fx-background-radius: 24;"
-                + "-fx-border-radius: 24;"
-                + "-fx-border-color: rgba(45,106,159,0.12);"
-                + "-fx-effect: dropshadow(gaussian, rgba(28,54,84,0.12), 22, 0.12, 0, 8);");
+        Label school = new Label("东南大学");
+        school.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 23));
+        school.setTextFill(Color.web("#13161c"));
 
-        Label cardTitle = new Label("账号登录");
-        cardTitle.setFont(Font.font("System", FontWeight.BOLD, 26));
-        cardTitle.setTextFill(Color.web("#1d2b39"));
+        Label english = new Label("SOUTHEAST UNIVERSITY");
+        english.setFont(Font.font("System", FontWeight.BOLD, 11));
+        english.setTextFill(Color.web("#98a3b1"));
 
-        Label cardTip = new Label("请输入学号/工号和密码");
-        cardTip.setTextFill(Color.web("#738092"));
-        cardTip.setFont(Font.font("System", 13));
+        VBox brandText = new VBox(2, school, english);
+        brandText.setAlignment(Pos.CENTER);
 
-        _uidField.setPromptText("请输入登录ID");
+        VBox brandBlock = new VBox(10, emblem, brandText);
+        brandBlock.setAlignment(Pos.CENTER);
+
+        Label center = new Label("身份认证中心");
+        center.setFont(Font.font("System", FontWeight.BOLD, 21));
+        center.setTextFill(Color.web("#1d2b39"));
+
+        Label desc = new Label("欢迎登录 Vcampus 系列作品 · 统一管理校园服务入口");
+        desc.setTextFill(Color.web("#8b96a4"));
+        desc.setFont(Font.font("System", 12.5));
+
+        VBox header = new VBox(6, brandBlock, center, desc);
+        header.setAlignment(Pos.CENTER);
+        VBox.setMargin(center, new Insets(14, 0, 0, 0));
+        return header;
+    }
+
+    /**
+     * 构建表单区：登录ID、密码、角色三个纵向排列的字段，宽度撑满卡片。
+     *
+     * @return 表单面板
+     */
+    private VBox buildForm() {
+        _uidField.setPromptText("请输入学号 / 工号");
         _pwdField.setPromptText("请输入密码");
-        _uidField.setPrefHeight(42);
-        _pwdField.setPrefHeight(42);
+        _uidField.setPrefHeight(44);
+        _pwdField.setPrefHeight(44);
+        _uidField.setMaxWidth(Double.MAX_VALUE);
+        _pwdField.setMaxWidth(Double.MAX_VALUE);
         _uidField.setStyle(fieldStyle());
         _pwdField.setStyle(fieldStyle());
 
         _roleBox.getItems().setAll("学生", "管理员");
         _roleBox.getSelectionModel().selectFirst();
-        _roleBox.setPrefHeight(42);
+        _roleBox.setPrefHeight(44);
+        _roleBox.setMaxWidth(Double.MAX_VALUE);
         _roleBox.setStyle(fieldStyle());
 
-        GridPane form = new GridPane();
-        form.setHgap(10);
-        form.setVgap(12);
-        form.setMaxWidth(320);
-        form.add(new Label("登录ID"), 0, 0);
-        form.add(_uidField, 0, 1);
-        form.add(new Label("密码"), 0, 2);
-        form.add(_pwdField, 0, 3);
-        form.add(new Label("角色"), 0, 4);
-        form.add(_roleBox, 0, 5);
+        VBox form = new VBox(6,
+                fieldLabel("登录ID"), _uidField,
+                fieldLabel("密码"), _pwdField,
+                fieldLabel("角色"), _roleBox);
+        form.setFillWidth(true);
+        VBox.setMargin(_uidField, new Insets(0, 0, 8, 0));
+        VBox.setMargin(_pwdField, new Insets(0, 0, 8, 0));
+        return form;
+    }
 
+    /**
+     * 表单字段的小标题标签。
+     *
+     * @param text 标签文字
+     * @return 标签控件
+     */
+    private Label fieldLabel(String text) {
+        Label label = new Label(text);
+        label.setFont(Font.font("System", FontWeight.BOLD, 12.5));
+        label.setTextFill(Color.web("#5a6472"));
+        return label;
+    }
+
+    /**
+     * 构建"记住密码"选项行。
+     *
+     * @return 选项行
+     */
+    private HBox buildOptionRow() {
         _rememberBox.setTextFill(Color.web("#607080"));
-        _rememberBox.setFont(Font.font("System", 13));
+        _rememberBox.setFont(Font.font("System", 12.5));
 
-        HBox optionBar = new HBox(12, _rememberBox);
+        HBox optionBar = new HBox(_rememberBox);
         optionBar.setAlignment(Pos.CENTER_LEFT);
+        return optionBar;
+    }
 
-        Button loginButton = new Button("登录");
-        Button registerButton = new Button("注册");
+    /**
+     * 构建底部操作区：整宽的绿色"登录"主按钮 + "还没有账号？立即注册"链接行。
+     *
+     * @return 按钮区
+     */
+    private VBox buildButtonBlock() {
+        Button loginButton = new Button("登  录");
         loginButton.setOnAction(e -> onLogin());
-        registerButton.setOnAction(e -> onRegister());
-        loginButton.setPrefWidth(130);
-        registerButton.setPrefWidth(130);
-        loginButton.setPrefHeight(44);
-        registerButton.setPrefHeight(44);
-        loginButton.setStyle("-fx-background-color: #73c553; -fx-text-fill: white;"
-                + " -fx-font-size: 16px; -fx-font-weight: bold;"
-                + " -fx-background-radius: 22; -fx-cursor: hand;");
-        registerButton.setStyle("-fx-background-color: white; -fx-text-fill: #2d6a9f;"
-                + " -fx-border-color: #2d6a9f; -fx-border-width: 1.2;"
-                + " -fx-border-radius: 22; -fx-background-radius: 22;"
-                + " -fx-font-size: 16px; -fx-font-weight: bold; -fx-cursor: hand;");
+        loginButton.setMaxWidth(Double.MAX_VALUE);
+        loginButton.setPrefHeight(46);
+        loginButton.setStyle("-fx-background-color: linear-gradient(to right, #3fa34d, #5bc46d);"
+                + " -fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"
+                + " -fx-background-radius: 23; -fx-cursor: hand;");
 
-        HBox buttonBar = new HBox(12, loginButton, registerButton);
-        buttonBar.setAlignment(Pos.CENTER);
-        buttonBar.setMaxWidth(320);
+        Label registerTip = new Label("还没有账号？");
+        registerTip.setTextFill(Color.web("#8b96a4"));
+        registerTip.setFont(Font.font("System", 12.5));
 
-        card.getChildren().addAll(cardTitle, cardTip, form, optionBar, buttonBar);
-        wrapper.getChildren().add(card);
-        return wrapper;
+        Button registerLink = new Button("立即注册");
+        registerLink.setOnAction(e -> onRegister());
+        registerLink.setStyle("-fx-background-color: transparent; -fx-text-fill: #2d6a9f;"
+                + " -fx-font-size: 12.5px; -fx-font-weight: bold; -fx-underline: true;"
+                + " -fx-cursor: hand; -fx-padding: 0;");
+
+        HBox registerRow = new HBox(4, registerTip, registerLink);
+        registerRow.setAlignment(Pos.CENTER);
+
+        VBox block = new VBox(14, loginButton, registerRow);
+        block.setAlignment(Pos.CENTER);
+        return block;
     }
 
     /**
@@ -268,11 +248,11 @@ public class LoginFrame extends Application {
      * @return CSS 样式
      */
     private String fieldStyle() {
-        return "-fx-background-radius: 18;"
-                + "-fx-border-radius: 18;"
-                + "-fx-border-color: #edf2f6;"
+        return "-fx-background-radius: 12;"
+                + "-fx-border-radius: 12;"
+                + "-fx-border-color: #e3e9ef;"
                 + "-fx-border-width: 1;"
-                + "-fx-background-color: #ffffff;"
+                + "-fx-background-color: #f8fafc;"
                 + "-fx-padding: 0 14 0 14;"
                 + "-fx-font-size: 14px;";
     }
@@ -301,6 +281,10 @@ public class LoginFrame extends Application {
 
         if (uid.isEmpty() || pwd.isEmpty()) {
             showAlert(Alert.AlertType.WARNING, "提示", "登录ID和密码不能为空");
+            return null;
+        }
+        if (uid.length() != 8) {
+            showAlert(Alert.AlertType.WARNING, "提示", "登录ID必须为8位");
             return null;
         }
 

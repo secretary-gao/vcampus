@@ -9,6 +9,7 @@
  */
 package vcampus.server.srv;
 
+import vcampus.common.constant.StudentProtocol;
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
@@ -21,7 +22,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,9 +33,10 @@ import java.util.Map;
  *
  * <p>
  * 本线程只处理一次请求/响应：读取客户端发来的一个 {@link Message}，
- * 根据 {@code Message.getName()} 通过可扩展的处理器表进行分发，调用
- * {@link UserServerSrv} 完成业务处理后，把结果封装成响应 {@link Message}
- * 写回客户端，随后关闭连接、线程结束。
+ * 根据 {@code Message.getName()} 进行分发。用户管理、图书馆、学籍模块
+ * 沿用注册表（{@code _handlerMap}）方式；其余业务模块（如商店）则通过
+ * {@link ModuleHandler} 处理器列表接入（见 {@link StoreModuleHandler}），
+ * 处理完成后把结果封装成响应 {@link Message} 写回客户端，随后关闭连接、线程结束。
  * </p>
  *
  * <p>
@@ -52,10 +56,13 @@ public class ServerThread implements Runnable {
     /** 图书馆模块业务服务，由本线程独立持有，避免多线程共享状态。 */
     private final LibraryHandler _libraryHandler = new LibraryHandler();
 
-    /** 选课模块请求处理器。 */
-    private final CourseHandler _courseHandler = new CourseHandler();
+    /** 学籍模块请求处理器，由统一服务器负责分发请求。 */
+    private final StudentRequestHandler _studentRequestHandler = new StudentRequestHandler();
 
-    /** 请求处理器注册表。 */
+    /** 各业务模块的请求处理器列表（模块化接入，见 {@link ModuleHandler}）。 */
+    private final List<ModuleHandler> _moduleHandlers = new ArrayList<>();
+
+    /** 用户管理/图书馆/学籍模块的请求处理器注册表。 */
     private final Map<String, RequestHandler> _handlerMap = new HashMap<>();
 
     /**
@@ -66,6 +73,8 @@ public class ServerThread implements Runnable {
     public ServerThread(Socket socket) {
         this._socket = socket;
         registerHandlers();
+        _moduleHandlers.add(new StoreModuleHandler());
+        _moduleHandlers.add(new CourseHandler());
     }
 
     /**
@@ -104,10 +113,14 @@ public class ServerThread implements Runnable {
         RequestHandler handler = _handlerMap.get(name);
         if (handler != null) {
             return handler.handle(request);
-        } else {
-            return new Message(request.getUid(), name, MessageType.DATA,
-                    IConstant.STATUS_ERROR, "未知的请求类型：" + name, "Server");
         }
+        for (ModuleHandler moduleHandler : _moduleHandlers) {
+            if (moduleHandler.supportedMessages().contains(name)) {
+                return moduleHandler.handle(request);
+            }
+        }
+        return new Message(request.getUid(), name, MessageType.DATA,
+                IConstant.STATUS_ERROR, "未知的请求类型：" + name, "Server");
     }
 
     /**
@@ -121,8 +134,20 @@ public class ServerThread implements Runnable {
     }
 
     /**
+     * 处理学籍模块请求，转发给 {@link StudentRequestHandler}。
+     *
+     * @param request 学籍模块请求消息
+     * @return 学籍模块处理结果
+     */
+    private Message handleStudentRequest(Message request) {
+        return _studentRequestHandler.handle(request);
+    }
+
+    /**
      * 注册请求处理器。各模块按 {@code Message.getName()} 的取值把自己的处理
      * 方法注册进来，新增模块时只需在这里加一行，不用改 {@link #handleRequest}。
+     * 不方便用固定消息名列表接入的模块（如商店），改用 {@link #_moduleHandlers}
+     * 列表接入，见构造方法。
      */
     private void registerHandlers() {
         _handlerMap.put(IConstant.MSG_LOGIN, this::handleLogin);
@@ -132,25 +157,13 @@ public class ServerThread implements Runnable {
         _handlerMap.put(IConstant.MSG_BORROW_BOOK, this::handleLibraryRequest);
         _handlerMap.put(IConstant.MSG_RETURN_BOOK, this::handleLibraryRequest);
         _handlerMap.put(IConstant.MSG_GET_BORROW_RECORDS, this::handleLibraryRequest);
-        _handlerMap.put(IConstant.MSG_COURSE_QUERY, this::handleCourseRequest);
-        _handlerMap.put(IConstant.MSG_COURSE_SELECT, this::handleCourseRequest);
-        _handlerMap.put(IConstant.MSG_COURSE_DROP, this::handleCourseRequest);
-        _handlerMap.put(IConstant.MSG_COURSE_SELECTED_QUERY, this::handleCourseRequest);
-        _handlerMap.put(IConstant.MSG_COURSE_SCHEDULE_QUERY, this::handleCourseRequest);
-        _handlerMap.put(IConstant.MSG_COURSE_SCHEDULE_ADD, this::handleCourseRequest);
-        _handlerMap.put(IConstant.MSG_COURSE_SCHEDULE_UPDATE, this::handleCourseRequest);
-        _handlerMap.put(IConstant.MSG_COURSE_SCHEDULE_DELETE, this::handleCourseRequest);
-        _handlerMap.put(IConstant.MSG_STUDENT_TIMETABLE_QUERY, this::handleCourseRequest);
-    }
-
-    /**
-     * 处理选课模块请求，转发给 {@link CourseHandler}。
-     *
-     * @param request 选课模块请求
-     * @return 选课模块响应
-     */
-    private Message handleCourseRequest(Message request) {
-        return _courseHandler.handle(request);
+        _handlerMap.put(StudentProtocol.LIST, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.QUERY_BY_ID, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.QUERY_BY_CARD, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.QUERY_BY_NAME, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.ADD, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.UPDATE, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.DELETE, this::handleStudentRequest);
     }
 
     /**
@@ -169,6 +182,9 @@ public class ServerThread implements Runnable {
             }
             return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
                     IConstant.STATUS_SUCCESS, found, "Server");
+        } catch (IllegalArgumentException e) {
+            return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
+                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
         } catch (SQLException | IOException e) {
             return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
                     IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
@@ -189,6 +205,9 @@ public class ServerThread implements Runnable {
             String data = ok ? "注册成功" : "注册失败，请稍后重试";
             return new Message(request.getUid(), IConstant.MSG_REGISTER, MessageType.DATA,
                     statusCode, data, "Server");
+        } catch (IllegalArgumentException e) {
+            return new Message(request.getUid(), IConstant.MSG_REGISTER, MessageType.DATA,
+                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
         } catch (UserExistsException e) {
             return new Message(request.getUid(), IConstant.MSG_REGISTER, MessageType.DATA,
                     IConstant.STATUS_USER_EXISTS, e.getMessage(), "Server");

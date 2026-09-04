@@ -35,6 +35,9 @@ public interface IConstant {
     /** 状态码：用户不存在。 */
     String STATUS_USER_NOT_FOUND = "404";
 
+    /** 状态码：请求参数不符合业务要求。 */
+    String STATUS_BAD_REQUEST = "400";
+
     /** 状态码：注册时用户名已存在。 */
     String STATUS_USER_EXISTS = "409";
 
@@ -67,6 +70,32 @@ public interface IConstant {
     String MSG_COURSE_SCHEDULE_DELETE = "courseScheduleDelete";
     String MSG_STUDENT_TIMETABLE_QUERY = "studentTimetableQuery";
 
-    /** 状态码：请求参数或业务条件不满足。 */
-    String STATUS_BAD_REQUEST = "400";
+    // ---------- 虚拟商店模块（store）消息名与状态码 ----------
+
+    /** 状态码：商品不存在。 */
+    String STATUS_GOODS_NOT_FOUND = "404";
+
+    /** 状态码：库存不足。 */
+    String STATUS_STOCK_NOT_ENOUGH = "409";
+
+    /** 状态码：业务冲突（如商品编号重复、存在购买记录禁止删除）。 */
+    String STATUS_CONFLICT = "409";
+
+    /** 消息名：查询商品（按关键字/类别筛选）。 */
+    String MSG_SHOP_QUERY_GOODS = "shopQueryGoods";
+
+    /** 消息名：购买商品。 */
+    String MSG_SHOP_PURCHASE = "shopPurchase";
+
+    /** 消息名：查询购买记录（按购买人）。 */
+    String MSG_SHOP_QUERY_RECORDS = "shopQueryRecords";
+
+    /** 消息名：新增商品（管理员）。 */
+    String MSG_SHOP_ADD_GOODS = "shopAddGoods";
+
+    /** 消息名：修改商品（管理员）。 */
+    String MSG_SHOP_UPDATE_GOODS = "shopUpdateGoods";
+
+    /** 消息名：删除商品（管理员）。 */
+    String MSG_SHOP_DELETE_GOODS = "shopDeleteGoods";
 }

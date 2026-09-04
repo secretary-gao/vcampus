@@ -17,11 +17,12 @@ import vcampus.common.vo.CourseSchedule;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 选课模块 Socket 请求处理器：解析 {@link Message}，调用服务器业务服务，并封装响应。
  */
-public class CourseHandler {
+public class CourseHandler implements ModuleHandler {
 
     /** 选课服务器业务服务。 */
     private final ICourseServerSrv _courseServerSrv;
@@ -40,12 +41,29 @@ public class CourseHandler {
         this._courseServerSrv = courseServerSrv;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> supportedMessages() {
+        return Set.of(
+                IConstant.MSG_COURSE_QUERY,
+                IConstant.MSG_COURSE_SELECT,
+                IConstant.MSG_COURSE_DROP,
+                IConstant.MSG_COURSE_SELECTED_QUERY,
+                IConstant.MSG_COURSE_SCHEDULE_QUERY,
+                IConstant.MSG_COURSE_SCHEDULE_ADD,
+                IConstant.MSG_COURSE_SCHEDULE_UPDATE,
+                IConstant.MSG_COURSE_SCHEDULE_DELETE,
+                IConstant.MSG_STUDENT_TIMETABLE_QUERY
+        );
+    }
+
     /**
      * 处理选课模块请求。
      *
      * @param request 客户端请求
      * @return 服务器响应
      */
+    @Override
     public Message handle(Message request) {
         try {
             return switch (request.getName()) {
