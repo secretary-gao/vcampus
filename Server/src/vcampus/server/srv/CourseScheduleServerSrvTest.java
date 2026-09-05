@@ -14,58 +14,73 @@ import vcampus.common.vo.CourseSchedule;
 import vcampus.server.dao.CourseDAO;
 import vcampus.server.dao.CourseScheduleDAO;
 import vcampus.server.dao.CourseTestData;
+import vcampus.server.dao.DbHelper;
 import vcampus.server.dao.SelectCourseDAO;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /** 排课业务自测，覆盖教室冲突、教师冲突、CRUD 和学生课程表。 */
 public class CourseScheduleServerSrvTest {
 
-    private static final String COURSE_A = "T_SCH_SRV_A_0904";
-    private static final String COURSE_B = "T_SCH_SRV_B_0904";
-    private static final String COURSE_C = "T_SCH_SRV_C_0904";
-    private static final String STUDENT_ID = "SCH0904001";
-    private static final String USER_ID = "CSCH0904";
+    // 同时隔离主键和冲突检查使用的教师、教室，不占用 demo 或业务数据的时空资源。
+    private final String _runId = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+    private final String COURSE_A = "TSA" + _runId;
+    private final String COURSE_B = "TSB" + _runId;
+    private final String COURSE_C = "TSC" + _runId;
+    private final String STUDENT_ID = "TS" + _runId.substring(0, 8);
+    private final String USER_ID = _runId.substring(0, 8);
+    private final String TEACHER_A = "TA" + _runId;
+    private final String TEACHER_B = "TB" + _runId;
+    private final String ROOM_A = "RA" + _runId;
+    private final String ROOM_B = "RB" + _runId;
+    private final String ROOM_C = "RC" + _runId;
+    private final List<String> _createdCourses = new ArrayList<>();
+    private boolean _studentCreated;
 
     /** 程序入口。 */
     public static void main(String[] args) throws Exception {
+        new CourseScheduleServerSrvTest().run();
+    }
+
+    private void run() throws Exception {
         CourseDAO courseDAO = new CourseDAO();
         SelectCourseDAO selectDAO = new SelectCourseDAO();
         CourseScheduleDAO scheduleDAO = new CourseScheduleDAO();
         CourseServerSrv service = new CourseServerSrv(courseDAO, selectDAO, scheduleDAO);
 
-        cleanup(courseDAO, selectDAO, scheduleDAO);
         try {
-            CourseTestData.prepareStudent(USER_ID, STUDENT_ID);
-            require(courseDAO.insertCourse(new Course(
-                    COURSE_A, "排课课程 A", "同一教师", 2, 20, 0)), "准备课程 A");
-            require(courseDAO.insertCourse(new Course(
-                    COURSE_B, "排课课程 B", "同一教师", 2, 20, 0)), "准备课程 B");
-            require(courseDAO.insertCourse(new Course(
-                    COURSE_C, "排课课程 C", "另一教师", 2, 20, 0)), "准备课程 C");
+            prepareStudent();
+            prepareCourse(courseDAO, COURSE_A, TEACHER_A);
+            prepareCourse(courseDAO, COURSE_B, TEACHER_A);
+            prepareCourse(courseDAO, COURSE_C, TEACHER_B);
 
             CourseSchedule first = service.addSchedule(new CourseSchedule(
-                    null, COURSE_A, "教一-101", 1,
+                    null, COURSE_A, ROOM_A, 1,
                     LocalTime.of(9, 0), LocalTime.of(10, 0)));
             require(first.getScheduleId() != null, "新增排课并生成记录号");
 
             expectFailure(() -> service.addSchedule(new CourseSchedule(
-                    null, COURSE_C, "教一-101", 1,
+                    null, COURSE_C, ROOM_A, 1,
                     LocalTime.of(9, 30), LocalTime.of(10, 30))), "教室重叠冲突");
             expectFailure(() -> service.addSchedule(new CourseSchedule(
-                    null, COURSE_B, "教二-202", 1,
+                    null, COURSE_B, ROOM_B, 1,
                     LocalTime.of(9, 30), LocalTime.of(10, 30))), "教师重叠冲突");
             expectFailure(() -> service.addSchedule(new CourseSchedule(
-                    null, COURSE_C, "教三-303", 2,
+                    null, COURSE_C, ROOM_C, 2,
                     LocalTime.of(11, 0), LocalTime.of(10, 0))), "开始时间必须早于结束时间");
 
             CourseSchedule second = service.addSchedule(new CourseSchedule(
-                    null, COURSE_C, "教二-202", 1,
+                    null, COURSE_C, ROOM_B, 1,
                     LocalTime.of(9, 30), LocalTime.of(10, 30)));
             require(service.querySchedule().size() >= 2, "查询全部排课");
 
-            second.setClassroom("教三-303");
+            second.setClassroom(ROOM_C);
             second.setDayOfWeek(2);
             second.setStartTime(LocalTime.of(10, 0));
             second.setEndTime(LocalTime.of(11, 0));
@@ -89,25 +104,56 @@ public class CourseScheduleServerSrvTest {
         }
     }
 
-    /** 清理测试数据。 */
-    private static void cleanup(CourseDAO courseDAO, SelectCourseDAO selectDAO,
-                                CourseScheduleDAO scheduleDAO) throws Exception {
-        for (CourseSchedule schedule : scheduleDAO.findAll()) {
-            if (List.of(COURSE_A, COURSE_B, COURSE_C).contains(schedule.getCourseId())) {
-                scheduleDAO.deleteSchedule(schedule.getScheduleId());
+    /** 只插入新夹具，不预先删除任何同 ID 的既有数据；碰撞时由唯一键拒绝。 */
+    private void prepareStudent() throws Exception {
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement user = conn.prepareStatement(
+                    "INSERT INTO tblUser (uId, uName, uAge, uSex, uPwd, uRole) "
+                            + "VALUES (?, '排课测试', 20, '男', ?, '学生')");
+                 PreparedStatement student = conn.prepareStatement(
+                         "INSERT INTO tblStudent (studentId, campusCardNo, userId, name, "
+                                 + "className, major, grade, enrollmentDate, status) "
+                                 + "VALUES (?, ?, ?, '排课测试', '测试班', '计算机', "
+                                 + "'2026', '2026-09-01', '在读')")) {
+                user.setString(1, USER_ID);
+                user.setString(2, "00000000000000000000000000000000");
+                user.executeUpdate();
+                student.setString(1, STUDENT_ID);
+                student.setString(2, "CARD" + _runId);
+                student.setString(3, USER_ID);
+                student.executeUpdate();
+                conn.commit();
+                _studentCreated = true;
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
             }
         }
-        selectDAO.deleteSelectCourse(STUDENT_ID, COURSE_A);
-        selectDAO.deleteSelectCourse(STUDENT_ID, COURSE_B);
-        selectDAO.deleteSelectCourse(STUDENT_ID, COURSE_C);
-        deleteCourse(courseDAO, COURSE_A);
-        deleteCourse(courseDAO, COURSE_B);
-        deleteCourse(courseDAO, COURSE_C);
-        CourseTestData.cleanupStudent(USER_ID, STUDENT_ID);
+    }
+
+    private void prepareCourse(CourseDAO dao, String id, String teacher) throws Exception {
+        require(dao.insertCourse(new Course(id, "排课测试课程", teacher, 2, 20, 0)), "准备测试课程");
+        _createdCourses.add(id);
+    }
+
+    /** 只清理本轮已成功创建的夹具。 */
+    private void cleanup(CourseDAO courseDAO, SelectCourseDAO selectDAO,
+                                CourseScheduleDAO scheduleDAO) throws Exception {
+        for (CourseSchedule schedule : scheduleDAO.findByCourseIds(_createdCourses)) {
+            scheduleDAO.deleteSchedule(schedule.getScheduleId());
+        }
+        for (String courseId : _createdCourses) {
+            selectDAO.deleteSelectCourse(STUDENT_ID, courseId);
+            deleteCourse(courseDAO, courseId);
+        }
+        if (_studentCreated) {
+            CourseTestData.cleanupStudent(USER_ID, STUDENT_ID);
+        }
     }
 
     /** 统计测试残留。 */
-    private static int residue(CourseDAO courseDAO, SelectCourseDAO selectDAO,
+    private int residue(CourseDAO courseDAO, SelectCourseDAO selectDAO,
                                CourseScheduleDAO scheduleDAO) throws Exception {
         int count = 0;
         count += courseDAO.findById(COURSE_A) == null ? 0 : 1;
@@ -115,9 +161,7 @@ public class CourseScheduleServerSrvTest {
         count += courseDAO.findById(COURSE_C) == null ? 0 : 1;
         count += selectDAO.findByStudentAndCourse(STUDENT_ID, COURSE_A) == null ? 0 : 1;
         count += selectDAO.findByStudentAndCourse(STUDENT_ID, COURSE_C) == null ? 0 : 1;
-        count += scheduleDAO.findAll().stream()
-                .filter(s -> List.of(COURSE_A, COURSE_B, COURSE_C).contains(s.getCourseId()))
-                .count();
+        count += scheduleDAO.findByCourseIds(List.of(COURSE_A, COURSE_B, COURSE_C)).size();
         count += CourseTestData.countResidue(USER_ID, STUDENT_ID);
         return count;
     }
