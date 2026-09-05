@@ -93,7 +93,6 @@ public class SelectedCoursesPane extends VBox {
         CourseViewSupport.runAsync(this,
                 () -> _client.dropCourse(_studentId, selected.getCourseId()), ignored -> {
                     _statusLabel.setText("已退选：" + selected.getCourseName());
-                    refresh();
                     _onEnrollmentChanged.run();
                 });
     }

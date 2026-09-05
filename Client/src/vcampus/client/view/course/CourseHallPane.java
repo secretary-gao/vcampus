@@ -97,7 +97,6 @@ public class CourseHallPane extends VBox {
         CourseViewSupport.runAsync(this,
                 () -> _client.selectCourse(_studentId, selected.getCourseId()), ignored -> {
                     _statusLabel.setText("已选：" + selected.getCourseName());
-                    refresh();
                     _onEnrollmentChanged.run();
                 });
     }

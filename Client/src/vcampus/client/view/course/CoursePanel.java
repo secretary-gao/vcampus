@@ -31,6 +31,7 @@ public class CoursePanel extends BorderPane {
     private final User _currentUser;
     private final ICourseClientSrv _client;
     private final TabPane _tabs = new TabPane();
+    private CourseHallPane _hallPane;
     private SelectedCoursesPane _selectedPane;
     private TimetablePane _timetablePane;
 
@@ -89,6 +90,9 @@ public class CoursePanel extends BorderPane {
 
     private void buildStudentTabs(String studentId) {
         Runnable enrollmentChanged = () -> {
+            if (_hallPane != null) {
+                _hallPane.refresh();
+            }
             if (_selectedPane != null) {
                 _selectedPane.refresh();
             }
@@ -96,10 +100,10 @@ public class CoursePanel extends BorderPane {
                 _timetablePane.refresh();
             }
         };
-        CourseHallPane hallPane = new CourseHallPane(_client, studentId, enrollmentChanged);
+        _hallPane = new CourseHallPane(_client, studentId, enrollmentChanged);
         _selectedPane = new SelectedCoursesPane(_client, studentId, enrollmentChanged);
         _timetablePane = new TimetablePane(_client, studentId);
-        addTab("课程大厅", hallPane);
+        addTab("课程大厅", _hallPane);
         addTab("我的课程", _selectedPane);
         addTab("我的课程表", _timetablePane);
         setCenter(_tabs);
