@@ -53,15 +53,37 @@ sql/course/
 
 ## 3. 数据库
 
-按以下顺序初始化：
+在项目根目录打开 PowerShell，启动 MySQL 客户端（`mysql` 需在 PATH 中，
+否则使用本机 `mysql.exe` 的实际安装路径）：
 
 ```powershell
-Get-Content -Raw sql/vcampus_schema.sql | mysql -u root -p --default-character-set=utf8mb4
-Get-Content -Raw sql/Student/BuildTbl.sql | mysql -u root -p --default-character-set=utf8mb4
-Get-Content -Raw sql/course/vcampus_course.sql | mysql -u root -p --default-character-set=utf8mb4
-Get-Content -Raw sql/seed_demo_data.sql | mysql -u root -p --default-character-set=utf8mb4
-Get-Content -Raw sql/course/seed_course_demo.sql | mysql -u root -p --default-character-set=utf8mb4
+mysql -u root -p --default-character-set=utf8mb4
 ```
+
+输入密码后，在 **MySQL 提示符内**逐条按顺序执行以下命令，不能在 PowerShell 提示符中执行。
+确认每一步没有 `ERROR` 后再继续；若报错，先修正该步，不要继续导入后续文件。
+
+```sql
+SOURCE sql/vcampus_schema.sql;
+SOURCE sql/Student/BuildTbl.sql;
+SOURCE sql/course/vcampus_course.sql;
+SOURCE sql/seed_demo_data.sql;
+SOURCE sql/course/seed_course_demo.sql;
+
+USE vCampus;
+SELECT courseId, courseName, teacher, HEX(courseName) FROM tblCourse ORDER BY courseId;
+SELECT scheduleId, classroom, dayOfWeek, startTime, endTime FROM tblCourseSchedule;
+EXIT;
+```
+
+前三步依次创建用户、学籍及 Course 表；后两步准备共享 demo 用户、Course 管理员、
+正式学籍、课程和排课。只有前三步是建表必需，演示时执行全部五步。其他模块的表和示例数据
+仍按各模块说明初始化；这里不会初始化 Shop 商品或 Hospital 医生。
+
+`SOURCE` 由 MySQL 直接读取 UTF-8 SQL 文件。不要使用 `Get-Content ... | mysql`：
+Windows PowerShell 5.1 的默认文件解码和原生程序管道编码可能把中文转成问号；
+仅添加 `-Encoding UTF8` 或 MySQL 的字符集参数不能同时解决这两步转换。
+若查询显示异常，可用 `HEX(courseName)` 区分终端显示问题和实际存储字节问题。
 
 三张业务表：
 
@@ -105,7 +127,13 @@ javac -encoding UTF-8 `
   --module-path "$fx\lib" --add-modules javafx.controls,javafx.fxml `
   -d bin -cp "lib\mysql-connector-j-9.7.0.jar" `
   (Get-ChildItem -Recurse Common\src,Server\src,Client\src -Filter *.java).FullName
+if ($LASTEXITCODE -ne 0) { throw 'Java 编译失败' }
+
+# javac 不复制图片；运行时仅依赖 bin 中的 classpath 资源。
+Copy-Item Client\src\vcampus\client\view\seu_logo.jpeg bin\vcampus\client\view\seu_logo.jpeg -ErrorAction Stop
 ```
+
+仓库的 `build.bat` 同样会在编译后复制医院图片资源。
 
 终端一启动统一服务器：
 
