@@ -17,7 +17,7 @@ if errorlevel 1 (
 echo.
 echo Starting client...
 echo.
-java -cp "bin;lib\mysql-connector-j-9.7.0.jar" --module-path "lib\javafx\lib" --add-modules javafx.controls,javafx.fxml vcampus.client.view.LoginFrame
+java -cp "bin;lib\mysql-connector-j-9.7.0.jar" --module-path "lib\javafx" --add-modules javafx.controls,javafx.fxml vcampus.client.view.LoginFrame
 
 echo.
 echo Client exited.

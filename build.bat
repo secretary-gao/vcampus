@@ -16,7 +16,7 @@ for /r "Server\src" %%f in (*.java) do (set "p=%%f" & set "p=!p:\=/!" & echo "!p
 for /r "Client\src" %%f in (*.java) do (set "p=%%f" & set "p=!p:\=/!" & echo "!p!">>"%SOURCES_LIST%")
 
 echo [2/3] Compiling...
-javac -encoding UTF-8 -d bin -cp "lib\mysql-connector-j-9.7.0.jar" --module-path "lib\javafx\lib" --add-modules javafx.controls,javafx.fxml "@%SOURCES_LIST%"
+javac -encoding UTF-8 -d bin -cp "lib\mysql-connector-j-9.7.0.jar" --module-path "lib\javafx" --add-modules javafx.controls,javafx.fxml "@%SOURCES_LIST%"
 
 set "BUILD_RESULT=%ERRORLEVEL%"
 del "%SOURCES_LIST%" >nul 2>&1
