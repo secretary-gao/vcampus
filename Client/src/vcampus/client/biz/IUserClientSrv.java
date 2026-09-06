@@ -50,4 +50,19 @@ public interface IUserClientSrv {
      * @throws ClassNotFoundException 反序列化响应对象失败
      */
     Message logout(User currentUser) throws IOException, ClassNotFoundException;
+
+    /**
+     * 发起禁用/启用账号请求，仅管理员操作有效（服务器端会重新校验操作者
+     * 的真实角色，不是客户端说自己是管理员就能生效）。
+     *
+     * @param operatorUId 发起操作的登录ID（当前登录的管理员）
+     * @param targetUId   被操作的目标用户登录ID
+     * @param newStatus   新状态，取值见 {@link User#STATUS_NORMAL}/
+     *                    {@link User#STATUS_DISABLED}
+     * @return 服务器返回的响应消息
+     * @throws IOException            网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message setUserStatus(String operatorUId, String targetUId, String newStatus)
+            throws IOException, ClassNotFoundException;
 }
