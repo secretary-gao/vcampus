@@ -175,8 +175,8 @@ public class MainFrame extends Application {
 
         String role = _currentUser == null ? "" : safeText(_currentUser.getURole());
         Label roleLabel = new Label(role.isEmpty() ? "访客" : role);
-        roleLabel.setTextFill(Color.web("#dcebfb"));
-        roleLabel.setFont(Font.font("System", 11));
+        roleLabel.setTextFill(Color.web(roleNavColor(role)));
+        roleLabel.setFont(Font.font("System", FontWeight.BOLD, 11));
 
         VBox textBlock = new VBox(0, nameLabel, roleLabel);
 
@@ -245,7 +245,7 @@ public class MainFrame extends Application {
 
         Label roleTag = new Label(role.isEmpty() ? "未设置" : role);
         roleTag.setTextFill(Color.WHITE);
-        roleTag.setStyle("-fx-background-color: #3fa34d; -fx-background-radius: 12;"
+        roleTag.setStyle("-fx-background-color: " + roleColor(role) + "; -fx-background-radius: 12;"
                 + "-fx-padding: 3 14 3 14; -fx-font-size: 11px; -fx-font-weight: bold;");
 
         Region divider = new Region();
@@ -629,6 +629,39 @@ public class MainFrame extends Application {
      */
     private String safeText(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    /**
+     * 角色对应的强调色（用于用户信息卡片里的角色标签背景），三种角色一眼可辨：
+     * 学生-绿、教师-蓝、管理员-金。
+     *
+     * @param role 角色文本
+     * @return 十六进制颜色字符串
+     */
+    private String roleColor(String role) {
+        if ("管理员".equals(role)) {
+            return "#c9860a";
+        }
+        if ("教师".equals(role)) {
+            return "#2d6a9f";
+        }
+        return "#3fa34d";
+    }
+
+    /**
+     * 角色对应的导航栏文字颜色（深蓝渐变背景上要用浅色文字才看得清）。
+     *
+     * @param role 角色文本
+     * @return 十六进制颜色字符串
+     */
+    private String roleNavColor(String role) {
+        if ("管理员".equals(role)) {
+            return "#ffd54f";
+        }
+        if ("教师".equals(role)) {
+            return "#bfe3ff";
+        }
+        return "#dcebfb";
     }
 
     /**
