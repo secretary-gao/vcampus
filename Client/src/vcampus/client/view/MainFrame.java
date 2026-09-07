@@ -1,14 +1,13 @@
 /*
  * MainFrame
  *
- * Version 1.0
+ * Version 1.1
  *
- * 2026-08-31
+ * 2026-09-07
  *
  * Copyright (c) 2026 Vcampus Team
  */
 package vcampus.client.view;
-
 import vcampus.client.biz.IUserClientSrv;
 import vcampus.client.biz.UserClientSrv;
 import vcampus.client.view.Library.LibraryPanel;
@@ -16,7 +15,6 @@ import vcampus.client.view.course.CoursePanel;
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.User;
-
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -46,9 +44,7 @@ import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
-
 import java.io.IOException;
-
 /**
  * 登录成功后的客户端主界面骨架。界面参照东南大学"一网通办"综合服务大厅
  * 的视觉风格：顶部蓝色导航条（校徽 + 标题 + 用户身份），
@@ -56,33 +52,24 @@ import java.io.IOException;
  * 点击图标进入对应业务模块占位页。
  */
 public class MainFrame extends Application {
-
     /** 卡片统一圆角与阴影样式。 */
     private static final String CARD_STYLE = "-fx-border-color: rgba(29,90,153,0.12); -fx-border-radius: 18;"
             + "-fx-background-radius: 18; -fx-background-color: rgba(255,255,255,0.97);"
             + "-fx-effect: dropshadow(gaussian, rgba(15,40,70,0.10), 20, 0.12, 0, 8);";
-
     /** 当前登录用户。 */
     private final User _currentUser;
-
     /** 客户端用户业务服务，负责向服务器发送登出请求。 */
     private final IUserClientSrv _userClientSrv = new UserClientSrv();
-
     /** 当前窗口的舞台。 */
     private Stage _stage;
-
     /** 左侧导航栏（身份信息 + 模块列表）。 */
     private VBox _sidebar;
-
     /** 右侧内容容器：点击左侧导航项后，具体操作界面显示在这里。 */
     private StackPane _contentStack;
-
     /** 左侧导航项：模块键名 → 对应的行容器，用于切换时更新高亮样式。 */
     private final java.util.Map<String, HBox> _navItems = new java.util.LinkedHashMap<>();
-
     /** 当前高亮的导航项键名，"dashboard" 表示总览页。 */
     private String _activeModuleKey = "dashboard";
-
     /**
      * 构造方法。
      *
@@ -91,14 +78,12 @@ public class MainFrame extends Application {
     public MainFrame(User currentUser) {
         this._currentUser = currentUser;
     }
-
     /**
      * 构造方法。
      */
     public MainFrame() {
         this(null);
     }
-
     /**
      * 搭建主界面。
      */
@@ -110,10 +95,8 @@ public class MainFrame extends Application {
                         new Stop(0, Color.web("#eef3f8")),
                         new Stop(1, Color.web("#dde8f4"))),
                 CornerRadii.EMPTY, Insets.EMPTY)));
-
         root.setTop(buildNavBar());
         root.setCenter(buildCenterStack());
-
         Scene scene = new Scene(root);
         _stage.setTitle("东南大学 Vcampus 主界面");
         _stage.setMinWidth(1200);
@@ -122,7 +105,6 @@ public class MainFrame extends Application {
         _stage.centerOnScreen();
         _stage.setOnCloseRequest(e -> Platform.exit());
     }
-
     /**
      * 构建顶部导航条：左侧校徽与标题，右侧当前用户身份。
      *
@@ -133,27 +115,20 @@ public class MainFrame extends Application {
         nav.setPadding(new Insets(14, 26, 14, 26));
         nav.setStyle("-fx-background-color: linear-gradient(to right, #1c5a97, #3f86c9);"
                 + "-fx-background-radius: 0 0 18 18;");
-
         StackPane smallEmblem = SeuEmblem.build(42);
-
         Label title = new Label("东南大学 · Vcampus");
         title.setTextFill(Color.WHITE);
         title.setFont(Font.font("System", FontWeight.BOLD, 19));
-
         Label subtitle = new Label("综合服务大厅");
         subtitle.setTextFill(Color.web("#dcebfb"));
         subtitle.setFont(Font.font("System", 12));
-
         VBox titleBlock = new VBox(1, title, subtitle);
-
         HBox left = new HBox(12, smallEmblem, titleBlock);
         left.setAlignment(Pos.CENTER_LEFT);
         nav.setLeft(left);
-
         nav.setRight(buildUserChip());
         return nav;
     }
-
     /**
      * 构建导航条右侧的用户身份小标：头像圆 + 姓名/角色。
      *
@@ -164,7 +139,6 @@ public class MainFrame extends Application {
         String name = _currentUser == null ? "" : safeText(_currentUser.getUName());
         String display = name.isEmpty() ? uid : name;
         String initial = display.isEmpty() ? "?" : display.substring(0, 1);
-
         StackPane avatar = new StackPane();
         avatar.setPrefSize(36, 36);
         Circle avatarCircle = new Circle(18, Color.web("#f4e2ab"));
@@ -172,23 +146,18 @@ public class MainFrame extends Application {
         avatarText.setTextFill(Color.web("#1c5a97"));
         avatarText.setFont(Font.font("System", FontWeight.BOLD, 15));
         avatar.getChildren().addAll(avatarCircle, avatarText);
-
         Label nameLabel = new Label(display.isEmpty() ? "未登录" : display);
         nameLabel.setTextFill(Color.WHITE);
         nameLabel.setFont(Font.font("System", FontWeight.BOLD, 13));
-
         String role = _currentUser == null ? "" : safeText(_currentUser.getURole());
         Label roleLabel = new Label(role.isEmpty() ? "访客" : role);
         roleLabel.setTextFill(Color.web(roleNavColor(role)));
         roleLabel.setFont(Font.font("System", FontWeight.BOLD, 11));
-
         VBox textBlock = new VBox(3, nameLabel, roleLabel);
-
         HBox chip = new HBox(10, avatar, textBlock);
         chip.setAlignment(Pos.CENTER_RIGHT);
         return chip;
     }
-
     /**
      * 构建中间内容容器。
      *
@@ -198,16 +167,13 @@ public class MainFrame extends Application {
         _contentStack = new StackPane();
         _contentStack.setAlignment(Pos.TOP_LEFT);
         _contentStack.setPadding(new Insets(20, 28, 24, 28));
-
         BorderPane layout = new BorderPane();
         layout.setLeft(buildSidebar());
         layout.setCenter(_contentStack);
-
         StackPane outer = new StackPane(layout);
         showDashboard();
         return outer;
     }
-
     /**
      * JavaFX 启动入口。
      *
@@ -219,7 +185,6 @@ public class MainFrame extends Application {
         buildUi();
         stage.show();
     }
-
     /**
      * 构建左侧导航栏：顶部是身份信息（头像/姓名/角色），中间是全部功能
      * 模块的入口列表（替代原来右侧的图标网格——点一下左边，右边
@@ -235,13 +200,11 @@ public class MainFrame extends Application {
         _sidebar.setMinWidth(240);
         _sidebar.setAlignment(Pos.TOP_CENTER);
         _sidebar.setStyle(CARD_STYLE);
-
         String uid = _currentUser == null ? "" : safeText(_currentUser.getUId());
         String name = _currentUser == null ? "" : safeText(_currentUser.getUName());
         String role = _currentUser == null ? "" : safeText(_currentUser.getURole());
         String display = name.isEmpty() ? uid : name;
         String initial = display.isEmpty() ? "?" : display.substring(0, 1);
-
         StackPane avatar = new StackPane();
         avatar.setPrefSize(64, 64);
         Circle avatarCircle = new Circle(32, Color.web("#1c5a97"));
@@ -249,25 +212,20 @@ public class MainFrame extends Application {
         avatarText.setTextFill(Color.WHITE);
         avatarText.setFont(Font.font("System", FontWeight.BOLD, 24));
         avatar.getChildren().addAll(avatarCircle, avatarText);
-
         Label nameLabel = new Label(display.isEmpty() ? "未登录" : display);
         nameLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
         nameLabel.setTextFill(Color.web("#1d2b39"));
-
         Label roleTag = new Label(role.isEmpty() ? "未设置" : role);
         roleTag.setTextFill(Color.WHITE);
         roleTag.setStyle("-fx-background-color: " + roleColor(role) + "; -fx-background-radius: 12;"
                 + "-fx-padding: 2 12 2 12; -fx-font-size: 10.5px; -fx-font-weight: bold;");
-
         VBox identityBlock = new VBox(8, avatar, nameLabel, roleTag);
         identityBlock.setAlignment(Pos.TOP_CENTER);
         identityBlock.setPadding(new Insets(0, 0, 18, 0));
-
         Region divider = new Region();
         divider.setPrefHeight(1);
         divider.setMaxWidth(Double.MAX_VALUE);
         divider.setStyle("-fx-background-color: rgba(29,90,153,0.10);");
-
         VBox navList = new VBox(4);
         navList.setPadding(new Insets(14, 0, 0, 0));
         navList.getChildren().add(buildNavItem("总览", "dashboard", "#697687", this::showDashboard));
@@ -287,10 +245,8 @@ public class MainFrame extends Application {
             navList.getChildren().add(buildNavItem("账号管理", "usermgmt", "#d4a017",
                     () -> showModulePage("账号管理", "禁用/启用用户账号", "usermgmt", "#d4a017")));
         }
-
         Region spacer = new Region();
         VBox.setVgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
-
         Button backButton = new Button("返回登录");
         Button exitButton = new Button("退出程序");
         backButton.setOnAction(e -> onBackToLogin());
@@ -303,15 +259,12 @@ public class MainFrame extends Application {
                 + " -fx-font-size: 12.5px; -fx-font-weight: bold; -fx-cursor: hand;");
         exitButton.setStyle("-fx-background-radius: 20; -fx-background-color: #eef3f8; -fx-text-fill: #1c5a97;"
                 + " -fx-font-size: 12.5px; -fx-font-weight: bold; -fx-cursor: hand;");
-
         VBox buttonBlock = new VBox(10, backButton, exitButton);
         buttonBlock.setMaxWidth(Double.MAX_VALUE);
         VBox.setMargin(buttonBlock, new Insets(10, 0, 0, 0));
-
         _sidebar.getChildren().addAll(identityBlock, divider, navList, spacer, buttonBlock);
         return _sidebar;
     }
-
     /**
      * 构建左侧导航栏里的一个功能入口行：色块 + 名称，整行可点击，
      * 悬停/选中时改变背景色。选中状态由 {@link #_activeModuleKey} 驱动，
@@ -328,17 +281,14 @@ public class MainFrame extends Application {
         dot.setPrefSize(8, 8);
         dot.setMaxSize(8, 8);
         dot.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 4;");
-
         Label label = new Label(name);
         label.setFont(Font.font("System", FontWeight.BOLD, 13));
         label.setTextFill(Color.web("#1d2b39"));
-
         HBox row = new HBox(10, dot, label);
         row.setAlignment(Pos.CENTER_LEFT);
         row.setPadding(new Insets(10, 12, 10, 12));
         row.setMaxWidth(Double.MAX_VALUE);
         row.setStyle("-fx-background-radius: 10; -fx-cursor: hand;");
-
         row.setOnMouseEntered(e -> {
             if (!key.equals(_activeModuleKey)) {
                 row.setStyle("-fx-background-radius: 10; -fx-cursor: hand; -fx-background-color: #f2f6fa;");
@@ -350,11 +300,9 @@ public class MainFrame extends Application {
             }
         });
         row.setOnMouseClicked(e -> action.run());
-
         _navItems.put(key, row);
         return row;
     }
-
     /**
      * 按 {@link #_activeModuleKey} 重新刷新每个导航行的高亮样式：
      * 当前选中的模块背景高亮、字体加粗变色，其余恢复默认。
@@ -369,7 +317,6 @@ public class MainFrame extends Application {
             label.setTextFill(Color.web(active ? "#1c5a97" : "#1d2b39"));
         }
     }
-
     /**
      * 打开模块分区占位页。
      *
@@ -383,28 +330,34 @@ public class MainFrame extends Application {
             openStore();
             return;
         }
+        // ========医院改为嵌入，不再新开窗口========
         if ("hospital".equals(moduleKey)) {
-            openHospital();
+            _activeModuleKey = moduleKey;
+            highlightActiveNav();
+            showHospitalPage();
             return;
         }
-        // 商店/医院走独立窗口（见上面两个分支），右侧内容区域不会跟着变化，
-        // 所以左侧导航的高亮状态也不跟着切换，避免"高亮着但内容没变"的错觉。
-        _activeModuleKey = moduleKey;
-        highlightActiveNav();
-
         if ("library".equals(moduleKey)) {
+            _activeModuleKey = moduleKey;
+            highlightActiveNav();
             showLibraryPage();
             return;
         }
         if ("student".equals(moduleKey)) {
+            _activeModuleKey = moduleKey;
+            highlightActiveNav();
             showStudentPage();
             return;
         }
         if ("usermgmt".equals(moduleKey)) {
+            _activeModuleKey = moduleKey;
+            highlightActiveNav();
             showUserManagementPage();
             return;
         }
         if ("edu".equals(moduleKey)) {
+            _activeModuleKey = moduleKey;
+            highlightActiveNav();
             showCoursePage();
             return;
         }
@@ -412,39 +365,30 @@ public class MainFrame extends Application {
         page.setPadding(new Insets(22));
         page.setMaxWidth(820);
         page.setStyle(CARD_STYLE);
-
         Label title = new Label(moduleName + "模块分区");
         title.setTextFill(Color.web("#1d2b39"));
         title.setFont(Font.font("System", FontWeight.BOLD, 24));
-
         Label desc = new Label(moduleDesc);
         desc.setTextFill(Color.web("#697687"));
         desc.setFont(Font.font("System", 14));
-
         GridPane infoGrid = new GridPane();
         infoGrid.setHgap(12);
         infoGrid.setVgap(12);
-
         infoGrid.add(buildInfoTile("模块键名", moduleKey, color), 0, 0);
         infoGrid.add(buildInfoTile("当前状态", "占位页面", color), 1, 0);
         infoGrid.add(buildInfoTile("后续动作", "接真实业务界面", color), 2, 0);
-
         VBox featureBox = new VBox(8);
         featureBox.setPadding(new Insets(6, 0, 0, 0));
         featureBox.getChildren().addAll(
                 buildBullet("列表页、详情页、表单页可按此模块继续扩展"),
                 buildBullet("这里先做可见的分区入口，方便答辩展示"),
                 buildBullet("后续接入真实业务后，可替换为查找/新增/编辑操作"));
-
         page.getChildren().addAll(title, desc, infoGrid, featureBox);
-
         _contentStack.getChildren().setAll(page);
     }
-
     /**
      * 打开虚拟商店模块的真实业务界面（{@link StoreFrame}）。商店窗口是独立的
-     * {@code Application}（不像 {@link LibraryPanel} 是可嵌入的 {@code VBox}），
-     * 所以这里新开一个 {@link Stage} 承载它，而不是嵌入 {@code _contentStack}。
+     * {@code Application}，新开一个 {@link Stage} 承载。
      */
     private void openStore() {
         try {
@@ -460,23 +404,19 @@ public class MainFrame extends Application {
     }
 
     /**
-     * 打开医院模块的真实业务界面（{@link HospitalFrame}），做法与
-     * {@link #openStore()} 一致：独立 {@code Application}，新开一个
-     * {@link Stage} 承载，不嵌入 {@code _contentStack}。
+     * 【新增】医院模块：嵌入主界面右侧内容区，不再独立弹窗
      */
-    private void openHospital() {
-        try {
-            Stage hospitalStage = new Stage();
-            String uid = _currentUser == null ? "" : _currentUser.getUId();
-            String role = _currentUser == null ? "" : _currentUser.getURole();
-            new HospitalFrame(uid, role).start(hospitalStage);
-        } catch (Exception e) {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("错误");
-            alert.setHeaderText(null);
-            alert.setContentText("打开医院模块失败：" + e.getMessage());
-            alert.showAndWait();
-        }
+    private void showHospitalPage() {
+        HospitalFrame hospitalFrame = new HospitalFrame(
+                _currentUser == null ? "" : _currentUser.getUId(),
+                _currentUser == null ? "" : _currentUser.getURole()
+        );
+        VBox wrapper = new VBox(0, hospitalFrame);
+        VBox.setVgrow(hospitalFrame, javafx.scene.layout.Priority.ALWAYS);
+        wrapper.setMaxWidth(1120);
+        wrapper.setMaxHeight(Double.MAX_VALUE);
+        wrapper.setStyle(CARD_STYLE);
+        _contentStack.getChildren().setAll(wrapper);
     }
 
     /**
@@ -494,20 +434,16 @@ public class MainFrame extends Application {
         page.setPadding(new Insets(24));
         page.setMaxWidth(480);
         page.setStyle(CARD_STYLE);
-
         Label title = new Label("账号管理");
         title.setTextFill(Color.web("#1d2b39"));
         title.setFont(Font.font("System", FontWeight.BOLD, 22));
-
         Label subtitle = new Label("禁用或启用指定用户的登录账号");
         subtitle.setTextFill(Color.web("#697687"));
         subtitle.setFont(Font.font("System", 13));
-
         Label idHint = new Label("目标用户登录ID");
         idHint.setFont(Font.font("System", FontWeight.BOLD, 12.5));
         TextField targetIdField = new TextField();
         targetIdField.setPromptText("请输入8位登录ID");
-
         Label statusHint = new Label("新状态");
         statusHint.setFont(Font.font("System", FontWeight.BOLD, 12.5));
         ToggleGroup statusGroup = new ToggleGroup();
@@ -518,16 +454,13 @@ public class MainFrame extends Application {
         enableOption.setToggleGroup(statusGroup);
         enableOption.setUserData(User.STATUS_NORMAL);
         disableOption.setSelected(true);
-
         Button submitButton = new Button("提交");
         submitButton.setStyle("-fx-background-color: #d4a017; -fx-text-fill: white;"
                 + " -fx-background-radius: 20; -fx-font-weight: bold; -fx-cursor: hand;");
         submitButton.setPrefWidth(120);
-
         Label resultLabel = new Label();
         resultLabel.setWrapText(true);
         resultLabel.setTextFill(Color.web("#697687"));
-
         submitButton.setOnAction(event -> {
             String targetUId = safeText(targetIdField.getText());
             if (targetUId.length() != 8) {
@@ -539,7 +472,6 @@ public class MainFrame extends Application {
             submitButton.setDisable(true);
             resultLabel.setTextFill(Color.web("#697687"));
             resultLabel.setText("正在提交…");
-
             new Thread(() -> {
                 String resultText;
                 boolean success;
@@ -564,13 +496,10 @@ public class MainFrame extends Application {
                 });
             }).start();
         });
-
         page.getChildren().addAll(title, subtitle, idHint, targetIdField, statusHint,
                 new HBox(16, disableOption, enableOption), submitButton, resultLabel);
-
         _contentStack.getChildren().setAll(page);
     }
-
     /**
      * 打开图书馆模块的真实业务界面（{@link LibraryPanel}），而不是通用占位页。
      */
@@ -579,7 +508,6 @@ public class MainFrame extends Application {
         if (_currentUser != null) {
             libraryPanel.setCurrentUserId(_currentUser.getUId());
         }
-
         VBox wrapper = new VBox(0, libraryPanel);
         wrapper.setMaxWidth(900);
         wrapper.setStyle("-fx-background-color: rgba(255,255,255,0.98);"
@@ -587,17 +515,14 @@ public class MainFrame extends Application {
                 + "-fx-border-radius: 20;"
                 + "-fx-border-color: rgba(45,106,159,0.18);"
                 + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 22, 0.12, 0, 8);");
-
         _contentStack.getChildren().setAll(wrapper);
     }
-
     /**
      * 打开学籍模块的真实业务界面，并复用主界面的统一服务器连接。
      */
     private void showStudentPage() {
         StudentManagementFrame studentFrame = new StudentManagementFrame();
         BorderPane studentPanel = studentFrame.createView();
-
         VBox wrapper = new VBox(0, studentPanel);
         wrapper.setMaxWidth(1120);
         wrapper.setMaxHeight(Double.MAX_VALUE);
@@ -606,12 +531,10 @@ public class MainFrame extends Application {
                 + "-fx-border-radius: 20;"
                 + "-fx-border-color: rgba(45,106,159,0.18);"
                 + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 22, 0.12, 0, 8);");
-
         _contentStack.getChildren().setAll(wrapper);
         studentFrame.attachStyleSheet(_stage.getScene());
         Platform.runLater(studentFrame::refresh);
     }
-
     /**
      * 打开教务（选课）模块的真实业务界面（{@link CoursePanel}），嵌入
      * 右侧内容区，和图书馆/学籍走同一套布局——左侧导航栏常驻，不需要
@@ -619,7 +542,6 @@ public class MainFrame extends Application {
      */
     private void showCoursePage() {
         CoursePanel coursePanel = new CoursePanel(_currentUser);
-
         VBox wrapper = new VBox(0, coursePanel);
         VBox.setVgrow(coursePanel, javafx.scene.layout.Priority.ALWAYS);
         wrapper.setMaxWidth(1120);
@@ -627,7 +549,6 @@ public class MainFrame extends Application {
         wrapper.setStyle(CARD_STYLE);
         _contentStack.getChildren().setAll(wrapper);
     }
-
     /**
      * 构建信息小块。
      *
@@ -644,19 +565,15 @@ public class MainFrame extends Application {
                 + "-fx-background-radius: 16;"
                 + "-fx-border-radius: 16;"
                 + "-fx-border-color: rgba(0,0,0,0.05);");
-
         Label labelText = new Label(label);
         labelText.setTextFill(Color.web("#607080"));
         labelText.setFont(Font.font("System", FontWeight.BOLD, 12));
-
         Label valueText = new Label(value);
         valueText.setTextFill(Color.web(color));
         valueText.setFont(Font.font("System", FontWeight.BOLD, 16));
-
         tile.getChildren().addAll(labelText, valueText);
         return tile;
     }
-
     /**
      * 构建要点文本。
      *
@@ -670,38 +587,30 @@ public class MainFrame extends Application {
         bullet.setFont(Font.font("System", 14));
         return bullet;
     }
-
     /**
      * 显示总览欢迎页：登录后默认看到的页面，以及点左侧导航"总览"回到的页面。
      */
     private void showDashboard() {
         _activeModuleKey = "dashboard";
         highlightActiveNav();
-
         String name = _currentUser == null ? "" : safeText(_currentUser.getUName());
         String uid = _currentUser == null ? "" : safeText(_currentUser.getUId());
         String display = name.isEmpty() ? uid : name;
-
         VBox page = new VBox(14);
         page.setPadding(new Insets(28));
         page.setMaxWidth(720);
         page.setStyle(CARD_STYLE);
-
         Label title = new Label("欢迎回来" + (display.isEmpty() ? "" : "，" + display));
         title.setTextFill(Color.web("#1d2b39"));
         title.setFont(Font.font("System", FontWeight.BOLD, 22));
-
         Label tip = new Label("从左侧选择一个功能模块开始操作。");
         tip.setTextFill(Color.web("#697687"));
         tip.setFont(Font.font("System", 14));
-
         page.getChildren().addAll(title, tip);
-
         if (_contentStack != null) {
             _contentStack.getChildren().setAll(page);
         }
     }
-
     /**
      * 返回登录界面。
      */
@@ -748,7 +657,6 @@ public class MainFrame extends Application {
             }
         });
     }
-
     /**
      * 安全转换文本，避免空值。
      *
@@ -758,7 +666,6 @@ public class MainFrame extends Application {
     private String safeText(String value) {
         return value == null ? "" : value.trim();
     }
-
     /**
      * 角色对应的强调色（用于用户信息卡片里的角色标签背景），三种角色一眼可辨：
      * 学生-绿、教师-蓝、管理员-金。
@@ -775,7 +682,6 @@ public class MainFrame extends Application {
         }
         return "#3fa34d";
     }
-
     /**
      * 角色对应的导航栏文字颜色（深蓝渐变背景上要用浅色文字才看得清）。
      *
@@ -791,7 +697,6 @@ public class MainFrame extends Application {
         }
         return "#dcebfb";
     }
-
     /**
      * 判断当前登录用户是否为管理员，用于控制"账号管理"等管理员专属
      * 功能入口的可见性。仅做界面展示层面的隐藏/显示，真正的权限校验
@@ -803,7 +708,6 @@ public class MainFrame extends Application {
     private boolean isAdmin() {
         return _currentUser != null && "管理员".equals(_currentUser.getURole());
     }
-
     /**
      * 客户端程序入口。
      *
