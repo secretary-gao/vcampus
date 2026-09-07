@@ -35,12 +35,18 @@ public class CourseDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public boolean insertCourse(Course course) throws SQLException, IOException {
+        try (Connection conn = DbHelper.getConnection()) {
+            return insertCourse(conn, course);
+        }
+    }
+
+    /** 使用调用方提供的连接插入课程，用于跨 DAO 事务。 */
+    public boolean insertCourse(Connection conn, Course course) throws SQLException {
         String sql = "INSERT INTO tblCourse "
                 + "(courseId, courseName, teacher, credit, capacity, selectedCount) "
                 + "VALUES (?, ?, ?, ?, ?, ?)";
 
-        try (Connection conn = DbHelper.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, course.getCourseId());
             pstmt.setString(2, course.getCourseName());
             pstmt.setString(3, course.getTeacher());
@@ -60,10 +66,16 @@ public class CourseDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public boolean deleteCourse(String courseId) throws SQLException, IOException {
+        try (Connection conn = DbHelper.getConnection()) {
+            return deleteCourse(conn, courseId);
+        }
+    }
+
+    /** 使用调用方提供的连接删除课程，用于跨 DAO 事务。 */
+    public boolean deleteCourse(Connection conn, String courseId) throws SQLException {
         String sql = "DELETE FROM tblCourse WHERE courseId = ?";
 
-        try (Connection conn = DbHelper.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, courseId);
             return pstmt.executeUpdate() > 0;
         }

@@ -172,11 +172,18 @@ public class SelectCourseDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public List<SelectCourse> findByCourseId(String courseId) throws SQLException, IOException {
+        try (Connection conn = DbHelper.getConnection()) {
+            return findByCourseId(conn, courseId);
+        }
+    }
+
+    /** 使用调用方连接查询某门课程的全部选课记录。 */
+    public List<SelectCourse> findByCourseId(Connection conn, String courseId)
+            throws SQLException {
         String sql = SELECT_FIELDS
                 + "WHERE courseId = ? ORDER BY selectTime DESC, selectId DESC";
 
-        try (Connection conn = DbHelper.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, courseId);
             try (ResultSet rs = pstmt.executeQuery()) {
                 return mapList(rs);

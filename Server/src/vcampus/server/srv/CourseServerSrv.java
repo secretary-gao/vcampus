@@ -12,14 +12,17 @@ package vcampus.server.srv;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.SelectCourse;
+import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.server.dao.CourseDAO;
 import vcampus.server.dao.CourseScheduleDAO;
 import vcampus.server.dao.CourseStudentDAO;
 import vcampus.server.dao.DbHelper;
 import vcampus.server.dao.SelectCourseDAO;
+import vcampus.server.dao.TeacherCourseEnrollmentDAO;
 
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,6 +47,10 @@ public class CourseServerSrv implements ICourseServerSrv {
 
     /** 登录用户与正式学号映射查询。 */
     private final CourseStudentDAO _courseStudentDAO = new CourseStudentDAO();
+
+    /** 教师课程名单查询。 */
+    private final TeacherCourseEnrollmentDAO _teacherEnrollmentDAO =
+            new TeacherCourseEnrollmentDAO();
 
     /**
      * 使用默认 DAO 创建业务服务。
@@ -74,6 +81,95 @@ public class CourseServerSrv implements ICourseServerSrv {
     @Override
     public List<Course> queryCourse(String keyword) throws SQLException, IOException {
         return _courseDAO.findByKeyword(keyword);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Course addCourse(Course course)
+            throws SQLException, IOException, CourseServiceException {
+        validateCourse(course);
+        course.setSelectedCount(0);
+        if (_courseDAO.findById(course.getCourseId()) != null) {
+            throw new CourseServiceException("课程号已存在：" + course.getCourseId());
+        }
+        try {
+            if (!_courseDAO.insertCourse(course)) {
+                throw new SQLException("插入课程失败");
+            }
+        } catch (SQLIntegrityConstraintViolationException e) {
+            throw new CourseServiceException("课程号已存在：" + course.getCourseId());
+        }
+        return course;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean updateCourse(Course course)
+            throws SQLException, IOException, CourseServiceException {
+        validateCourse(course);
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                Course current = _courseDAO.findByIdForUpdate(conn, course.getCourseId());
+                if (current == null) {
+                    throw new CourseServiceException("课程不存在：" + course.getCourseId());
+                }
+                if (course.getCapacity() < current.getSelectedCount()) {
+                    throw new CourseServiceException("课程容量不能小于已选人数");
+                }
+                if (!course.getTeacher().equals(current.getTeacher())) {
+                    for (CourseSchedule schedule : _courseScheduleDAO.findByCourseIds(
+                            conn, Set.of(course.getCourseId()))) {
+                        if (_courseScheduleDAO.hasTeacherConflict(
+                                conn, schedule, course.getTeacher(), schedule.getScheduleId())) {
+                            throw new CourseServiceException("修改教师后将产生排课时间冲突");
+                        }
+                    }
+                }
+                course.setSelectedCount(current.getSelectedCount());
+                if (!_courseDAO.updateCourse(conn, course)) {
+                    throw new SQLException("更新课程失败");
+                }
+                conn.commit();
+                return true;
+            } catch (SQLException | CourseServiceException | RuntimeException e) {
+                rollback(conn, e);
+                throw e;
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean deleteCourse(String courseId)
+            throws SQLException, IOException, CourseServiceException {
+        if (courseId == null || courseId.isBlank()) {
+            throw new CourseServiceException("课程号不能为空");
+        }
+        String normalizedCourseId = courseId.trim();
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                if (_courseDAO.findByIdForUpdate(conn, normalizedCourseId) == null) {
+                    throw new CourseServiceException("课程不存在：" + normalizedCourseId);
+                }
+                if (!_selectCourseDAO.findByCourseId(conn, normalizedCourseId).isEmpty()) {
+                    throw new CourseServiceException("课程已有学生选课，不能删除");
+                }
+                if (!_courseScheduleDAO.findByCourseIds(
+                        conn, Set.of(normalizedCourseId)).isEmpty()) {
+                    throw new CourseServiceException("课程已有排课，不能删除");
+                }
+                if (!_courseDAO.deleteCourse(conn, normalizedCourseId)) {
+                    throw new SQLException("删除课程失败");
+                }
+                conn.commit();
+                return true;
+            } catch (SQLException | CourseServiceException | RuntimeException e) {
+                rollback(conn, e);
+                throw e;
+            }
+        }
     }
 
     /** {@inheritDoc} */
@@ -261,6 +357,48 @@ public class CourseServerSrv implements ICourseServerSrv {
             courseIds.add(record.getCourseId());
         }
         return _courseScheduleDAO.findByCourseIds(courseIds);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<TeacherCourseEnrollment> queryTeacherCourseEnrollments(String teacherName)
+            throws SQLException, IOException, CourseServiceException {
+        if (teacherName == null || teacherName.isBlank()) {
+            throw new CourseServiceException("教师姓名不能为空");
+        }
+        return _teacherEnrollmentDAO.findByTeacher(teacherName.trim());
+    }
+
+    /** 校验并规范化课程主数据。 */
+    private void validateCourse(Course course) throws CourseServiceException {
+        if (course == null) {
+            throw new CourseServiceException("课程信息不能为空");
+        }
+        String courseId = normalizeCourseText(course.getCourseId(), "课程号", 20);
+        String courseName = normalizeCourseText(course.getCourseName(), "课程名称", 50);
+        String teacher = normalizeCourseText(course.getTeacher(), "授课教师", 20);
+        if (course.getCredit() <= 0) {
+            throw new CourseServiceException("学分必须大于 0");
+        }
+        if (course.getCapacity() <= 0) {
+            throw new CourseServiceException("课程容量必须大于 0");
+        }
+        course.setCourseId(courseId);
+        course.setCourseName(courseName);
+        course.setTeacher(teacher);
+    }
+
+    /** 规范化必填文本并匹配数据库长度限制。 */
+    private String normalizeCourseText(String value, String fieldName, int maxLength)
+            throws CourseServiceException {
+        if (value == null || value.isBlank()) {
+            throw new CourseServiceException(fieldName + "不能为空");
+        }
+        String normalized = value.trim();
+        if (normalized.length() > maxLength) {
+            throw new CourseServiceException(fieldName + "不能超过 " + maxLength + " 个字符");
+        }
+        return normalized;
     }
 
     /** 校验排课字段。 */

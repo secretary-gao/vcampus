@@ -23,8 +23,8 @@ import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.User;
 
 /**
- * Course 模块可嵌入主界面的根面板。学生看到课程大厅、我的课程和课程表，
- * 管理员只看到排课管理；所有数据操作均通过 {@link ICourseClientSrv} 完成。
+ * Course 模块可嵌入主界面的根面板。学生进行选退课，教师查看本人课程名单，
+ * 管理员维护课程和排课；所有数据操作均通过 {@link ICourseClientSrv} 完成。
  */
 public class CoursePanel extends BorderPane {
 
@@ -72,8 +72,23 @@ public class CoursePanel extends BorderPane {
             return;
         }
         if ("管理员".equals(_currentUser.getURole())) {
-            addTab("排课管理", new ScheduleAdminPane(_client));
+            ScheduleAdminPane schedulePane = new ScheduleAdminPane(_client);
+            addTab("课程管理", new CourseAdminPane(_client, schedulePane::refresh));
+            addTab("排课管理", schedulePane);
             setCenter(_tabs);
+            return;
+        }
+        if ("教师".equals(_currentUser.getURole())) {
+            if (_currentUser.getUName() == null || _currentUser.getUName().isBlank()) {
+                setCenter(message("当前教师账号尚未设置姓名，无法匹配授课课程。"));
+                return;
+            }
+            addTab("我教的课程", new TeacherCoursesPane(_client, _currentUser.getUName()));
+            setCenter(_tabs);
+            return;
+        }
+        if (!"学生".equals(_currentUser.getURole())) {
+            setCenter(message("当前账号角色无法使用教务模块。"));
             return;
         }
 

@@ -12,6 +12,7 @@ package vcampus.client.biz;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.SelectCourse;
+import vcampus.common.vo.TeacherCourseEnrollment;
 
 import java.io.IOException;
 import java.util.List;
@@ -21,6 +22,15 @@ public interface ICourseClientSrv {
 
     /** 查询课程。 */
     List<Course> queryCourse(String keyword) throws IOException, ClassNotFoundException;
+
+    /** 新增课程。 */
+    Course addCourse(Course course) throws IOException, ClassNotFoundException;
+
+    /** 修改课程。 */
+    boolean updateCourse(Course course) throws IOException, ClassNotFoundException;
+
+    /** 删除课程。 */
+    boolean deleteCourse(String courseId) throws IOException, ClassNotFoundException;
 
     /** 学生选课。 */
     boolean selectCourse(String studentId, String courseId)
@@ -54,5 +64,9 @@ public interface ICourseClientSrv {
 
     /** 查询学生已选课程对应的课程表。 */
     List<CourseSchedule> queryStudentSchedule(String studentId)
+            throws IOException, ClassNotFoundException;
+
+    /** 查询教师本人课程及选课学生名单。 */
+    List<TeacherCourseEnrollment> queryTeacherCourseEnrollments(String teacherName)
             throws IOException, ClassNotFoundException;
 }

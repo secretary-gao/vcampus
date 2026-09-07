@@ -55,6 +55,9 @@ public interface IConstant {
 
     // ========== 选课模块消息类型 ==========
     String MSG_COURSE_QUERY = "courseQuery";
+    String MSG_COURSE_ADD = "courseAdd";
+    String MSG_COURSE_UPDATE = "courseUpdate";
+    String MSG_COURSE_DELETE = "courseDelete";
     String MSG_COURSE_SELECT = "courseSelect";
     String MSG_COURSE_DROP = "courseDrop";
     String MSG_COURSE_SELECTED_QUERY = "courseSelectedQuery";
@@ -64,6 +67,7 @@ public interface IConstant {
     String MSG_COURSE_SCHEDULE_UPDATE = "courseScheduleUpdate";
     String MSG_COURSE_SCHEDULE_DELETE = "courseScheduleDelete";
     String MSG_STUDENT_TIMETABLE_QUERY = "studentTimetableQuery";
+    String MSG_TEACHER_COURSE_ENROLLMENTS_QUERY = "teacherCourseEnrollmentsQuery";
 
     // ---------- 虚拟商店模块（store）消息名与状态码 ----------
 

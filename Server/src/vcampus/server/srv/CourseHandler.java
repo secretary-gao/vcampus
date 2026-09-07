@@ -13,6 +13,7 @@ import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.CourseSchedule;
+import vcampus.common.vo.Course;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -46,6 +47,9 @@ public class CourseHandler implements ModuleHandler {
     public Set<String> supportedMessages() {
         return Set.of(
                 IConstant.MSG_COURSE_QUERY,
+                IConstant.MSG_COURSE_ADD,
+                IConstant.MSG_COURSE_UPDATE,
+                IConstant.MSG_COURSE_DELETE,
                 IConstant.MSG_COURSE_SELECT,
                 IConstant.MSG_COURSE_DROP,
                 IConstant.MSG_COURSE_SELECTED_QUERY,
@@ -54,7 +58,8 @@ public class CourseHandler implements ModuleHandler {
                 IConstant.MSG_COURSE_SCHEDULE_ADD,
                 IConstant.MSG_COURSE_SCHEDULE_UPDATE,
                 IConstant.MSG_COURSE_SCHEDULE_DELETE,
-                IConstant.MSG_STUDENT_TIMETABLE_QUERY
+                IConstant.MSG_STUDENT_TIMETABLE_QUERY,
+                IConstant.MSG_TEACHER_COURSE_ENROLLMENTS_QUERY
         );
     }
 
@@ -70,6 +75,12 @@ public class CourseHandler implements ModuleHandler {
             return switch (request.getName()) {
                 case IConstant.MSG_COURSE_QUERY -> success(
                         request, _courseServerSrv.queryCourse((String) request.getData()));
+                case IConstant.MSG_COURSE_ADD -> success(
+                        request, _courseServerSrv.addCourse((Course) request.getData()));
+                case IConstant.MSG_COURSE_UPDATE -> success(
+                        request, _courseServerSrv.updateCourse((Course) request.getData()));
+                case IConstant.MSG_COURSE_DELETE -> success(
+                        request, _courseServerSrv.deleteCourse((String) request.getData()));
                 case IConstant.MSG_COURSE_SELECT -> handleSelect(request);
                 case IConstant.MSG_COURSE_DROP -> handleDrop(request);
                 case IConstant.MSG_COURSE_SELECTED_QUERY -> success(
@@ -86,6 +97,9 @@ public class CourseHandler implements ModuleHandler {
                         request, _courseServerSrv.deleteSchedule((String) request.getData()));
                 case IConstant.MSG_STUDENT_TIMETABLE_QUERY -> success(
                         request, _courseServerSrv.queryStudentSchedule((String) request.getData()));
+                case IConstant.MSG_TEACHER_COURSE_ENROLLMENTS_QUERY -> success(
+                        request, _courseServerSrv.queryTeacherCourseEnrollments(
+                                (String) request.getData()));
                 default -> response(request, IConstant.STATUS_BAD_REQUEST,
                         "未知的选课操作：" + request.getName());
             };

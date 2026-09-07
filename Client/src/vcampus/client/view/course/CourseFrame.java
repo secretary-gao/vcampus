@@ -25,7 +25,8 @@ public class CourseFrame extends Application {
         Map<String, String> named = getParameters().getNamed();
         String role = named.getOrDefault("role", "管理员");
         String userId = named.getOrDefault("user", "ADMIN001");
-        User user = new User(userId, "Course 演示", 20, "男", null, role);
+        String userName = named.getOrDefault("name", "Course 演示");
+        User user = new User(userId, userName, 20, "男", null, role);
         stage.setTitle("VCampus 教务选课中心");
         stage.setScene(new Scene(new CoursePanel(user), 1100, 720));
         stage.setMinWidth(1000);
@@ -35,7 +36,7 @@ public class CourseFrame extends Application {
 
     /**
      * 独立演示入口。可传 {@code --role=管理员}，或传已关联学籍的
-     * {@code --role=学生 --user=登录ID}。
+     * {@code --role=学生 --user=登录ID}，教师可追加 {@code --name=教师姓名}。
      *
      * @param args JavaFX 命令行参数
      */

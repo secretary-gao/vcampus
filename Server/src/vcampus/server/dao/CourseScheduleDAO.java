@@ -103,6 +103,14 @@ public class CourseScheduleDAO {
     /** 查询指定课程集合对应的全部排课。 */
     public List<CourseSchedule> findByCourseIds(Collection<String> courseIds)
             throws SQLException, IOException {
+        try (Connection conn = DbHelper.getConnection()) {
+            return findByCourseIds(conn, courseIds);
+        }
+    }
+
+    /** 使用调用方连接查询指定课程集合对应的全部排课。 */
+    public List<CourseSchedule> findByCourseIds(Connection conn, Collection<String> courseIds)
+            throws SQLException {
         if (courseIds == null || courseIds.isEmpty()) {
             return new ArrayList<>();
         }
@@ -110,8 +118,7 @@ public class CourseScheduleDAO {
                 Collections.nCopies(courseIds.size(), "?"));
         String sql = SELECT_FIELDS + "WHERE courseId IN (" + placeholders + ") "
                 + "ORDER BY dayOfWeek, startTime, scheduleId";
-        try (Connection conn = DbHelper.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             int index = 1;
             for (String courseId : courseIds) {
                 pstmt.setString(index++, courseId);

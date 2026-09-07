@@ -12,6 +12,7 @@ package vcampus.server.srv;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.SelectCourse;
+import vcampus.common.vo.TeacherCourseEnrollment;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -31,6 +32,18 @@ public interface ICourseServerSrv {
      * @throws IOException  数据库配置文件读取异常
      */
     List<Course> queryCourse(String keyword) throws SQLException, IOException;
+
+    /** 新增课程主数据。 */
+    Course addCourse(Course course)
+            throws SQLException, IOException, CourseServiceException;
+
+    /** 修改课程主数据，课程号不可修改。 */
+    boolean updateCourse(Course course)
+            throws SQLException, IOException, CourseServiceException;
+
+    /** 删除没有选课或排课引用的课程。 */
+    boolean deleteCourse(String courseId)
+            throws SQLException, IOException, CourseServiceException;
 
     /**
      * 为学生选择课程。
@@ -99,5 +112,9 @@ public interface ICourseServerSrv {
 
     /** 查询学生已选课程对应的课程表。 */
     List<CourseSchedule> queryStudentSchedule(String studentId)
+            throws SQLException, IOException, CourseServiceException;
+
+    /** 按登录教师姓名查询本人课程及选课学生名单。 */
+    List<TeacherCourseEnrollment> queryTeacherCourseEnrollments(String teacherName)
             throws SQLException, IOException, CourseServiceException;
 }

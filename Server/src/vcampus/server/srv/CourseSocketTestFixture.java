@@ -29,6 +29,7 @@ public class CourseSocketTestFixture {
     public static final String NORMAL_COURSE_ID = "T_E2E_NORMAL_0904";
     public static final String FULL_COURSE_ID = "T_E2E_FULL_0904";
     public static final String ROLLBACK_COURSE_ID = "T_E2E_ROLL_0904";
+    public static final String ADMIN_COURSE_ID = "T_E2E_ADMIN_0907";
     public static final String STUDENT_A = "E2E0904001";
     public static final String STUDENT_B = "E2E0904002";
     public static final String USER_A = "CE2EA904";
@@ -87,8 +88,9 @@ public class CourseSocketTestFixture {
         CourseScheduleDAO scheduleDAO = new CourseScheduleDAO();
         for (var schedule : scheduleDAO.findAll()) {
             if (schedule.getCourseId().equals(NORMAL_COURSE_ID)
-                    || schedule.getCourseId().equals(FULL_COURSE_ID)
-                    || schedule.getCourseId().equals(ROLLBACK_COURSE_ID)) {
+                        || schedule.getCourseId().equals(FULL_COURSE_ID)
+                        || schedule.getCourseId().equals(ROLLBACK_COURSE_ID)
+                        || schedule.getCourseId().equals(ADMIN_COURSE_ID)) {
                 scheduleDAO.deleteSchedule(schedule.getScheduleId());
             }
         }
@@ -103,6 +105,7 @@ public class CourseSocketTestFixture {
         deleteIfPresent(courseDAO, NORMAL_COURSE_ID);
         deleteIfPresent(courseDAO, FULL_COURSE_ID);
         deleteIfPresent(courseDAO, ROLLBACK_COURSE_ID);
+        deleteIfPresent(courseDAO, ADMIN_COURSE_ID);
         CourseTestData.cleanupStudent(USER_A, STUDENT_A);
         CourseTestData.cleanupStudent(USER_B, STUDENT_B);
         System.out.println("COURSE_SOCKET_FIXTURE_CLEANUP=PASS");
@@ -116,13 +119,15 @@ public class CourseSocketTestFixture {
         residue += courseDAO.findById(NORMAL_COURSE_ID) == null ? 0 : 1;
         residue += courseDAO.findById(FULL_COURSE_ID) == null ? 0 : 1;
         residue += courseDAO.findById(ROLLBACK_COURSE_ID) == null ? 0 : 1;
+        residue += courseDAO.findById(ADMIN_COURSE_ID) == null ? 0 : 1;
         residue += selectDAO.findByStudentAndCourse(STUDENT_A, NORMAL_COURSE_ID) == null ? 0 : 1;
         residue += selectDAO.findByStudentAndCourse(STUDENT_B, ROLLBACK_COURSE_ID) == null ? 0 : 1;
         CourseScheduleDAO scheduleDAO = new CourseScheduleDAO();
         residue += scheduleDAO.findAll().stream()
                 .filter(schedule -> schedule.getCourseId().equals(NORMAL_COURSE_ID)
                         || schedule.getCourseId().equals(FULL_COURSE_ID)
-                        || schedule.getCourseId().equals(ROLLBACK_COURSE_ID))
+                        || schedule.getCourseId().equals(ROLLBACK_COURSE_ID)
+                        || schedule.getCourseId().equals(ADMIN_COURSE_ID))
                 .count();
         residue += CourseTestData.countResidue(USER_A, STUDENT_A);
         residue += CourseTestData.countResidue(USER_B, STUDENT_B);

@@ -11,6 +11,7 @@ package vcampus.client.biz;
 
 import vcampus.common.vo.Course;
 import vcampus.common.vo.SelectCourse;
+import vcampus.common.vo.TeacherCourseEnrollment;
 
 import java.util.List;
 
@@ -26,6 +27,7 @@ public class CourseClientSrvTest {
     private static final String STUDENT_A = "E2E0904001";
     private static final String STUDENT_B = "E2E0904002";
     private static final String USER_A = "CE2EA904";
+    private static final String ADMIN_COURSE_ID = "T_E2E_ADMIN_0907";
 
     /**
      * 程序入口。
@@ -53,6 +55,12 @@ public class CourseClientSrvTest {
         require(normalAfterDuplicate != null && normalAfterDuplicate.getSelectedCount() == 1,
                 "重复选课后 selectedCount 仍为 1");
 
+        List<TeacherCourseEnrollment> roster =
+                client.queryTeacherCourseEnrollments("共同教师");
+        require(roster.stream().anyMatch(row -> NORMAL_COURSE_ID.equals(row.getCourseId())
+                        && STUDENT_A.equals(row.getStudentId())),
+                "Socket 教师查询本人课程学生名单");
+
         expectFailure(() -> client.selectCourse(STUDENT_B, FULL_COURSE_ID), "400",
                 "Socket 满员课程选课失败");
         Course fullCourse = findCourse(client.queryCourse(FULL_COURSE_ID), FULL_COURSE_ID);
@@ -76,6 +84,18 @@ public class CourseClientSrvTest {
         Course normalAfterDrop = findCourse(client.queryCourse(NORMAL_COURSE_ID), NORMAL_COURSE_ID);
         require(normalAfterDrop != null && normalAfterDrop.getSelectedCount() == 0,
                 "Socket 退课后 selectedCount 为 0");
+
+        Course added = client.addCourse(new Course(
+                ADMIN_COURSE_ID, "Socket 管理课程", "Socket 教师", 2, 25, 8));
+        require(added.getSelectedCount() == 0, "Socket 管理员新增课程");
+        require(client.updateCourse(new Course(
+                ADMIN_COURSE_ID, "Socket 管理课程已改", "Socket 教师", 3, 30, 99)),
+                "Socket 管理员修改课程");
+        Course updated = findCourse(client.queryCourse(ADMIN_COURSE_ID), ADMIN_COURSE_ID);
+        require(updated != null && updated.getCredit() == 3
+                        && updated.getSelectedCount() == 0,
+                "Socket 回查课程修改且服务端维护人数");
+        require(client.deleteCourse(ADMIN_COURSE_ID), "Socket 管理员删除课程");
 
         System.out.println("COURSE_SOCKET_E2E_TEST=PASS");
     }

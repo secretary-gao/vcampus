@@ -15,6 +15,7 @@ import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.SelectCourse;
+import vcampus.common.vo.TeacherCourseEnrollment;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -36,6 +37,33 @@ public class CourseClientSrv implements ICourseClientSrv {
         Message response = send(IConstant.MSG_COURSE_QUERY, keyword, "Client");
         ensureSuccess(response);
         return castList(response.getData());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Course addCourse(Course course) throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_ADD, course, "Admin");
+        ensureSuccess(response);
+        if (!(response.getData() instanceof Course added)) {
+            throw new CourseClientException(IConstant.STATUS_ERROR, "服务器响应格式错误");
+        }
+        return added;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean updateCourse(Course course) throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_UPDATE, course, "Admin");
+        ensureSuccess(response);
+        return true;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean deleteCourse(String courseId) throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_DELETE, courseId, "Admin");
+        ensureSuccess(response);
+        return true;
     }
 
     /** {@inheritDoc} */
@@ -118,6 +146,16 @@ public class CourseClientSrv implements ICourseClientSrv {
     public List<CourseSchedule> queryStudentSchedule(String studentId)
             throws IOException, ClassNotFoundException {
         Message response = send(IConstant.MSG_STUDENT_TIMETABLE_QUERY, studentId, studentId);
+        ensureSuccess(response);
+        return castList(response.getData());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<TeacherCourseEnrollment> queryTeacherCourseEnrollments(String teacherName)
+            throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_TEACHER_COURSE_ENROLLMENTS_QUERY,
+                teacherName, teacherName);
         ensureSuccess(response);
         return castList(response.getData());
     }
