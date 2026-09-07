@@ -1,0 +1,31 @@
+@echo off
+rem Compile the whole project (Common + Server + Client) into bin\.
+rem Double-click to run, or it is called by run-server.bat / run-client.bat / start-all.bat.
+chcp 65001 >nul
+setlocal enabledelayedexpansion
+cd /d "%~dp0"
+
+if not exist bin mkdir bin
+
+echo [1/2] Collecting source files...
+set "SOURCES_LIST=%TEMP%\vcampus_sources_%RANDOM%.txt"
+rem javac's @argfile parser treats backslashes inside quotes as escapes,
+rem so paths are written with forward slashes to keep it safe.
+for /r "Common\src" %%f in (*.java) do (set "p=%%f" & set "p=!p:\=/!" & echo "!p!">>"%SOURCES_LIST%")
+for /r "Server\src" %%f in (*.java) do (set "p=%%f" & set "p=!p:\=/!" & echo "!p!">>"%SOURCES_LIST%")
+for /r "Client\src" %%f in (*.java) do (set "p=%%f" & set "p=!p:\=/!" & echo "!p!">>"%SOURCES_LIST%")
+
+echo [2/2] Compiling...
+javac -encoding UTF-8 -d bin -cp "lib\mysql-connector-j-9.7.0.jar" --module-path "lib\javafx\lib" --add-modules javafx.controls,javafx.fxml "@%SOURCES_LIST%"
+
+set "BUILD_RESULT=%ERRORLEVEL%"
+del "%SOURCES_LIST%" >nul 2>&1
+
+if not "%BUILD_RESULT%"=="0" (
+  echo.
+  echo Build FAILED, see errors above.
+  exit /b 1
+)
+
+echo Build succeeded.
+exit /b 0

@@ -359,6 +359,7 @@ public class LibraryPanel extends VBox {
 
     // ========== 表格设置 ==========
 
+    @SuppressWarnings("unchecked")
     private void setupBookTable(TableView<Book> table) {
         table.setItems(bookData);
 
@@ -402,6 +403,7 @@ public class LibraryPanel extends VBox {
         table.getColumns().forEach(col -> col.setReorderable(false));
     }
 
+    @SuppressWarnings("unchecked")
     private void setupRecordTable(TableView<BorrowRecord> table) {
         table.setItems(recordData);
 

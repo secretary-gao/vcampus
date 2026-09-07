@@ -6,8 +6,6 @@
     ],
     "java.project.outputPath": "bin",
     "java.project.referencedLibraries": [
-        "lib/**/*.jar",
-        "D:/JAVA/javafx-sdk-21.0.12/lib/**/*.jar"
-    ],
-    "java.debug.settings.vmArgs": "--module-path D:/JAVA/javafx-sdk-21.0.12/lib --add-modules javafx.controls,javafx.fxml"
+        "lib/**/*.jar"
+    ]
 }

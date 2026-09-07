@@ -49,11 +49,35 @@ public class UserClientSrv implements IUserClientSrv {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Message logout(User currentUser) throws IOException, ClassNotFoundException {
+        Message request = new Message(System.currentTimeMillis(), IConstant.MSG_LOGOUT,
+                MessageType.COMMAND, null, currentUser, currentUser == null ? null : currentUser.getUId());
+        return sendAndReceive(request);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Message setUserStatus(String operatorUId, String targetUId, String newStatus)
+            throws IOException, ClassNotFoundException {
+        Object[] payload = new Object[] {operatorUId, targetUId, newStatus};
+        Message request = new Message(System.currentTimeMillis(), IConstant.MSG_USER_SET_STATUS,
+                MessageType.COMMAND, null, payload, operatorUId);
+        return sendAndReceive(request);
+    }
+
+    /**
      * 建立连接、发送请求、读取响应、关闭连接的通用流程。
      *
-     * <p>注意：{@link ObjectOutputStream} 必须在 {@link ObjectInputStream}
+     * <p>
+     * 注意：{@link ObjectOutputStream} 必须在 {@link ObjectInputStream}
      * 之前创建并 flush（发送流头），否则会和服务器端相互等待卡死——服务器端
-     * 遵循同样的顺序，见 {@code vcampus.server.srv.ServerThread}。</p>
+     * 遵循同样的顺序，见 {@code vcampus.server.srv.ServerThread}。
+     * </p>
      *
      * @param request 请求消息
      * @return 服务器返回的响应消息
@@ -62,7 +86,7 @@ public class UserClientSrv implements IUserClientSrv {
      */
     private Message sendAndReceive(Message request) throws IOException, ClassNotFoundException {
         try (Socket socket = new Socket(IConstant.SERVER_HOST, IConstant.SERVER_PORT);
-             ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream())) {
+                ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream())) {
             out.flush();
             ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 
