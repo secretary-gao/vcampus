@@ -214,21 +214,7 @@ public class HospitalFrame extends Application {
             b.setOnMouseExited(e -> b.setStyle("-fx-background-color:#367ba9;-fx-text-fill:white;-fx-font-size:13px;-fx-background-radius:6;-fx-cursor:hand;"));
         }
 
-        // =========权限控制：管理员隐藏预约挂号、我的预约、取消预约=========
-        if (!"管理员".equals(_loginUserRole)) {
-            //普通用户：隐藏管理员按钮，显示全部用户按钮
-            btnQueryAllAppoint.setVisible(false);
-            btnAddDoctor.setVisible(false);
-            btnUpdateDoctor.setVisible(false);
-            btnDeleteDoctor.setVisible(false);
-            lblAdminFunc.setVisible(false);
-            sep2.setVisible(false);
-        } else {
-            //管理员：隐藏普通用户的3个预约功能
-            btnAddAppoint.setVisible(false);
-            btnMyAppoint.setVisible(false);
-            btnCancelAppoint.setVisible(false);
-        }
+       
 
         btnQueryAllDoctor.setOnAction(e -> switchPanel(panelQueryAllDoctor));
         btnQueryByDept.setOnAction(e -> switchPanel(panelQueryDept));
