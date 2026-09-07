@@ -1,12 +1,13 @@
 # Course 模块最终交付说明
 ## 交付者：刘酝潇
 本说明面向项目组长、验收教师和接手维护者。交付对象为 PR #4：`dev/course -> main`，
-代码验证基线为 `4e1d9c2`（2026-09-05）。
+原学生端最终人工 UAT 基线为 `4e1d9c2`（2026-09-05）；三角色功能于 2026-09-07 完成工程回归。
 
 ## 1. Course 模块最终功能
 
 - 学生：按课程号、名称或教师查询课程；查看容量和已选人数；选课、退课、查看我的课程和每周课程表。
-- 管理员界面：查询、新增、修改和删除排课，校验教师及教室时间冲突。
+- 教师：按登录用户姓名匹配 `tblCourse.teacher`，只读查看本人所授课程及每门课程的选课学生名单。
+- 管理员：查询、新增、修改和删除课程及排课；维护课程时保留真实已选人数，排课时校验教师及教室时间冲突。
 - 学籍接入：将登录用户 ID 映射到正式学号；未关联学籍的账号显示提示。
 - 数据一致性：选退课在同一事务中同步修改选课记录和 `selectedCount`，处理重复选课、满员及失败回滚。
 - 界面集成：从 MainFrame 的“教务”入口进入；选退课成功后大厅、我的课程、课程表各刷新一次。
@@ -22,6 +23,7 @@ MainFrame -> CoursePanel / 各业务页面
     -> ServerThread -> CourseHandler (ModuleHandler)
     -> ICourseServerSrv / CourseServerSrv
     -> CourseDAO / SelectCourseDAO / CourseScheduleDAO / CourseStudentDAO
+       / TeacherCourseEnrollmentDAO
     -> MySQL vCampus
 ```
 
@@ -36,14 +38,14 @@ Course 复用统一 Server：`ServerThread` 仅追加一行注册，`IConstant` 
 
 | 位置 | 职责 |
 |---|---|
-| `Common/src/vcampus/common/vo/{Course,SelectCourse,CourseSchedule}.java` | 课程、选课和排课序列化对象 |
+| `Common/src/vcampus/common/vo/` | 课程、选课、排课及教师课程名单序列化对象 |
 | `Common/src/vcampus/common/constant/IConstant.java` | Course 消息名及共享通信常量 |
 | `Server/src/vcampus/server/dao/*Course*.java` | 课程、选课、排课持久化及相关自测 |
 | `Server/src/vcampus/server/dao/CourseStudentDAO.java` | 登录用户到正式学号的只读映射 |
-| `Server/src/vcampus/server/srv/CourseServerSrv.java` | 选退课事务、排课冲突检查、课表汇总 |
+| `Server/src/vcampus/server/srv/CourseServerSrv.java` | 课程管理、选退课事务、排课冲突检查、课表及教师名单查询 |
 | `Server/src/vcampus/server/srv/CourseHandler.java` | 请求解析、Service 调用和响应封装 |
 | `Client/src/vcampus/client/biz/CourseClientSrv.java` | Course Socket 客户端 |
-| `Client/src/vcampus/client/view/course/` | CoursePanel、课程大厅、我的课程、课程表、排课管理及独立演示入口 |
+| `Client/src/vcampus/client/view/course/` | 学生选课页、教师名单页、课程/排课管理页及独立演示入口 |
 | `Client/src/vcampus/client/view/{MainFrame,HospitalFrame}.java` | 主界面接入及医院图片加载 |
 | `sql/course/` | Course schema 和可选 demo 数据 |
 | `build.bat`、`run-*.bat`、`start-all.bat`、`.vscode/launch.json` | 构建、资源复制和启动入口 |
@@ -98,6 +100,9 @@ PowerShell 5.1 的默认文件解码和原生程序管道编码可能损坏中�
 | 消息名 | 请求 data | 成功响应 data |
 |---|---|---|
 | `courseQuery` | 关键字字符串；空值查询全部 | `List<Course>` |
+| `courseAdd` | `Course` | 已新增的 `Course`；`selectedCount` 由服务端置零 |
+| `courseUpdate` | `Course` | `true` |
+| `courseDelete` | 课程号字符串 | `true` |
 | `courseSelect` / `courseDrop` | 包含 `studentId`、`courseId` 的 Map | 成功提示字符串 |
 | `courseSelectedQuery` | 学号字符串 | `List<SelectCourse>` |
 | `courseStudentIdQuery` | 用户 ID 字符串 | 学号或 `null` |
@@ -106,6 +111,7 @@ PowerShell 5.1 的默认文件解码和原生程序管道编码可能损坏中�
 | `courseScheduleUpdate` | `CourseSchedule` | `true` |
 | `courseScheduleDelete` | 排课记录号字符串 | `true` |
 | `studentTimetableQuery` | 学号字符串 | 已选课程的 `List<CourseSchedule>` |
+| `teacherCourseEnrollmentsQuery` | 教师姓名字符串 | `List<TeacherCourseEnrollment>` |
 
 成功返回 `200`；业务校验或请求参数类型错误返回 `400`；JDBC / IO 异常返回 `500`。
 
@@ -114,36 +120,37 @@ PowerShell 5.1 的默认文件解码和原生程序管道编码可能损坏中�
 环境：JDK 21、JavaFX 21.0.12 Windows SDK、MySQL Connector/J 9.7.0；仓库不使用 Maven。
 所有命令从仓库根目录执行。JDK 应加入 PATH，先用 `java -version` 和 `javac -version` 确认版本。
 
-本仓库采用平铺 JAR 布局：
+团队统一采用 JavaFX SDK 嵌套布局：
 
 ```text
 lib/
   mysql-connector-j-9.7.0.jar
   javafx/
-    javafx.base.jar
-    javafx.controls.jar
-    javafx.fxml.jar
-    javafx.graphics.jar
-    ...
-  bin/
-    glass.dll
-    prism_d3d.dll
-    prism_sw.dll
-    ...
+    lib/
+      javafx.base.jar
+      javafx.controls.jar
+      javafx.fxml.jar
+      javafx.graphics.jar
+      ...
+    bin/
+      glass.dll
+      prism_d3d.dll
+      prism_sw.dll
+      ...
 ```
 
 首次准备依赖时，将下列占位路径替换为本机解压后的 SDK 目录：
 
 ```powershell
 $fx = 'C:\path\to\javafx-sdk-21.0.12'
-New-Item -ItemType Directory -Force lib\javafx,lib\bin | Out-Null
-Copy-Item "$fx\lib\*.jar" lib\javafx\
-Copy-Item "$fx\bin\*.dll" lib\bin\
+New-Item -ItemType Directory -Force lib\javafx\lib,lib\javafx\bin | Out-Null
+Copy-Item "$fx\lib\*" lib\javafx\lib\ -Recurse -Force
+Copy-Item "$fx\bin\*" lib\javafx\bin\ -Recurse -Force
 ```
 
-Windows native DLL 必须与 JAR 版本匹配；JavaFX 从平铺 JAR 所在目录的同级 `bin` 加载它们。
+Windows native DLL 必须与 JAR 版本匹配，并保留在同一 SDK 的 `lib/javafx/bin`。
 仅有 JAR 可以编译，但运行可能报 `no suitable pipeline found`。
-`lib/javafx` 和 `lib/bin` 均被 gitignore 忽略，不提交本地 SDK 二进制。
+`lib/javafx` 被 gitignore 忽略，不提交本地 SDK 二进制。
 
 正式构建与启动：
 
@@ -157,14 +164,14 @@ Windows native DLL 必须与 JAR 版本匹配；JavaFX 从平铺 JAR 所在目�
 
 也可单独使用 `start-all.bat` 一次启动 Server 和 Client，不要与上面的已运行实例重复启动。
 Server 使用端口 `8888`；VS Code 的 LoginFrame 启动配置使用相同 module-path。
-所有 JavaFX 启动入口使用 `lib\javafx`，不是 `lib\javafx\lib`。
+所有 JavaFX 启动入口统一使用 `lib\javafx\lib`。
 
 `build.bat` 编译 Common / Server / Client，并复制医院图片到
 `bin/vcampus/client/view/seu_logo.jpeg`。它不会自动清空旧 `bin`；clean 验证应先备份或清理旧产物。
 编译产物可直接运行，不需要把源码目录加入 classpath：
 
 ```powershell
-java --module-path lib\javafx --add-modules javafx.controls,javafx.fxml `
+java --module-path lib\javafx\lib --add-modules javafx.controls,javafx.fxml `
   -cp "bin;lib\mysql-connector-j-9.7.0.jar" vcampus.client.view.LoginFrame
 ```
 
@@ -175,13 +182,15 @@ java --module-path lib\javafx --add-modules javafx.controls,javafx.fxml `
 | 身份 | 登录 ID | 初始密码 | 说明 |
 |---|---|---|---|
 | 学生 | `09010101` | `123456` | 正式学号 `2026000001` |
-| 教务管理员 | `ADMIN001` | `123456` | 打开排课管理 |
+| 教师 | `09010103` | `123456` | 姓名“王老师”，匹配 `CSE1001` |
+| 教务管理员 | `ADMIN001` | `123456` | 打开课程管理和排课管理 |
 
 1. 学生登录后进入“教务”，查询并选择一门课程。
 2. 在“我的课程”检查记录，在“我的课程表”检查教师、教室和时间。
 3. 退课后检查三个页面：大厅人数恢复，已选课程及对应课表记录消失。
-4. 管理员登录，新增排课，再尝试教师重叠和教室重叠；检查拒绝提示。
-5. 修改、删除本次新增的排课，检查表格刷新；从 MainFrame 打开医院，确认入口和图片正常。
+4. 教师登录，在“我教的课程”查看本人课程及选课学生名单，不显示选退课或管理入口。
+5. 管理员登录，新增、修改和删除测试课程；再新增排课并尝试教师重叠和教室重叠，检查拒绝提示。
+6. 清理本次新增的课程和排课；从 MainFrame 打开医院，确认入口和图片正常。
 
 ## 8. 自动化测试与验证
 
@@ -194,6 +203,7 @@ $tests = @(
     'vcampus.server.dao.CourseDAOTest',
     'vcampus.server.dao.SelectCourseDAOTest',
     'vcampus.server.srv.CourseServerSrvTest',
+    'vcampus.server.srv.CourseRoleServerSrvTest',
     'vcampus.server.dao.CourseScheduleDAOTest',
     'vcampus.server.srv.CourseScheduleServerSrvTest'
 )
@@ -225,8 +235,8 @@ try {
 
 | 验证范围 | 实际结果 |
 |---|---|
-| 构建与正式入口 | JDK 21 编译全部 119 个 Java 文件；最终真实工作区 clean build 和 `run-client.bat` 登录窗口启动通过 |
-| DAO / Service / Socket | 上述 5 个直接测试及 2 个 Socket E2E 通过；包含正常操作、重复选课、满员、约束和故障回滚 |
+| 构建与正式入口 | JDK 21 编译全部 124 个 Java 文件；真实工作区 clean build、Hospital 资源复制和 `run-client.bat` 登录窗口启动通过 |
+| DAO / Service / Socket | 上述 6 个直接测试及 2 个 Socket E2E 通过；包含课程管理、教师名单、正常选退课、重复选课、满员、约束和故障回滚 |
 | 独立事务与并发 | 24 个客户端争抢 5 个名额，仅 5 个成功；16 次重复选课仅成功一次；12 次并发退课仅扣减一次；SQLException / RuntimeException 注入后数据回滚 |
 | 排课 | 教师/教室冲突、相邻时段、排除自身、更新/删除不存在记录均验证；默认 REPEATABLE-READ 下并发冲突排课未双提交，但可能出现 1213 |
 | 测试隔离 | 已建表空库、导入 demo、已有正常业务数据三环境通过，前后内容摘要一致，包括保留与旧测试 ID 相同的既有记录 |
@@ -262,11 +272,11 @@ try {
 | PowerShell 5.1 管道执行中文 SQL 损坏编码 | 改用 MySQL `SOURCE` 直接读取 UTF-8，并明确用户、学籍、Course、demo 的执行顺序 | 原管道产生问号；SOURCE 导入后中文 HEX 正确，完整顺序执行通过。`fa87fdb` |
 | 排课 Service 测试与 demo 冲突 | 每轮隔离课程、学生、教师和教室标识；取消预先删除，按成功创建记录清理 | 空表、demo、正常业务数据三环境通过，既有数据不变。`304376a` |
 | 退课后大厅人数未自动刷新 | CoursePanel 统一刷新三个页面，移除子页面重复刷新 | 真实选退课后人数、已选记录和课表同步，逐页刷新次数为一次。`ed756df` |
-| 正式入口假设嵌套 `lib/javafx/lib` | `build.bat`、`run-client.bat`、`start-all.bat` 和 VS Code launch 统一为平铺 `lib/javafx` | 真实仓库 JDK 21 clean build、图片复制、正式 LoginFrame 启动通过。`4e1d9c2` |
-| 本地仅有 JavaFX JAR，缺少 Windows native DLL | 在被忽略的 `lib/bin` 补齐匹配版本 DLL；第 6 节说明依赖布局，不提交二进制 | 正式登录窗口正常显示并响应；此项为本地依赖准备，无二进制提交 |
+| Course 分支一度采用平铺 `lib/javafx`，与团队环境不一致 | 按团队约定将 `build.bat`、`run-client.bat`、`start-all.bat` 和 VS Code launch 统一为 `lib/javafx/lib` | 嵌套 SDK 下 JDK 21 构建、图片复制及正式 LoginFrame 启动通过 |
+| 本地仅有 JavaFX JAR，缺少 Windows native DLL | 在被忽略的 `lib/javafx/bin` 补齐同一 SDK 的匹配 DLL；不提交二进制 | 正式登录窗口正常显示并响应；此项为本地依赖准备，无二进制提交 |
+| Course 页面未区分教师，管理员只能维护排课 | CoursePanel 按登录角色显示学生、教师、管理员页面；新增教师名单查询和管理员课程 CRUD | Service 与 Socket 回归覆盖教师名单、课程 CRUD、引用保护和人数保持；JavaFX 角色页 smoke 通过 |
 
-早期 staging 使用完整 SDK 的嵌套目录，未复现真实工作区的平铺布局，因此不能作为正式脚本路径正确的证据。
-最终构建验收已改为在真实仓库备份旧 `bin` 后直接运行脚本。
+本地依赖目录必须遵循团队 README 的嵌套 SDK 约定；正式脚本不包含个人绝对路径。
 
 ## 11. 当前已知架构边界
 
@@ -280,13 +290,11 @@ try {
 
 ## 12. 最终 Git / PR 状态
 
-核对快照：2026-09-05；PR #4 交付方向为 `dev/course -> main`。
+核对快照：2026-09-07；PR #4 交付方向为 `dev/course -> main`。
 
 - 已推送并经最终人工 UAT 确认的业务代码基线：`4e1d9c24093ca174361b0826659ce9bd3efb3520`；验收时本地分支与 `origin/dev/course` 一致。
-- 对比基线：`origin/main@422419fd96298e1031eca7a228a2f91f08b70140`。
-- 文档整理前 PR diff：41 个变更文件，覆盖 Course 全链路、主界面集成及相关资源/构建入口修复。
-- 最终提交 `docs(course): finalize delivery and UAT record` 仅更新本说明，会产生新的 HEAD，业务代码没有再次修改。
-- 工程结论：`ready for review / merge`。最终人工 UAT 已完成，第 11 节已知架构边界继续保留。
+- Course 分支已纳入 `origin/main@6096edd88cae5e6b261824f1bebe1233f80307ae` 的三角色登录与主界面角色展示变更。
+- 2026-09-07 新增教师课程名单、管理员课程管理，并将 JavaFX 启动路径恢复为团队统一的嵌套 SDK 布局。
+- 工程结论：`ready for review / merge`。原学生流程人工 UAT 已完成；新增角色功能已完成 Service、Socket 与 JavaFX smoke，仍建议按学生/教师/管理员各走一遍最终人工验收。
 
-本次交付包含文档提交和推送，不执行 main 合并；PR Conversation 评论单独提供文本，不自动发布。
-Git 远端分支已核对，GitHub 的审批、CI 和合并资格状态未在本说明中作通过声明。
+第 11 节已知架构边界继续保留；最终合并状态以 GitHub PR #4 为准。
