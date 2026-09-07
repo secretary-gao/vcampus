@@ -76,6 +76,7 @@ public class ServerThread implements Runnable {
         this._socket = socket;
         registerHandlers();
         _moduleHandlers.add(new StoreModuleHandler());
+        _moduleHandlers.add(new CourseHandler());
     }
 
     /**
@@ -168,6 +169,7 @@ public class ServerThread implements Runnable {
         _handlerMap.put(StudentProtocol.ADD, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.UPDATE, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.DELETE, this::handleStudentRequest);
+        _handlerMap.put(IConstant.MSG_USER_SET_STATUS, this::handleSetUserStatus);
 
         // ========= 医院挂号模块【新增，只追加不删除原有】 =========
         _handlerMap.put(IConstant.MSG_HOSPITAL_QUERY_ALL_DOCTOR, this::handleQueryAllDoctor);
@@ -200,6 +202,9 @@ public class ServerThread implements Runnable {
             }
             return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
                     IConstant.STATUS_SUCCESS, found, "Server");
+        } catch (UserDisabledException e) {
+            return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
+                    IConstant.STATUS_ACCOUNT_DISABLED, e.getMessage(), "Server");
         } catch (IllegalArgumentException e) {
             return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
                     IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
@@ -395,6 +400,37 @@ public class ServerThread implements Runnable {
         } catch (SQLException | IOException e) {
             return new Message(request.getUid(), request.getName(), MessageType.DATA,
                     IConstant.STATUS_ERROR, "查询可删除医生失败：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理管理员禁用/启用账号请求。
+     *
+     * @param request 请求消息，{@code data} 约定为
+     *                {@code Object[]{operatorUId, targetUId, newStatus}}
+     * @return 操作结果消息
+     */
+    private Message handleSetUserStatus(Message request) {
+        try {
+            Object[] args = (Object[]) request.getData();
+            String operatorUId = (String) args[0];
+            String targetUId = (String) args[1];
+            String newStatus = (String) args[2];
+
+            boolean ok = _userServerSrv.setUserStatus(operatorUId, targetUId, newStatus);
+            String statusCode = ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
+            String data = ok ? ("已将 " + targetUId + " 的账号状态设为：" + newStatus) : "操作失败，请稍后重试";
+            return new Message(request.getUid(), IConstant.MSG_USER_SET_STATUS, MessageType.DATA,
+                    statusCode, data, "Server");
+        } catch (PermissionDeniedException e) {
+            return new Message(request.getUid(), IConstant.MSG_USER_SET_STATUS, MessageType.DATA,
+                    IConstant.STATUS_FORBIDDEN, e.getMessage(), "Server");
+        } catch (IllegalArgumentException | ClassCastException e) {
+            return new Message(request.getUid(), IConstant.MSG_USER_SET_STATUS, MessageType.DATA,
+                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_USER_SET_STATUS, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
         }
     }
 

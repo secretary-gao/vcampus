@@ -7,7 +7,7 @@ cd /d "%~dp0"
 
 if not exist bin mkdir bin
 
-echo [1/2] Collecting source files...
+echo [1/3] Collecting source files...
 set "SOURCES_LIST=%TEMP%\vcampus_sources_%RANDOM%.txt"
 rem javac's @argfile parser treats backslashes inside quotes as escapes,
 rem so paths are written with forward slashes to keep it safe.
@@ -15,7 +15,7 @@ for /r "Common\src" %%f in (*.java) do (set "p=%%f" & set "p=!p:\=/!" & echo "!p
 for /r "Server\src" %%f in (*.java) do (set "p=%%f" & set "p=!p:\=/!" & echo "!p!">>"%SOURCES_LIST%")
 for /r "Client\src" %%f in (*.java) do (set "p=%%f" & set "p=!p:\=/!" & echo "!p!">>"%SOURCES_LIST%")
 
-echo [2/2] Compiling...
+echo [2/3] Compiling...
 javac -encoding UTF-8 -d bin -cp "lib\mysql-connector-j-9.7.0.jar" --module-path "lib\javafx\lib" --add-modules javafx.controls,javafx.fxml "@%SOURCES_LIST%"
 
 set "BUILD_RESULT=%ERRORLEVEL%"
@@ -24,6 +24,13 @@ del "%SOURCES_LIST%" >nul 2>&1
 if not "%BUILD_RESULT%"=="0" (
   echo.
   echo Build FAILED, see errors above.
+  exit /b 1
+)
+
+echo [3/3] Copying Hospital image resource...
+copy /y "Client\src\vcampus\client\view\seu_logo.jpeg" "bin\vcampus\client\view\seu_logo.jpeg" >nul
+if errorlevel 1 (
+  echo Resource copy FAILED.
   exit /b 1
 )
 

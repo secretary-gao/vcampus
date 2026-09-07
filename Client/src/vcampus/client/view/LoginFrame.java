@@ -167,7 +167,7 @@ public class LoginFrame extends Application {
         _uidField.setStyle(fieldStyle());
         _pwdField.setStyle(fieldStyle());
 
-        _roleBox.getItems().setAll("学生", "管理员");
+        _roleBox.getItems().setAll("学生", "教师", "管理员");
         _roleBox.getSelectionModel().selectFirst();
         _roleBox.setPrefHeight(44);
         _roleBox.setMaxWidth(Double.MAX_VALUE);

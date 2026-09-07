@@ -39,6 +39,12 @@ public interface IConstant {
     /** 状态码：服务器内部异常。 */
     String STATUS_ERROR = "500";
 
+    /** 状态码：账号已被管理员禁用。 */
+    String STATUS_ACCOUNT_DISABLED = "403";
+
+    /** 状态码：权限不足（如非管理员尝试执行管理员专属操作）。 */
+    String STATUS_FORBIDDEN = "410";
+
     // ========= 用户模块消息 =========
     /** 消息名：登录请求，对应 {@link vcampus.common.vo.Message#getName()}。 */
     String MSG_LOGIN = "login";
@@ -47,11 +53,33 @@ public interface IConstant {
     /** 消息名：登出请求，对应 {@link vcampus.common.vo.Message#getName()}。 */
     String MSG_LOGOUT = "logout";
 
+    /**
+     * 消息名：管理员禁用/启用账号请求，对应说明书"管理员可注销/禁用账号"。
+     * 请求 data 约定为 {@code Object[]{operatorUId, targetUId, newStatus}}。
+     */
+    String MSG_USER_SET_STATUS = "userSetStatus";
+
     // ========== 图书馆模块消息类型 ==========
     String MSG_QUERY_BOOKS = "queryBooks";
     String MSG_BORROW_BOOK = "borrowBook";
     String MSG_RETURN_BOOK = "returnBook";
     String MSG_GET_BORROW_RECORDS = "getBorrowRecords";
+
+    // ========== 选课模块消息类型 ==========
+    String MSG_COURSE_QUERY = "courseQuery";
+    String MSG_COURSE_ADD = "courseAdd";
+    String MSG_COURSE_UPDATE = "courseUpdate";
+    String MSG_COURSE_DELETE = "courseDelete";
+    String MSG_COURSE_SELECT = "courseSelect";
+    String MSG_COURSE_DROP = "courseDrop";
+    String MSG_COURSE_SELECTED_QUERY = "courseSelectedQuery";
+    String MSG_COURSE_STUDENT_ID_QUERY = "courseStudentIdQuery";
+    String MSG_COURSE_SCHEDULE_QUERY = "courseScheduleQuery";
+    String MSG_COURSE_SCHEDULE_ADD = "courseScheduleAdd";
+    String MSG_COURSE_SCHEDULE_UPDATE = "courseScheduleUpdate";
+    String MSG_COURSE_SCHEDULE_DELETE = "courseScheduleDelete";
+    String MSG_STUDENT_TIMETABLE_QUERY = "studentTimetableQuery";
+    String MSG_TEACHER_COURSE_ENROLLMENTS_QUERY = "teacherCourseEnrollmentsQuery";
 
     // ---------- 虚拟商店模块（store）消息名与状态码 ----------
 

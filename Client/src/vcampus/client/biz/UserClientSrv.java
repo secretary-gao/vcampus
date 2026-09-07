@@ -59,6 +59,18 @@ public class UserClientSrv implements IUserClientSrv {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Message setUserStatus(String operatorUId, String targetUId, String newStatus)
+            throws IOException, ClassNotFoundException {
+        Object[] payload = new Object[] {operatorUId, targetUId, newStatus};
+        Message request = new Message(System.currentTimeMillis(), IConstant.MSG_USER_SET_STATUS,
+                MessageType.COMMAND, null, payload, operatorUId);
+        return sendAndReceive(request);
+    }
+
+    /**
      * 建立连接、发送请求、读取响应、关闭连接的通用流程。
      *
      * <p>
