@@ -395,7 +395,7 @@ public class MainFrame extends Application {
      * 打开学籍模块的真实业务界面，并复用主界面的统一服务器连接。
      */
     private void showStudentPage() {
-        StudentManagementFrame studentFrame = new StudentManagementFrame();
+        StudentManagementFrame studentFrame = new StudentManagementFrame(_currentUser);
         BorderPane studentPanel = studentFrame.createView();
 
         Button backButton = new Button("返回总览");

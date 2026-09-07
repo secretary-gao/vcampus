@@ -175,6 +175,25 @@ public class User implements Serializable {
         this._uRole = uRole;
     }
 
+    /** 判断当前账号是否为学生。 */
+    public boolean isStudent() {
+        return "学生".equals(normalizedRole());
+    }
+
+    /** 判断当前账号是否为教师。 */
+    public boolean isTeacher() {
+        return "教师".equals(normalizedRole());
+    }
+
+    /** 判断当前账号是否为管理员。 */
+    public boolean isAdmin() {
+        return "管理员".equals(normalizedRole());
+    }
+
+    private String normalizedRole() {
+        return _uRole == null ? "" : _uRole.trim();
+    }
+
     /**
      * 返回该用户的可读字符串表示，便于调试时打印查看。
      *
@@ -187,7 +206,7 @@ public class User implements Serializable {
                 ", uName='" + _uName + '\'' +
                 ", uAge=" + _uAge +
                 ", uSex='" + _uSex + '\'' +
-                ", uPwd='" + _uPwd + '\'' +
+                ", uPwd='***'" +
                 ", uRole='" + _uRole + '\'' +
                 '}';
     }

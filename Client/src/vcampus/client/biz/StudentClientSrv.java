@@ -4,6 +4,7 @@ import vcampus.common.constant.StudentProtocol;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.Student;
+import vcampus.common.vo.User;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -16,12 +17,22 @@ public class StudentClientSrv implements IStudentClientSrv {
 
     private final String _host;
     private final int _port;
+    private final User _currentUser;
 
     public StudentClientSrv() {
-        this(StudentProtocol.DEFAULT_HOST, StudentProtocol.DEFAULT_PORT);
+        this(null, StudentProtocol.DEFAULT_HOST, StudentProtocol.DEFAULT_PORT);
     }
 
     public StudentClientSrv(String host, int port) {
+        this(null, host, port);
+    }
+
+    public StudentClientSrv(User currentUser) {
+        this(currentUser, StudentProtocol.DEFAULT_HOST, StudentProtocol.DEFAULT_PORT);
+    }
+
+    public StudentClientSrv(User currentUser, String host, int port) {
+        this._currentUser = currentUser;
         this._host = host;
         this._port = port;
     }
@@ -30,6 +41,13 @@ public class StudentClientSrv implements IStudentClientSrv {
     public List<Student> findAll()
             throws IOException, ClassNotFoundException, StudentClientException {
         return studentList(request(StudentProtocol.LIST, null).getData());
+    }
+
+    @Override
+    public Student getMyStudentInfo()
+            throws IOException, ClassNotFoundException, StudentClientException {
+        Message response = requestAllowNotFound(StudentProtocol.GET_SELF, null);
+        return response == null ? null : (Student) response.getData();
     }
 
     @Override
@@ -73,7 +91,7 @@ public class StudentClientSrv implements IStudentClientSrv {
     private Message request(String name, Object data)
             throws IOException, ClassNotFoundException, StudentClientException {
         Message response = sendAndReceive(new Message(System.currentTimeMillis(), name,
-                MessageType.COMMAND, null, data, "StudentClient"));
+                MessageType.COMMAND, null, data, _currentUser));
         if (!StudentProtocol.STATUS_SUCCESS.equals(response.getStatusCode())) {
             throw new StudentClientException(response.getStatusCode(),
                     String.valueOf(response.getData()));

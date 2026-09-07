@@ -144,6 +144,7 @@ public class ServerThread implements Runnable {
         _handlerMap.put(IConstant.MSG_RETURN_BOOK, this::handleLibraryRequest);
         _handlerMap.put(IConstant.MSG_GET_BORROW_RECORDS, this::handleLibraryRequest);
         _handlerMap.put(StudentProtocol.LIST, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.GET_SELF, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.QUERY_BY_ID, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.QUERY_BY_CARD, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.QUERY_BY_NAME, this::handleStudentRequest);
