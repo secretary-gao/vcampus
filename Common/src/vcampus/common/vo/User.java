@@ -17,12 +17,19 @@ import java.io.Serializable;
  * 所以实现 {@link Serializable} 接口。
  *
  * <p>字段设计对应共享说明书中 tblUser 表：uId（登录ID）、uName（姓名）、
- * uAge（年龄）、uSex（性别）、uPwd（密码，存 MD5 摘要）、uRole（角色）。</p>
+ * uAge（年龄）、uSex（性别）、uPwd（密码，存 MD5 摘要）、uRole（角色）、
+ * uStatus（账号状态，正常/禁用，对应说明书"管理员可注销/禁用账号"）。</p>
  */
 public class User implements Serializable {
 
     /** 序列化版本号。 */
     private static final long serialVersionUID = 1L;
+
+    /** 账号状态：正常。 */
+    public static final String STATUS_NORMAL = "正常";
+
+    /** 账号状态：禁用。 */
+    public static final String STATUS_DISABLED = "禁用";
 
     /** 登录ID，定长8位（如学号/工号）。 */
     private String _uId;
@@ -42,6 +49,9 @@ public class User implements Serializable {
     /** 用户角色（学生/教师/管理员）。 */
     private String _uRole;
 
+    /** 账号状态（正常/禁用），默认为正常。 */
+    private String _uStatus = STATUS_NORMAL;
+
     /**
      * 无参构造方法。
      */
@@ -49,7 +59,7 @@ public class User implements Serializable {
     }
 
     /**
-     * 全参构造方法。
+     * 全参构造方法（账号状态默认为正常，保持与旧代码兼容）。
      *
      * @param uId   登录ID
      * @param uName 姓名
@@ -176,6 +186,24 @@ public class User implements Serializable {
     }
 
     /**
+     * 获取账号状态。
+     *
+     * @return 账号状态（{@link #STATUS_NORMAL} 或 {@link #STATUS_DISABLED}）
+     */
+    public String getUStatus() {
+        return _uStatus;
+    }
+
+    /**
+     * 设置账号状态。
+     *
+     * @param uStatus 账号状态
+     */
+    public void setUStatus(String uStatus) {
+        this._uStatus = uStatus;
+    }
+
+    /**
      * 返回该用户的可读字符串表示，便于调试时打印查看。
      *
      * @return 用户信息的字符串描述
@@ -189,6 +217,7 @@ public class User implements Serializable {
                 ", uSex='" + _uSex + '\'' +
                 ", uPwd='" + _uPwd + '\'' +
                 ", uRole='" + _uRole + '\'' +
+                ", uStatus='" + _uStatus + '\'' +
                 '}';
     }
 }

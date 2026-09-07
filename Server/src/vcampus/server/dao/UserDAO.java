@@ -33,7 +33,7 @@ public class UserDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public User findByUId(String uId) throws SQLException, IOException {
-        String sql = "SELECT uId, uName, uAge, uSex, uPwd, uRole FROM tblUser WHERE uId = ?";
+        String sql = "SELECT uId, uName, uAge, uSex, uPwd, uRole, uStatus FROM tblUser WHERE uId = ?";
 
         try (Connection conn = DbHelper.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -97,6 +97,29 @@ public class UserDAO {
         user.setUSex(rs.getString("uSex"));
         user.setUPwd(rs.getString("uPwd"));
         user.setURole(rs.getString("uRole"));
+        user.setUStatus(rs.getString("uStatus"));
         return user;
+    }
+
+    /**
+     * 更新指定用户的账号状态（正常/禁用），供管理员禁用/启用账号使用。
+     *
+     * @param uId    目标用户的登录ID
+     * @param status 新状态，取值见 {@link User#STATUS_NORMAL}/{@link User#STATUS_DISABLED}
+     * @return 更新成功（该用户存在且被更新）返回 {@code true}
+     * @throws SQLException 数据库操作异常
+     * @throws IOException  数据库配置文件读取异常
+     */
+    public boolean updateStatus(String uId, String status) throws SQLException, IOException {
+        String sql = "UPDATE tblUser SET uStatus = ? WHERE uId = ?";
+
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, status);
+            pstmt.setString(2, uId);
+
+            return pstmt.executeUpdate() > 0;
+        }
     }
 }
