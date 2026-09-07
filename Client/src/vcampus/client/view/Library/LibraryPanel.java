@@ -12,13 +12,18 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.scene.text.TextAlignment;
 import javafx.scene.layout.StackPane;
+import javafx.scene.text.TextAlignment;
+
 import vcampus.client.biz.Library.BookClientServiceImpl;
 import vcampus.client.biz.Library.IBookClientService;
 import vcampus.common.vo.Library.Book;
 import vcampus.common.vo.Library.BorrowRecord;
 
+import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.Date;
 
 /**
  * 图书馆主面板
@@ -358,22 +363,27 @@ public class LibraryPanel extends VBox {
         table.setItems(bookData);
 
         TableColumn<Book, String> idCol = new TableColumn<>("书号");
+        idCol.setCellFactory(col -> createCenterCell());
         idCol.setCellValueFactory(new PropertyValueFactory<>("bookId"));
         idCol.setPrefWidth(120);
 
         TableColumn<Book, String> nameCol = new TableColumn<>("书名");
+        nameCol.setCellFactory(col -> createCenterCell());
         nameCol.setCellValueFactory(new PropertyValueFactory<>("bookName"));
         nameCol.setPrefWidth(300);
 
         TableColumn<Book, String> authorCol = new TableColumn<>("作者");
+        authorCol.setCellFactory(col -> createCenterCell());
         authorCol.setCellValueFactory(new PropertyValueFactory<>("author"));
         authorCol.setPrefWidth(150);
 
         TableColumn<Book, String> categoryCol = new TableColumn<>("分类");
+        categoryCol.setCellFactory(col -> createCenterCell());
         categoryCol.setCellValueFactory(new PropertyValueFactory<>("category"));
         categoryCol.setPrefWidth(120);
 
         TableColumn<Book, Integer> availCol = new TableColumn<>("可借数量");
+        availCol.setCellFactory(col -> createIntegerCenterCell());
         availCol.setCellValueFactory(new PropertyValueFactory<>("availableCount"));
         availCol.setPrefWidth(100);
 
@@ -389,30 +399,64 @@ public class LibraryPanel extends VBox {
         
         table.getColumns().addAll(idCol, nameCol, authorCol, categoryCol, availCol);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.getColumns().forEach(col -> col.setReorderable(false));
     }
 
     private void setupRecordTable(TableView<BorrowRecord> table) {
         table.setItems(recordData);
 
         TableColumn<BorrowRecord, String> idCol = new TableColumn<>("记录号");
+        idCol.setCellFactory(col -> createCenterCell());
         idCol.setCellValueFactory(new PropertyValueFactory<>("recordId"));
         idCol.setPrefWidth(150);
 
         TableColumn<BorrowRecord, String> bookIdCol = new TableColumn<>("图书编号");
+        bookIdCol.setCellFactory(col -> createCenterCell());
         bookIdCol.setCellValueFactory(new PropertyValueFactory<>("bookId"));
         bookIdCol.setPrefWidth(120);
 
         TableColumn<BorrowRecord, String> statusCol = new TableColumn<>("状态");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
         statusCol.setPrefWidth(100);
+        statusCol.setCellFactory(col -> createCenterCell());
 
-        TableColumn<BorrowRecord, String> borrowDateCol = new TableColumn<>("借阅日期");
+        // 借阅日期列
+        TableColumn<BorrowRecord, Date> borrowDateCol = new TableColumn<>("借阅日期");
         borrowDateCol.setCellValueFactory(new PropertyValueFactory<>("borrowDate"));
         borrowDateCol.setPrefWidth(150);
+        borrowDateCol.setCellFactory(col -> new TableCell<BorrowRecord, Date>() {
+            private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
+            @Override
+            protected void updateItem(Date item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-alignment: center;");
+                } else {
+                    setText(sdf.format(item));
+                    setStyle("-fx-alignment: center;");
+                }
+            }
+        });
 
-        TableColumn<BorrowRecord, String> dueDateCol = new TableColumn<>("应还日期");
+        // 应还日期列（同样处理）
+        TableColumn<BorrowRecord, Date> dueDateCol = new TableColumn<>("应还日期");
         dueDateCol.setCellValueFactory(new PropertyValueFactory<>("dueDate"));
         dueDateCol.setPrefWidth(150);
+        dueDateCol.setCellFactory(col -> new TableCell<BorrowRecord, Date>() {
+            private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
+            @Override
+            protected void updateItem(Date item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setStyle("-fx-alignment: center;");
+                    setText(null);
+                } else {
+                    setStyle("-fx-alignment: center;");
+                    setText(sdf.format(item));
+                }
+            }
+        });
 
         // 状态用颜色标记
         statusCol.setCellFactory(col -> new TableCell<BorrowRecord, String>() {
@@ -421,15 +465,14 @@ public class LibraryPanel extends VBox {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setText(null);
-                    setStyle("");
                 } else {
                     setText(item);
                     if ("借阅中".equals(item)) {
-                        setStyle("-fx-text-fill: #1a73e8; -fx-font-weight: bold;");
+                        setStyle("-fx-text-fill: #1a73e8; -fx-font-weight: bold; -fx-alignment: center;");
                     } else if ("已逾期".equals(item)) {
-                        setStyle("-fx-text-fill: #d32f2f; -fx-font-weight: bold;");
+                        setStyle("-fx-text-fill: #d32f2f; -fx-font-weight: bold; -fx-alignment: center;");
                     } else {
-                        setStyle("-fx-text-fill: #388e3c;");
+                        setStyle("-fx-text-fill: #388e3c; -fx-alignment: center;");
                     }
                 }
             }
@@ -437,7 +480,7 @@ public class LibraryPanel extends VBox {
         // 新增“操作”列，用于放置“归还”按钮
         TableColumn<BorrowRecord, Void> actionCol = new TableColumn<>("操作");
         actionCol.setPrefWidth(100);
-
+        
         // 设置该列如何为每行数据生成单元格
         actionCol.setCellFactory(col -> new TableCell<BorrowRecord, Void>() {
             private final Button returnBtn = new Button("归还");
@@ -473,6 +516,9 @@ public class LibraryPanel extends VBox {
                 // 只有状态为“借阅中”时才显示“归还”按钮，否则显示为空
                 if ("借阅中".equals(record.getStatus())) {
                     setGraphic(returnBtn);
+                    // ← 关键：设置单元格内容和按钮居中
+                    setAlignment(Pos.CENTER);
+                    setStyle("-fx-alignment: center;");
                 } else {
                     setGraphic(null);
                 }
@@ -483,6 +529,7 @@ public class LibraryPanel extends VBox {
         table.getColumns().addAll(idCol, bookIdCol, statusCol, borrowDateCol, dueDateCol);
         table.getColumns().add(actionCol);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.getColumns().forEach(col -> col.setReorderable(false));
     }
 
     // ========== 工具方法 ==========
@@ -501,7 +548,47 @@ public class LibraryPanel extends VBox {
             doSearch("");
         }
     }
+    private <T> TableCell<T, String> createCenterCell() {
+        return new TableCell<T, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    setStyle("-fx-alignment: center;");
+                }
+            }
+        };
+    }
+    private <T> TableCell<T, Integer> createIntegerCenterCell() {
+        return new TableCell<T, Integer>() {
+            @Override
+            protected void updateItem(Integer item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(String.valueOf(item));
+                    setStyle("-fx-alignment: center;");
+                }
+            }
+        };
+    }
 
+    private <T> TableCell<T, Void> createActionCenterCell() {
+        return new TableCell<T, Void>() {
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                // 操作列由 setCellFactory 自己处理，这里只设置样式
+                setStyle("-fx-alignment: center;");
+            }
+        };
+    }
     // ========== 测试入口 ==========
     public static void main(String[] args) {
         javafx.application.Application.launch(TestApp.class);
