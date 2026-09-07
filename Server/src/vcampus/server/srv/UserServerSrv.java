@@ -28,7 +28,7 @@ public class UserServerSrv implements IUserServerSrv {
      * {@inheritDoc}
      */
     @Override
-    public User login(User loginUser) throws SQLException, IOException {
+    public User login(User loginUser) throws SQLException, IOException, UserDisabledException {
         if (loginUser == null) {
             throw new IllegalArgumentException("用户信息不能为空");
         }
@@ -39,6 +39,9 @@ public class UserServerSrv implements IUserServerSrv {
         }
         if (found.getUPwd() == null || !found.getUPwd().equals(loginUser.getUPwd())) {
             return null;
+        }
+        if (User.STATUS_DISABLED.equals(found.getUStatus())) {
+            throw new UserDisabledException("账号已被管理员禁用：" + found.getUId());
         }
         return found;
     }
@@ -82,5 +85,28 @@ public class UserServerSrv implements IUserServerSrv {
     @Override
     public boolean logout(User currentUser) throws SQLException, IOException {
         return currentUser != null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean setUserStatus(String operatorUId, String targetUId, String newStatus)
+            throws SQLException, IOException, PermissionDeniedException {
+        if (operatorUId == null || targetUId == null || newStatus == null) {
+            throw new IllegalArgumentException("操作者ID、目标ID、新状态均不能为空");
+        }
+
+        User operator = _userDAO.findByUId(operatorUId);
+        if (operator == null || !"管理员".equals(operator.getURole())) {
+            throw new PermissionDeniedException("无权限执行该操作，仅管理员可禁用/启用账号");
+        }
+
+        User target = _userDAO.findByUId(targetUId);
+        if (target == null) {
+            throw new IllegalArgumentException("目标用户不存在：" + targetUId);
+        }
+
+        return _userDAO.updateStatus(targetUId, newStatus);
     }
 }

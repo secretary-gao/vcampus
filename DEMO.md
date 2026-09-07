@@ -36,7 +36,7 @@ Vcampus 服务器启动中...
 java -cp "bin;lib\mysql-connector-j-9.7.0.jar" vcampus.client.view.LoginFrame
 ```
 
-会弹出一个"Vcampus 登录"窗口，里面有：登录ID输入框、密码输入框、角色下拉框（学生/管理员）、"登录"和"注册"两个按钮。
+会弹出一个"Vcampus 登录"窗口，里面有：登录ID输入框、密码输入框、角色下拉框（学生/教师/管理员）、"登录"和"注册"两个按钮。
 
 ## 四、演示脚本（按顺序做，每步讲一句）
 
