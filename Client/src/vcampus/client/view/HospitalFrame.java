@@ -140,8 +140,14 @@ public class HospitalFrame extends Application {
         banner.setPadding(new Insets(12, 30, 12, 30));
         banner.setStyle("-fx-background-color:#ffffff;-fx-border-color:#cce0ed;-fx-border-width:0 0 1 0;");
 
-        Image logoImg = new Image(getClass().getResource("seu_logo.jpeg").toExternalForm(), 120, 120, true, true, false);
-        ImageView logoView = new ImageView(logoImg);
+        ImageView logoView = new ImageView();
+        java.net.URL logoResource = HospitalFrame.class.getResource("/vcampus/client/view/seu_logo.jpeg");
+        if (logoResource != null) {
+            Image logoImg = new Image(logoResource.toExternalForm(), 120, 120, true, true, false);
+            if (!logoImg.isError()) {
+                logoView.setImage(logoImg);
+            }
+        }
 
         Label systemTitle = new Label("🏥 医院挂号管理系统");
         systemTitle.setFont(Font.font("System", FontWeight.BOLD, 24));
