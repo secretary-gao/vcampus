@@ -214,7 +214,15 @@ public class HospitalFrame extends Application {
             b.setOnMouseExited(e -> b.setStyle("-fx-background-color:#367ba9;-fx-text-fill:white;-fx-font-size:13px;-fx-background-radius:6;-fx-cursor:hand;"));
         }
 
-       
+        if (!"管理员".equals(_loginUserRole)) {
+            //普通用户：隐藏管理员按钮，显示全部用户按钮
+            btnQueryAllAppoint.setVisible(false);
+            btnAddDoctor.setVisible(false);
+            btnUpdateDoctor.setVisible(false);
+            btnDeleteDoctor.setVisible(false);
+            lblAdminFunc.setVisible(false);
+            sep2.setVisible(false);
+        } 
 
         btnQueryAllDoctor.setOnAction(e -> switchPanel(panelQueryAllDoctor));
         btnQueryByDept.setOnAction(e -> switchPanel(panelQueryDept));
@@ -945,7 +953,7 @@ public class HospitalFrame extends Application {
     public static class TestLauncher extends Application {
         @Override
         public void start(Stage primaryStage) throws Exception {
-            new HospitalFrame("admin001", "管理员").start(primaryStage);
+            new HospitalFrame("00000001", "管理员").start(primaryStage);
         }
     }
 }
