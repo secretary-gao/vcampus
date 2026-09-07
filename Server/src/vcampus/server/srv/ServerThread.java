@@ -76,6 +76,7 @@ public class ServerThread implements Runnable {
         this._socket = socket;
         registerHandlers();
         _moduleHandlers.add(new StoreModuleHandler());
+        _moduleHandlers.add(new CourseHandler());
     }
 
     /**

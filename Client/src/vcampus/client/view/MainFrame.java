@@ -12,6 +12,7 @@ package vcampus.client.view;
 import vcampus.client.biz.IUserClientSrv;
 import vcampus.client.biz.UserClientSrv;
 import vcampus.client.view.Library.LibraryPanel;
+import vcampus.client.view.course.CoursePanel;
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.User;
@@ -403,6 +404,10 @@ public class MainFrame extends Application {
             showUserManagementPage();
             return;
         }
+        if ("edu".equals(moduleKey)) {
+            showCoursePage();
+            return;
+        }
         VBox page = new VBox(16);
         page.setPadding(new Insets(22));
         page.setMaxWidth(820);
@@ -605,6 +610,22 @@ public class MainFrame extends Application {
         _contentStack.getChildren().setAll(wrapper);
         studentFrame.attachStyleSheet(_stage.getScene());
         Platform.runLater(studentFrame::refresh);
+    }
+
+    /**
+     * 打开教务（选课）模块的真实业务界面（{@link CoursePanel}），嵌入
+     * 右侧内容区，和图书馆/学籍走同一套布局——左侧导航栏常驻，不需要
+     * 页面自带"返回总览"按钮。
+     */
+    private void showCoursePage() {
+        CoursePanel coursePanel = new CoursePanel(_currentUser);
+
+        VBox wrapper = new VBox(0, coursePanel);
+        VBox.setVgrow(coursePanel, javafx.scene.layout.Priority.ALWAYS);
+        wrapper.setMaxWidth(1120);
+        wrapper.setMaxHeight(Double.MAX_VALUE);
+        wrapper.setStyle(CARD_STYLE);
+        _contentStack.getChildren().setAll(wrapper);
     }
 
     /**
