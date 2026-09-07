@@ -21,7 +21,7 @@ rem Give the server a moment to bind its port before the client tries to connect
 timeout /t 2 /nobreak >nul
 
 echo Starting client window...
-start "Vcampus Client" cmd /k "cd /d %~dp0 && java -cp "bin;lib\mysql-connector-j-9.7.0.jar" --module-path "lib\javafx" --add-modules javafx.controls,javafx.fxml vcampus.client.view.LoginFrame"
+start "Vcampus Client" cmd /k "cd /d %~dp0 && java -cp "bin;lib\mysql-connector-j-9.7.0.jar" --module-path "lib\javafx\lib" --add-modules javafx.controls,javafx.fxml vcampus.client.view.LoginFrame"
 
 echo.
 echo Server and client launched in separate windows.
