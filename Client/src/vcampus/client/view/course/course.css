@@ -140,24 +140,45 @@
 .course-list-name { -fx-text-fill: #17233a; -fx-font-size: 14px; -fx-font-weight: bold; }
 .course-list-meta { -fx-text-fill: #66758a; -fx-font-size: 11px; }
 
-.timetable-scroll { -fx-background-color: transparent; -fx-border-color: transparent; }
+.timetable-scroll {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
 .timetable-scroll > .viewport { -fx-background-color: transparent; }
-.timetable-grid { -fx-background-color: #d9e4f1; -fx-hgap: 1; -fx-vgap: 1; -fx-padding: 1; }
+.timetable-grid {
+    -fx-background-color: white;
+    -fx-hgap: 0;
+    -fx-vgap: 0;
+    -fx-padding: 0;
+    -fx-border-color: #d9e4f1;
+    -fx-border-width: 1;
+}
 .timetable-header {
     -fx-background-color: #e8f1fc;
     -fx-padding: 11;
     -fx-alignment: center;
     -fx-font-weight: bold;
     -fx-text-fill: #334964;
+    -fx-border-color: transparent #d9e4f1 #d9e4f1 transparent;
+    -fx-border-width: 0 1 1 0;
 }
 .timetable-time {
     -fx-background-color: #f7faff;
-    -fx-padding: 12 8 12 8;
+    -fx-padding: 12 7 12 7;
     -fx-alignment: top-center;
     -fx-font-weight: bold;
     -fx-text-fill: #52657d;
+    -fx-border-color: transparent #d9e4f1 #d9e4f1 transparent;
+    -fx-border-width: 0 1 1 0;
 }
-.timetable-cell { -fx-background-color: white; -fx-padding: 8; -fx-min-height: 94; }
+.timetable-cell {
+    -fx-background-color: white;
+    -fx-padding: 8;
+    -fx-min-height: 94;
+    -fx-border-color: transparent #d9e4f1 #d9e4f1 transparent;
+    -fx-border-width: 0 1 1 0;
+}
 .timetable-course { -fx-background-color: #e8f0ff; -fx-background-radius: 9; -fx-padding: 9; -fx-spacing: 3; }
 .timetable-course.variant-1 { -fx-background-color: #e5f5ed; }
 .timetable-course.variant-2 { -fx-background-color: #fff1dc; }

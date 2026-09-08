@@ -32,10 +32,16 @@ import java.util.stream.Collectors;
 /** 学生课程表页面，以动态时间段和星期组成真正的周课表。 */
 public class TimetablePane extends VBox {
 
+    private static final double TIME_COLUMN_WIDTH = 116;
+    private static final double DAY_MIN_WIDTH = 112;
+    private static final double GRID_BORDER_WIDTH = 2;
+
     private final ICourseClientSrv _client;
     private final String _studentId;
     private final VBox _scheduleHost = new VBox();
+    private final ScrollPane _scheduleScroll = new ScrollPane(_scheduleHost);
     private final Label _statusLabel = new Label();
+    private double _minimumGridWidth;
 
     /** 创建学生课程表页面。 */
     public TimetablePane(ICourseClientSrv client, String studentId) {
@@ -69,14 +75,15 @@ public class TimetablePane extends VBox {
         header.setAlignment(Pos.CENTER_LEFT);
 
         _scheduleHost.setFillWidth(true);
-        ScrollPane scrollPane = new ScrollPane(_scheduleHost);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setPannable(true);
-        scrollPane.getStyleClass().add("timetable-scroll");
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+        _scheduleScroll.setFitToWidth(true);
+        _scheduleScroll.setPannable(true);
+        _scheduleScroll.getStyleClass().add("timetable-scroll");
+        _scheduleScroll.viewportBoundsProperty().addListener(
+                (observable, oldBounds, newBounds) -> updateHorizontalPolicy());
+        VBox.setVgrow(_scheduleScroll, Priority.ALWAYS);
 
         _statusLabel.getStyleClass().add("status-label");
-        getChildren().addAll(header, scrollPane, _statusLabel);
+        getChildren().addAll(header, _scheduleScroll, _statusLabel);
     }
 
     private List<TimetableRow> loadRows() throws Exception {
@@ -93,6 +100,9 @@ public class TimetablePane extends VBox {
     private void renderSchedule(List<TimetableRow> rows) {
         _scheduleHost.getChildren().clear();
         if (rows.isEmpty()) {
+            _minimumGridWidth = 0;
+            _scheduleHost.setMinWidth(0);
+            updateHorizontalPolicy();
             VBox empty = new VBox(8);
             empty.getStyleClass().addAll("course-card", "message-card");
             Label title = new Label("本周暂无课程");
@@ -106,6 +116,10 @@ public class TimetablePane extends VBox {
 
         int dayCount = Math.max(5, rows.stream()
                 .mapToInt(row -> row.schedule().getDayOfWeek()).max().orElse(5));
+        _minimumGridWidth = TIME_COLUMN_WIDTH + dayCount * DAY_MIN_WIDTH
+                + GRID_BORDER_WIDTH;
+        _scheduleHost.setMinWidth(_minimumGridWidth);
+        updateHorizontalPolicy();
         List<TimeSlot> slots = rows.stream()
                 .map(row -> new TimeSlot(
                         row.schedule().getStartTime(), row.schedule().getEndTime()))
@@ -115,15 +129,15 @@ public class TimetablePane extends VBox {
 
         GridPane grid = new GridPane();
         grid.getStyleClass().add("timetable-grid");
-        ColumnConstraints timeColumn = new ColumnConstraints();
-        timeColumn.setPercentWidth(11);
-        timeColumn.setMinWidth(90);
+        grid.setMaxWidth(Double.MAX_VALUE);
+        ColumnConstraints timeColumn = new ColumnConstraints(
+                TIME_COLUMN_WIDTH, TIME_COLUMN_WIDTH, TIME_COLUMN_WIDTH);
         grid.getColumnConstraints().add(timeColumn);
         for (int day = 1; day <= dayCount; day++) {
-            ColumnConstraints dayColumn = new ColumnConstraints();
-            dayColumn.setPercentWidth(89.0 / dayCount);
-            dayColumn.setMinWidth(125);
+            ColumnConstraints dayColumn = new ColumnConstraints(
+                    DAY_MIN_WIDTH, 160, Double.MAX_VALUE);
             dayColumn.setHgrow(Priority.ALWAYS);
+            dayColumn.setFillWidth(true);
             grid.getColumnConstraints().add(dayColumn);
         }
 
@@ -153,6 +167,15 @@ public class TimetablePane extends VBox {
             }
         }
         _scheduleHost.getChildren().add(grid);
+    }
+
+    private void updateHorizontalPolicy() {
+        double viewportWidth = _scheduleScroll.getViewportBounds().getWidth();
+        boolean needsHorizontalScroll = viewportWidth > 0
+                && viewportWidth + 0.5 < _minimumGridWidth;
+        _scheduleScroll.setHbarPolicy(needsHorizontalScroll
+                ? ScrollPane.ScrollBarPolicy.AS_NEEDED
+                : ScrollPane.ScrollBarPolicy.NEVER);
     }
 
     private void addHeader(GridPane grid, String text, int column) {
