@@ -1,36 +1,42 @@
 /*
  * SelectedCoursesPane
  *
- * Version 1.0
+ * Version 1.1
  *
- * 2026-09-04
+ * 2026-09-08
  *
  * Copyright (c) 2026 Vcampus Team
  */
 package vcampus.client.view.course;
 
 import javafx.collections.FXCollections;
+import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.Course;
+import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.SelectCourse;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/** 学生“我的课程”页面：展示已选课程并支持退课。 */
+/** 学生“我的课程”页面：展示已选课程、上课安排并支持行内退课。 */
 public class SelectedCoursesPane extends VBox {
 
     private final ICourseClientSrv _client;
     private final String _studentId;
     private final Runnable _onEnrollmentChanged;
-    private final TableView<Course> _courseTable = new TableView<>();
+    private final TableView<SelectedCourseRow> _courseTable = new TableView<>();
     private final Label _statusLabel = new Label();
 
     /** 创建已选课程页面。 */
@@ -39,61 +45,127 @@ public class SelectedCoursesPane extends VBox {
         this._client = client;
         this._studentId = studentId;
         this._onEnrollmentChanged = onEnrollmentChanged;
-        setSpacing(12);
-        setStyle("-fx-padding: 16;");
+        getStyleClass().add("course-page");
         buildView();
         refresh();
     }
 
-    /** 从服务器刷新已选课程。 */
+    /** 从服务器刷新已选课程与对应排课。 */
     public void refresh() {
-        _statusLabel.setText("正在读取已选课程...");
-        CourseViewSupport.runAsync(this, this::loadSelectedCourses, courses -> {
-            _courseTable.setItems(FXCollections.observableArrayList(courses));
-            _statusLabel.setText("已选 " + courses.size() + " 门课程");
+        _statusLabel.setText("正在读取已选课程…");
+        CourseViewSupport.runAsync(this, this::loadRows, rows -> {
+            _courseTable.setItems(FXCollections.observableArrayList(rows));
+            _statusLabel.setText("已选 " + rows.size() + " 门课程");
         });
     }
 
     @SuppressWarnings("unchecked")
     private void buildView() {
+        Label title = new Label("我的课程");
+        title.getStyleClass().add("page-title");
+        Label description = new Label("查看本学期选课与上课地点，可在对应课程行直接退课");
+        description.getStyleClass().add("page-description");
+        VBox heading = new VBox(3, title, description);
+        HBox.setHgrow(heading, Priority.ALWAYS);
+        Button refreshButton = new Button("刷新");
+        refreshButton.getStyleClass().add("secondary");
+        refreshButton.setOnAction(event -> refresh());
+        HBox header = new HBox(12, heading, refreshButton);
+        header.setAlignment(Pos.CENTER_LEFT);
+
         _courseTable.getColumns().addAll(
-                CourseViewSupport.textColumn("课程号", 150, Course::getCourseId),
-                CourseViewSupport.textColumn("课程名称", 230, Course::getCourseName),
-                CourseViewSupport.textColumn("教师", 150, Course::getTeacher),
-                CourseViewSupport.textColumn("学分", 90, c -> String.valueOf(c.getCredit())),
-                CourseViewSupport.textColumn("人数", 110,
-                        c -> c.getSelectedCount() + " / " + c.getCapacity())
+                CourseViewSupport.textColumn("课程号", 115,
+                        row -> row.course().getCourseId()),
+                CourseViewSupport.textColumn("课程名称", 190,
+                        row -> row.course().getCourseName()),
+                CourseViewSupport.textColumn("教师", 110,
+                        row -> row.course().getTeacher()),
+                CourseViewSupport.textColumn("学分", 65,
+                        row -> String.valueOf(row.course().getCredit())),
+                CourseViewSupport.textColumn("时间 / 教室", 290,
+                        SelectedCourseRow::scheduleSummary),
+                actionColumn()
         );
-        _courseTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        CourseViewSupport.configureTable(_courseTable, "暂无已选课程");
         VBox.setVgrow(_courseTable, Priority.ALWAYS);
 
-        Button refreshButton = new Button("刷新");
-        refreshButton.setStyle(CourseViewSupport.SECONDARY_BUTTON);
-        refreshButton.setOnAction(event -> refresh());
-        Button dropButton = new Button("退选课程");
-        dropButton.setStyle(CourseViewSupport.DANGER_BUTTON);
-        dropButton.setOnAction(event -> dropCourse());
-        getChildren().addAll(_courseTable, new HBox(10, refreshButton, dropButton, _statusLabel));
+        _statusLabel.getStyleClass().add("status-label");
+        getChildren().addAll(header, _courseTable, _statusLabel);
     }
 
-    private List<Course> loadSelectedCourses() throws Exception {
-        List<SelectCourse> selected = _client.querySelectedCourse(_studentId);
-        Set<String> ids = selected.stream().map(SelectCourse::getCourseId).collect(Collectors.toSet());
-        return _client.queryCourse("").stream()
-                .filter(course -> ids.contains(course.getCourseId()))
+    private List<SelectedCourseRow> loadRows() throws Exception {
+        List<SelectCourse> selections = _client.querySelectedCourse(_studentId);
+        Set<String> selectedIds = selections.stream()
+                .map(SelectCourse::getCourseId)
+                .collect(Collectors.toSet());
+        Map<String, Course> courses = _client.queryCourse("").stream()
+                .collect(Collectors.toMap(Course::getCourseId, Function.identity(), (a, b) -> a));
+        Map<String, List<CourseSchedule>> schedules = _client.queryStudentSchedule(_studentId).stream()
+                .collect(Collectors.groupingBy(CourseSchedule::getCourseId));
+        return selectedIds.stream()
+                .map(courses::get)
+                .filter(course -> course != null)
+                .sorted((left, right) -> left.getCourseId().compareTo(right.getCourseId()))
+                .map(course -> new SelectedCourseRow(course,
+                        formatSchedules(schedules.getOrDefault(course.getCourseId(), List.of()))))
                 .toList();
     }
 
-    private void dropCourse() {
-        Course selected = _courseTable.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            CourseViewSupport.showError(new IllegalArgumentException("请先选择要退选的课程"));
+    private String formatSchedules(List<CourseSchedule> schedules) {
+        if (schedules.isEmpty()) {
+            return "未排课";
+        }
+        return schedules.stream()
+                .sorted((left, right) -> {
+                    int byDay = Integer.compare(left.getDayOfWeek(), right.getDayOfWeek());
+                    return byDay != 0 ? byDay : left.getStartTime().compareTo(right.getStartTime());
+                })
+                .map(schedule -> CourseViewSupport.dayName(schedule.getDayOfWeek()) + " "
+                        + CourseViewSupport.timeRange(
+                                schedule.getStartTime(), schedule.getEndTime())
+                        + " · " + CourseViewSupport.safe(schedule.getClassroom(), "教室待定"))
+                .collect(Collectors.joining("；"));
+    }
+
+    private TableColumn<SelectedCourseRow, Void> actionColumn() {
+        TableColumn<SelectedCourseRow, Void> column = new TableColumn<>("操作");
+        column.setPrefWidth(95);
+        column.setSortable(false);
+        column.setCellFactory(ignored -> new TableCell<>() {
+            private final Button _button = new Button("退课");
+
+            {
+                _button.getStyleClass().addAll("danger", "table-action");
+                _button.setOnAction(event -> {
+                    SelectedCourseRow row = getTableRow().getItem();
+                    if (row != null) {
+                        dropCourse(row);
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : _button);
+            }
+        });
+        return column;
+    }
+
+    private void dropCourse(SelectedCourseRow row) {
+        Course course = row.course();
+        if (!CourseViewSupport.confirm("退选“" + course.getCourseName() + "”？",
+                "退课成功后，课程大厅、我的课程和我的课表会同步更新。")) {
             return;
         }
         CourseViewSupport.runAsync(this,
-                () -> _client.dropCourse(_studentId, selected.getCourseId()), ignored -> {
-                    _statusLabel.setText("已退选：" + selected.getCourseName());
+                () -> _client.dropCourse(_studentId, course.getCourseId()), ignored -> {
+                    _statusLabel.setText("已退选：" + course.getCourseName());
                     _onEnrollmentChanged.run();
                 });
+    }
+
+    private record SelectedCourseRow(Course course, String scheduleSummary) {
     }
 }
