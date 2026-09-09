@@ -294,7 +294,7 @@ Course 1.0 独立审计及修复回归的实际结果：
 
 | 验证范围 | 实际结果 |
 |---|---|
-| 构建与正式入口 | JDK 21 编译全部 132 个 Java 文件；真实工作区构建、Hospital 资源复制和仅依赖 `bin` 的 LoginFrame 启动通过 |
+| 构建与正式入口 | JDK 21 编译全部 142 个 Java 文件；真实工作区构建、Hospital 资源复制和仅依赖 `bin` 的 LoginFrame 启动通过 |
 | DAO / Service / Socket | 上述 10 个直接测试及 2 个 Socket E2E 通过；包含课程管理、教学班管理、教师名单、正常选退课、重复选课、满员、约束和故障回滚 |
 | 独立事务与并发 | 24 个客户端争抢 5 个名额，仅 5 个成功；16 次重复选课仅成功一次；12 次并发退课仅扣减一次；SQLException / RuntimeException 注入后数据回滚 |
 | 排课 | 按周次/节次检查教师与教室冲突；相邻节次、不重叠周次、排除自身、更新/删除不存在记录均验证；默认 REPEATABLE-READ 下并发冲突排课未双提交，但可能出现 1213 |
@@ -357,7 +357,7 @@ Reality Track Phase 1 改变了数据模型和教学班交互，当前等待项�
 
 核对日期：2026-09-09。
 
-- Course 1.0 已在 `origin/main@37c10be` 通过 PR #6 合入。
+- Course 1.0 已通过 PR #6 合入；最终工程回归已同步到 `origin/main@8691c80`。
 - Reality Track 从稳定 UI `dev/course@c897686` 创建 `feat/course-realistic-model`，不改写既有历史，也不直接推送 `main`。
 - Reality Track Phase 1 工程验证已完成并推送当前 feature branch；仍需项目负责人执行下列人工 UAT。
 
