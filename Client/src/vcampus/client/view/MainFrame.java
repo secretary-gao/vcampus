@@ -20,6 +20,7 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -379,14 +380,16 @@ public class MainFrame extends Application {
      */
     private void showModulePage(String moduleName, String moduleDesc, String moduleKey, String color) {
         if ("shop".equals(moduleKey)) {
-            openStore();
+            _activeModuleKey = moduleKey;
+            highlightActiveNav();
+            showShopPage();
             return;
         }
         if ("hospital".equals(moduleKey)) {
             openHospital();
             return;
         }
-        // 商店/医院走独立窗口（见上面两个分支），右侧内容区域不会跟着变化，
+        // 医院仍走独立窗口（见上面分支），右侧内容区域不会跟着变化，
         // 所以左侧导航的高亮状态也不跟着切换，避免"高亮着但内容没变"的错觉。
         _activeModuleKey = moduleKey;
         highlightActiveNav();
@@ -437,14 +440,14 @@ public class MainFrame extends Application {
     }
 
     /**
-     * 打开虚拟商店模块的真实业务界面（{@link StoreFrame}）。商店窗口是独立的
-     * {@code Application}（不像 {@link LibraryPanel} 是可嵌入的 {@code VBox}），
-     * 所以这里新开一个 {@link Stage} 承载它，而不是嵌入 {@code _contentStack}。
+     * 打开虚拟商店模块的真实业务界面。将 {@link StoreFrame#createView()} 的结果
+     * 嵌入右侧 {@link #_contentStack}，和图书馆/学籍走同一套"左侧选、右侧显示"布局，
+     * 不再用独立窗口打断操作流程。
      */
-    private void openStore() {
+    private void showShopPage() {
         try {
-            Stage storeStage = new Stage();
-            new StoreFrame(_currentUser).start(storeStage);
+            Node storeView = new StoreFrame(_currentUser).createView();
+            _contentStack.getChildren().setAll(storeView);
         } catch (Exception e) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("错误");

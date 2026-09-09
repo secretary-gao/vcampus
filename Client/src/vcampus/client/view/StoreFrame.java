@@ -121,42 +121,14 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * JavaFX 启动入口：搭建界面并加载商品列表。
+     * 独立窗口启动入口（{@code launch} 用）：构建内容、加底部退出按钮后显示。
      *
      * @param stage 舞台
      */
     @Override
     public void start(Stage stage) {
-        _categoryBox.getItems().setAll("全部商品", "食品", "饮料", "文具", "生活用品", "数码");
-        _categoryBox.getSelectionModel().selectFirst();
-        buildUi(stage);
-        loadGoods();
-        stage.show();
-    }
-
-    /**
-     * 搭建窗口布局。
-     *
-     * @param stage 舞台
-     */
-    private void buildUi(Stage stage) {
-        BorderPane root = new BorderPane();
+        BorderPane root = new BorderPane(buildContent());
         root.setPrefSize(1080, 720);
-        root.setBackground(new Background(new BackgroundFill(
-                Color.web("#f4f7fb"), CornerRadii.EMPTY, Insets.EMPTY)));
-
-        root.setTop(buildBanner());
-
-        TabPane tabPane = new TabPane();
-        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-        Tab goodsTab = new Tab("商品商城", buildBuyTab());
-        Tab orderTab = new Tab("我的订单", buildRecordsTab());
-        tabPane.getTabs().add(goodsTab);
-        tabPane.getTabs().add(orderTab);
-        if (isAdmin()) {
-            tabPane.getTabs().add(new Tab("商品管理", buildManageTab()));
-        }
-        root.setCenter(tabPane);
 
         Button exitButton = new Button("退出");
         exitButton.setStyle("-fx-background-radius: 20; -fx-background-color: #ecf3fb;"
@@ -171,6 +143,47 @@ public class StoreFrame extends Application {
         stage.setTitle("虚拟商店 - 当前用户：" + safe(_currentUser == null ? "" : _currentUser.getUName()));
         stage.setScene(scene);
         stage.centerOnScreen();
+        loadGoods();
+        stage.show();
+    }
+
+    /**
+     * 构建商店模块的可嵌入内容（顶部横幅 + 商品/订单/管理页签），
+     * 供独立窗口与主界面嵌入共用。
+     *
+     * @return 内容面板
+     */
+    private BorderPane buildContent() {
+        _categoryBox.getItems().setAll("全部商品", "食品", "饮料", "文具", "生活用品", "数码");
+        _categoryBox.getSelectionModel().selectFirst();
+
+        BorderPane root = new BorderPane();
+        root.setPrefSize(1080, 720);
+        root.setBackground(new Background(new BackgroundFill(
+                Color.web("#f4f7fb"), CornerRadii.EMPTY, Insets.EMPTY)));
+        root.setTop(buildBanner());
+
+        TabPane tabPane = new TabPane();
+        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        tabPane.getTabs().add(new Tab("商品商城", buildBuyTab()));
+        tabPane.getTabs().add(new Tab("我的订单", buildRecordsTab()));
+        if (isAdmin()) {
+            tabPane.getTabs().add(new Tab("商品管理", buildManageTab()));
+        }
+        root.setCenter(tabPane);
+        return root;
+    }
+
+    /**
+     * 生成一个可嵌入主界面内容区的商店视图（{@code Node}），并加载商品。
+     *
+     * @return 商店内容节点
+     */
+    public javafx.scene.Node createView() {
+        BorderPane content = buildContent();
+        content.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        loadGoods();
+        return content;
     }
 
     /**
