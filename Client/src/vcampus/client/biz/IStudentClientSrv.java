@@ -11,6 +11,9 @@ public interface IStudentClientSrv {
     List<Student> findAll()
             throws IOException, ClassNotFoundException, StudentClientException;
 
+    Student getMyStudentInfo()
+            throws IOException, ClassNotFoundException, StudentClientException;
+
     Student findByStudentId(String studentId)
             throws IOException, ClassNotFoundException, StudentClientException;
 

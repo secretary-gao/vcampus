@@ -47,6 +47,23 @@
     -fx-font-weight: 600;
 }
 
+.role-label {
+    -fx-padding: 3px 9px;
+    -fx-background-color: -vc-primary-soft;
+    -fx-background-radius: 3px;
+    -fx-text-fill: -vc-primary;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+}
+
+.student-self-hint {
+    -fx-padding: 10px 22px 12px 22px;
+    -fx-background-color: -vc-surface;
+    -fx-border-color: transparent transparent -vc-border transparent;
+    -fx-border-width: 0 0 1px 0;
+    -fx-text-fill: -vc-text-secondary;
+}
+
 .search-bar {
     -fx-padding: 10px 22px 11px 22px;
     -fx-background-color: -vc-surface;
@@ -196,6 +213,36 @@
     -fx-border-width: 1px;
     -fx-border-radius: 3px;
     -fx-background-radius: 3px;
+}
+
+.student-detail {
+    -fx-padding: 24px;
+    -fx-background-color: -vc-surface;
+    -fx-border-color: -vc-border;
+    -fx-border-width: 1px;
+    -fx-border-radius: 3px;
+    -fx-background-radius: 3px;
+}
+
+.detail-grid {
+    -fx-padding: 6px 0 0 0;
+}
+
+.detail-label {
+    -fx-min-width: 100px;
+    -fx-text-fill: -vc-text-muted;
+    -fx-font-weight: 600;
+}
+
+.detail-value {
+    -fx-min-width: 260px;
+    -fx-padding: 9px 12px;
+    -fx-background-color: -vc-surface-subtle;
+    -fx-border-color: -vc-border;
+    -fx-border-radius: 3px;
+    -fx-background-radius: 3px;
+    -fx-text-fill: -vc-text;
+    -fx-font-weight: 600;
 }
 
 .section-heading {
