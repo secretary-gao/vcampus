@@ -1,18 +1,25 @@
 /*
  * CourseAdminPane
  *
- * Version 1.0
+ * Version 1.1
  *
- * 2026-09-07
+ * 2026-09-08
  *
  * Copyright (c) 2026 Vcampus Team
  */
 package vcampus.client.view.course;
 
 import javafx.collections.FXCollections;
-import javafx.geometry.Insets;
+import javafx.event.ActionEvent;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
@@ -22,33 +29,31 @@ import javafx.scene.layout.VBox;
 import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.Course;
 
-/** 教务管理员课程主数据页面，支持课程查询、新增、修改和删除。 */
+import java.util.concurrent.atomic.AtomicReference;
+
+/** 教务管理员课程主数据页面，使用工具栏、行内操作和复用表单对话框。 */
 public class CourseAdminPane extends VBox {
 
     private final ICourseClientSrv _client;
     private final Runnable _courseChanged;
     private final TableView<Course> _table = new TableView<>();
-    private final TextField _courseIdField = new TextField();
-    private final TextField _courseNameField = new TextField();
-    private final TextField _teacherField = new TextField();
-    private final TextField _creditField = new TextField();
-    private final TextField _capacityField = new TextField();
+    private final TextField _keywordField = new TextField();
     private final Label _statusLabel = new Label();
 
     /** 创建管理员课程管理页面。 */
     public CourseAdminPane(ICourseClientSrv client, Runnable courseChanged) {
         this._client = client;
         this._courseChanged = courseChanged;
-        setSpacing(12);
-        setPadding(new Insets(16));
+        getStyleClass().add("course-page");
         buildView();
         refresh();
     }
 
-    /** 从服务器刷新课程主数据。 */
+    /** 按当前关键字从服务器刷新课程主数据。 */
     public void refresh() {
-        _statusLabel.setText("正在读取课程...");
-        CourseViewSupport.runAsync(this, () -> _client.queryCourse(""), courses -> {
+        String keyword = _keywordField.getText();
+        _statusLabel.setText("正在读取课程…");
+        CourseViewSupport.runAsync(this, () -> _client.queryCourse(keyword), courses -> {
             _table.setItems(FXCollections.observableArrayList(courses));
             _statusLabel.setText("共 " + courses.size() + " 门课程");
         });
@@ -56,124 +61,164 @@ public class CourseAdminPane extends VBox {
 
     @SuppressWarnings("unchecked")
     private void buildView() {
+        Label title = new Label("课程管理");
+        title.getStyleClass().add("page-title");
+        Label description = new Label("维护课程主数据；存在选课或排课引用的课程仍受原有规则保护");
+        description.getStyleClass().add("page-description");
+        VBox heading = new VBox(3, title, description);
+
+        _keywordField.setPromptText("搜索课程号、名称或教师");
+        _keywordField.setPrefWidth(300);
+        _keywordField.setOnAction(event -> refresh());
+        Button searchButton = button("搜索", "secondary", this::refresh);
+        Button addButton = button("+ 新增课程", "primary", () -> openEditor(null));
+        HBox spacer = new HBox();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox toolbar = new HBox(9, _keywordField, searchButton, spacer, addButton);
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+        toolbar.getStyleClass().add("tool-bar-card");
+
         _table.getColumns().addAll(
                 CourseViewSupport.textColumn("课程号", 110, Course::getCourseId),
-                CourseViewSupport.textColumn("课程名称", 200, Course::getCourseName),
-                CourseViewSupport.textColumn("教师", 120, Course::getTeacher),
-                CourseViewSupport.textColumn("学分", 75,
+                CourseViewSupport.textColumn("课程名称", 190, Course::getCourseName),
+                CourseViewSupport.textColumn("教师", 115, Course::getTeacher),
+                CourseViewSupport.textColumn("学分", 65,
                         course -> String.valueOf(course.getCredit())),
-                CourseViewSupport.textColumn("容量", 90,
+                CourseViewSupport.textColumn("容量", 70,
                         course -> String.valueOf(course.getCapacity())),
-                CourseViewSupport.textColumn("已选", 90,
-                        course -> String.valueOf(course.getSelectedCount()))
+                CourseViewSupport.textColumn("已选", 70,
+                        course -> String.valueOf(course.getSelectedCount())),
+                actionColumn()
         );
-        _table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        _table.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, selected) -> populateForm(selected));
+        CourseViewSupport.configureTable(_table, "暂无课程数据");
         VBox.setVgrow(_table, Priority.ALWAYS);
 
-        _courseIdField.setPromptText("例如：CSE1001");
-        _courseNameField.setPromptText("课程名称");
-        _teacherField.setPromptText("与教师账号姓名一致");
-        _creditField.setPromptText("正整数");
-        _capacityField.setPromptText("正整数");
+        _statusLabel.getStyleClass().add("status-label");
+        getChildren().addAll(heading, toolbar, _table, _statusLabel);
+    }
+
+    private TableColumn<Course, Void> actionColumn() {
+        TableColumn<Course, Void> column = new TableColumn<>("操作");
+        column.setPrefWidth(150);
+        column.setSortable(false);
+        column.setCellFactory(ignored -> new TableCell<>() {
+            private final Button _edit = button("编辑", "secondary", () -> {
+                Course course = getTableRow().getItem();
+                if (course != null) {
+                    openEditor(course);
+                }
+            });
+            private final Button _delete = button("删除", "danger", () -> {
+                Course course = getTableRow().getItem();
+                if (course != null) {
+                    deleteCourse(course);
+                }
+            });
+            private final HBox _actions = new HBox(7, _edit, _delete);
+
+            {
+                _edit.getStyleClass().add("table-action");
+                _delete.getStyleClass().add("table-action");
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : _actions);
+            }
+        });
+        return column;
+    }
+
+    private void openEditor(Course original) {
+        boolean editing = original != null;
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(editing ? "编辑课程" : "新增课程");
+        dialog.setHeaderText(editing ? "修改课程信息" : "填写新课程信息");
+        ButtonType saveType = new ButtonType(editing ? "保存修改" : "新增课程",
+                ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, saveType);
+        CourseViewSupport.styleDialog(dialog.getDialogPane());
+
+        TextField courseId = field("例如：CSE1001");
+        TextField courseName = field("课程名称");
+        TextField teacher = field("与教师账号姓名一致");
+        TextField credit = field("正整数");
+        TextField capacity = field("正整数");
+        if (editing) {
+            courseId.setText(original.getCourseId());
+            courseId.setDisable(true);
+            courseName.setText(original.getCourseName());
+            teacher.setText(original.getTeacher());
+            credit.setText(String.valueOf(original.getCredit()));
+            capacity.setText(String.valueOf(original.getCapacity()));
+        }
 
         GridPane form = new GridPane();
-        form.setHgap(10);
-        form.setVgap(8);
-        form.addRow(0, new Label("课程号"), _courseIdField,
-                new Label("课程名称"), _courseNameField);
-        form.addRow(1, new Label("授课教师"), _teacherField,
-                new Label("学分"), _creditField);
-        form.addRow(2, new Label("课程容量"), _capacityField);
+        form.getStyleClass().add("form-grid");
+        addField(form, 0, "课程号", courseId);
+        addField(form, 1, "课程名称", courseName);
+        addField(form, 2, "授课教师", teacher);
+        addField(form, 3, "学分", credit);
+        addField(form, 4, "课程容量", capacity);
+        dialog.getDialogPane().setContent(form);
+        dialog.getDialogPane().setPrefWidth(430);
 
-        Button addButton = button("新增", CourseViewSupport.PRIMARY_BUTTON, this::addCourse);
-        Button updateButton = button(
-                "保存修改", CourseViewSupport.SECONDARY_BUTTON, this::updateCourse);
-        Button deleteButton = button("删除", CourseViewSupport.DANGER_BUTTON, this::deleteCourse);
-        Button clearButton = button("清空表单", CourseViewSupport.SECONDARY_BUTTON, this::clearForm);
-        Button refreshButton = button("刷新", CourseViewSupport.SECONDARY_BUTTON, this::refresh);
-        getChildren().addAll(_table, form,
-                new HBox(9, addButton, updateButton, deleteButton, clearButton,
-                        refreshButton, _statusLabel));
-    }
-
-    private void addCourse() {
-        Course course;
-        try {
-            course = formCourse();
-        } catch (RuntimeException e) {
-            CourseViewSupport.showError(e);
-            return;
-        }
-        CourseViewSupport.runAsync(this, () -> _client.addCourse(course), added -> {
-            _statusLabel.setText("课程新增成功：" + added.getCourseId());
-            clearForm();
-            refreshAfterChange();
+        AtomicReference<Course> result = new AtomicReference<>();
+        Node saveButton = dialog.getDialogPane().lookupButton(saveType);
+        saveButton.getStyleClass().add("primary");
+        saveButton.addEventFilter(ActionEvent.ACTION, event -> {
+            try {
+                int selectedCount = editing ? original.getSelectedCount() : 0;
+                result.set(new Course(
+                        required(courseId.getText(), "课程号"),
+                        required(courseName.getText(), "课程名称"),
+                        required(teacher.getText(), "授课教师"),
+                        positiveInt(credit.getText(), "学分"),
+                        positiveInt(capacity.getText(), "课程容量"),
+                        selectedCount));
+            } catch (RuntimeException exception) {
+                CourseViewSupport.showError(exception);
+                event.consume();
+            }
         });
-    }
 
-    private void updateCourse() {
-        if (_table.getSelectionModel().getSelectedItem() == null) {
-            CourseViewSupport.showError(new IllegalArgumentException("请先选择一门课程"));
-            return;
-        }
-        Course course;
-        try {
-            course = formCourse();
-        } catch (RuntimeException e) {
-            CourseViewSupport.showError(e);
-            return;
-        }
-        CourseViewSupport.runAsync(this, () -> _client.updateCourse(course), ignored -> {
-            _statusLabel.setText("课程修改成功");
-            refreshAfterChange();
-        });
-    }
-
-    private void deleteCourse() {
-        Course selected = _table.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            CourseViewSupport.showError(new IllegalArgumentException("请先选择一门课程"));
-            return;
-        }
-        CourseViewSupport.runAsync(this,
-                () -> _client.deleteCourse(selected.getCourseId()), ignored -> {
-                    _statusLabel.setText("课程删除成功");
-                    clearForm();
-                    refreshAfterChange();
-                });
-    }
-
-    private Course formCourse() {
-        String courseId = required(_courseIdField.getText(), "课程号");
-        String courseName = required(_courseNameField.getText(), "课程名称");
-        String teacher = required(_teacherField.getText(), "授课教师");
-        int credit = positiveInt(_creditField.getText(), "学分");
-        int capacity = positiveInt(_capacityField.getText(), "课程容量");
-        return new Course(courseId, courseName, teacher, credit, capacity, 0);
-    }
-
-    private void populateForm(Course course) {
+        dialog.showAndWait();
+        Course course = result.get();
         if (course == null) {
             return;
         }
-        _courseIdField.setText(course.getCourseId());
-        _courseIdField.setDisable(true);
-        _courseNameField.setText(course.getCourseName());
-        _teacherField.setText(course.getTeacher());
-        _creditField.setText(String.valueOf(course.getCredit()));
-        _capacityField.setText(String.valueOf(course.getCapacity()));
+        if (editing) {
+            updateCourse(course);
+        } else {
+            addCourse(course);
+        }
     }
 
-    private void clearForm() {
-        _table.getSelectionModel().clearSelection();
-        _courseIdField.setDisable(false);
-        _courseIdField.clear();
-        _courseNameField.clear();
-        _teacherField.clear();
-        _creditField.clear();
-        _capacityField.clear();
+    private void addCourse(Course course) {
+        CourseViewSupport.runAsync(this, () -> _client.addCourse(course), added -> {
+            _statusLabel.setText("课程新增成功：" + added.getCourseId());
+            refreshAfterChange();
+        });
+    }
+
+    private void updateCourse(Course course) {
+        CourseViewSupport.runAsync(this, () -> _client.updateCourse(course), ignored -> {
+            _statusLabel.setText("课程修改成功：" + course.getCourseName());
+            refreshAfterChange();
+        });
+    }
+
+    private void deleteCourse(Course course) {
+        if (!CourseViewSupport.confirm("删除“" + course.getCourseName() + "”？",
+                "存在选课或排课引用时，系统会拒绝删除。")) {
+            return;
+        }
+        CourseViewSupport.runAsync(this,
+                () -> _client.deleteCourse(course.getCourseId()), ignored -> {
+                    _statusLabel.setText("课程删除成功：" + course.getCourseName());
+                    refreshAfterChange();
+                });
     }
 
     private void refreshAfterChange() {
@@ -181,6 +226,21 @@ public class CourseAdminPane extends VBox {
         if (_courseChanged != null) {
             _courseChanged.run();
         }
+    }
+
+    private TextField field(String prompt) {
+        TextField field = new TextField();
+        field.setPromptText(prompt);
+        field.setMaxWidth(Double.MAX_VALUE);
+        return field;
+    }
+
+    private void addField(GridPane form, int row, String name, Node field) {
+        Label label = new Label(name);
+        label.getStyleClass().add("field-label");
+        form.add(label, 0, row);
+        form.add(field, 1, row);
+        GridPane.setHgrow(field, Priority.ALWAYS);
     }
 
     private String required(String value, String fieldName) {
@@ -197,14 +257,14 @@ public class CourseAdminPane extends VBox {
                 throw new NumberFormatException();
             }
             return parsed;
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException exception) {
             throw new IllegalArgumentException(fieldName + "必须为正整数");
         }
     }
 
-    private Button button(String text, String style, Runnable action) {
+    private Button button(String text, String styleClass, Runnable action) {
         Button button = new Button(text);
-        button.setStyle(style);
+        button.getStyleClass().add(styleClass);
         button.setOnAction(event -> action.run());
         return button;
     }

@@ -1,19 +1,26 @@
 /*
  * ScheduleAdminPane
  *
- * Version 1.0
+ * Version 1.1
  *
- * 2026-09-04
+ * 2026-09-08
  *
  * Copyright (c) 2026 Vcampus Team
  */
 package vcampus.client.view.course;
 
 import javafx.collections.FXCollections;
-import javafx.geometry.Insets;
+import javafx.event.ActionEvent;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
@@ -28,35 +35,31 @@ import vcampus.common.vo.CourseSchedule;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/** 教务管理员排课页面，支持排课查询、新增、修改、删除及冲突提示。 */
+/** 教务管理员排课页面，使用结构化对话框维护排课并呈现服务端冲突信息。 */
 public class ScheduleAdminPane extends VBox {
 
     private final ICourseClientSrv _client;
     private final TableView<ScheduleRow> _table = new TableView<>();
-    private final ComboBox<Course> _courseBox = new ComboBox<>();
-    private final ComboBox<Integer> _dayBox = new ComboBox<>();
-    private final TextField _classroomField = new TextField();
-    private final TextField _startField = new TextField("08:00");
-    private final TextField _endField = new TextField("09:40");
     private final Label _statusLabel = new Label();
+    private List<Course> _courses = List.of();
 
     /** 创建管理员排课页面。 */
     public ScheduleAdminPane(ICourseClientSrv client) {
         this._client = client;
-        setSpacing(12);
-        setPadding(new Insets(16));
+        getStyleClass().add("course-page");
         buildView();
         refresh();
     }
 
-    /** 从服务器刷新课程主数据与排课。 */
+    /** 从服务器各读取一次课程主数据与排课。 */
     public void refresh() {
-        _statusLabel.setText("正在读取排课...");
+        _statusLabel.setText("正在读取排课…");
         CourseViewSupport.runAsync(this, this::loadSnapshot, snapshot -> {
-            _courseBox.setItems(FXCollections.observableArrayList(snapshot.courses()));
+            _courses = snapshot.courses();
             _table.setItems(FXCollections.observableArrayList(snapshot.rows()));
             _statusLabel.setText("共 " + snapshot.rows().size() + " 条排课");
         });
@@ -64,24 +67,198 @@ public class ScheduleAdminPane extends VBox {
 
     @SuppressWarnings("unchecked")
     private void buildView() {
+        Label title = new Label("排课管理");
+        title.getStyleClass().add("page-title");
+        Label description = new Label("维护课程时间与教室；教师和教室冲突由服务端规则统一校验");
+        description.getStyleClass().add("page-description");
+        VBox heading = new VBox(3, title, description);
+        HBox.setHgrow(heading, Priority.ALWAYS);
+        Button refreshButton = button("刷新", "secondary", this::refresh);
+        Button addButton = button("+ 新增排课", "primary", () -> openEditor(null));
+        HBox header = new HBox(9, heading, refreshButton, addButton);
+        header.setAlignment(Pos.CENTER_LEFT);
+
         _table.getColumns().addAll(
-                CourseViewSupport.textColumn("课程", 200, row -> row.displayCourse()),
-                CourseViewSupport.textColumn("教师", 120, row -> row.teacher()),
-                CourseViewSupport.textColumn("教室", 115,
+                CourseViewSupport.textColumn("课程", 210, ScheduleRow::displayCourse),
+                CourseViewSupport.textColumn("教师", 110, ScheduleRow::teacher),
+                CourseViewSupport.textColumn("教室", 105,
                         row -> row.schedule().getClassroom()),
-                CourseViewSupport.textColumn("星期", 90,
+                CourseViewSupport.textColumn("星期", 75,
                         row -> CourseViewSupport.dayName(row.schedule().getDayOfWeek())),
-                CourseViewSupport.textColumn("时间", 145,
+                CourseViewSupport.textColumn("时间", 120,
                         row -> CourseViewSupport.timeRange(
-                                row.schedule().getStartTime(), row.schedule().getEndTime()))
+                                row.schedule().getStartTime(), row.schedule().getEndTime())),
+                actionColumn()
         );
-        _table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        _table.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, selected) -> populateForm(selected));
+        CourseViewSupport.configureTable(_table, "暂无排课数据");
         VBox.setVgrow(_table, Priority.ALWAYS);
 
-        _courseBox.setMaxWidth(Double.MAX_VALUE);
-        _courseBox.setConverter(new StringConverter<>() {
+        _statusLabel.getStyleClass().add("status-label");
+        getChildren().addAll(header, _table, _statusLabel);
+    }
+
+    private TableColumn<ScheduleRow, Void> actionColumn() {
+        TableColumn<ScheduleRow, Void> column = new TableColumn<>("操作");
+        column.setPrefWidth(150);
+        column.setSortable(false);
+        column.setCellFactory(ignored -> new TableCell<>() {
+            private final Button _edit = button("编辑", "secondary", () -> {
+                ScheduleRow row = getTableRow().getItem();
+                if (row != null) {
+                    openEditor(row);
+                }
+            });
+            private final Button _delete = button("删除", "danger", () -> {
+                ScheduleRow row = getTableRow().getItem();
+                if (row != null) {
+                    deleteSchedule(row);
+                }
+            });
+            private final HBox _actions = new HBox(7, _edit, _delete);
+
+            {
+                _edit.getStyleClass().add("table-action");
+                _delete.getStyleClass().add("table-action");
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : _actions);
+            }
+        });
+        return column;
+    }
+
+    private Snapshot loadSnapshot() throws Exception {
+        List<Course> courses = _client.queryCourse("");
+        Map<String, Course> courseMap = courses.stream()
+                .collect(Collectors.toMap(Course::getCourseId, Function.identity(), (a, b) -> a));
+        List<ScheduleRow> rows = _client.querySchedule().stream()
+                .map(schedule -> new ScheduleRow(schedule, courseMap.get(schedule.getCourseId())))
+                .toList();
+        return new Snapshot(courses, rows);
+    }
+
+    private void openEditor(ScheduleRow original) {
+        boolean editing = original != null;
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(editing ? "编辑排课" : "新增排课");
+        dialog.setHeaderText(editing ? "修改课程安排" : "填写课程安排");
+        ButtonType saveType = new ButtonType(editing ? "保存修改" : "新增排课",
+                ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, saveType);
+        CourseViewSupport.styleDialog(dialog.getDialogPane());
+
+        ComboBox<Course> courseBox = new ComboBox<>(
+                FXCollections.observableArrayList(_courses));
+        courseBox.setMaxWidth(Double.MAX_VALUE);
+        courseBox.setPromptText("选择课程");
+        courseBox.setConverter(courseConverter());
+        ComboBox<Integer> dayBox = new ComboBox<>(
+                FXCollections.observableArrayList(1, 2, 3, 4, 5, 6, 7));
+        dayBox.setMaxWidth(Double.MAX_VALUE);
+        dayBox.setPromptText("选择星期");
+        dayBox.setConverter(dayConverter());
+        TextField classroom = field("例如：教一-101");
+        TextField start = field("HH:mm");
+        TextField end = field("HH:mm");
+        start.setText("08:00");
+        end.setText("09:40");
+
+        if (editing) {
+            CourseSchedule schedule = original.schedule();
+            _courses.stream()
+                    .filter(course -> course.getCourseId().equals(schedule.getCourseId()))
+                    .findFirst()
+                    .ifPresent(courseBox::setValue);
+            dayBox.setValue(schedule.getDayOfWeek());
+            classroom.setText(schedule.getClassroom());
+            start.setText(schedule.getStartTime().toString());
+            end.setText(schedule.getEndTime().toString());
+        }
+
+        GridPane form = new GridPane();
+        form.getStyleClass().add("form-grid");
+        addField(form, 0, "课程", courseBox);
+        addField(form, 1, "教室", classroom);
+        addField(form, 2, "星期", dayBox);
+        HBox times = new HBox(8, start, new Label("至"), end);
+        times.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(start, Priority.ALWAYS);
+        HBox.setHgrow(end, Priority.ALWAYS);
+        addField(form, 3, "时间", times);
+        dialog.getDialogPane().setContent(form);
+        dialog.getDialogPane().setPrefWidth(480);
+
+        AtomicReference<CourseSchedule> result = new AtomicReference<>();
+        Node saveButton = dialog.getDialogPane().lookupButton(saveType);
+        saveButton.getStyleClass().add("primary");
+        saveButton.addEventFilter(ActionEvent.ACTION, event -> {
+            try {
+                Course course = courseBox.getValue();
+                Integer day = dayBox.getValue();
+                String room = required(classroom.getText(), "教室");
+                if (course == null || day == null) {
+                    throw new IllegalArgumentException("课程和星期均不能为空");
+                }
+                LocalTime startTime = CourseViewSupport.parseTime(start.getText());
+                LocalTime endTime = CourseViewSupport.parseTime(end.getText());
+                if (!startTime.isBefore(endTime)) {
+                    throw new IllegalArgumentException("结束时间必须晚于开始时间");
+                }
+                String scheduleId = editing ? original.schedule().getScheduleId() : null;
+                result.set(new CourseSchedule(scheduleId, course.getCourseId(),
+                        room, day, startTime, endTime));
+            } catch (RuntimeException exception) {
+                CourseViewSupport.showError(exception);
+                event.consume();
+            }
+        });
+
+        dialog.showAndWait();
+        CourseSchedule schedule = result.get();
+        if (schedule == null) {
+            return;
+        }
+        if (editing) {
+            updateSchedule(schedule);
+        } else {
+            addSchedule(schedule);
+        }
+    }
+
+    private void addSchedule(CourseSchedule schedule) {
+        CourseViewSupport.runAsync(this, () -> _client.addSchedule(schedule), added -> {
+            _statusLabel.setText("排课新增成功：" + added.getScheduleId());
+            refresh();
+        });
+    }
+
+    private void updateSchedule(CourseSchedule schedule) {
+        CourseViewSupport.runAsync(this, () -> _client.updateSchedule(schedule), ignored -> {
+            _statusLabel.setText("排课修改成功");
+            refresh();
+        });
+    }
+
+    private void deleteSchedule(ScheduleRow row) {
+        if (!CourseViewSupport.confirm("删除该条排课？",
+                row.displayCourse() + " · "
+                        + CourseViewSupport.dayName(row.schedule().getDayOfWeek()) + " "
+                        + CourseViewSupport.timeRange(row.schedule().getStartTime(),
+                        row.schedule().getEndTime()))) {
+            return;
+        }
+        CourseViewSupport.runAsync(this,
+                () -> _client.deleteSchedule(row.schedule().getScheduleId()), ignored -> {
+                    _statusLabel.setText("排课删除成功");
+                    refresh();
+                });
+    }
+
+    private StringConverter<Course> courseConverter() {
+        return new StringConverter<>() {
             @Override
             public String toString(Course course) {
                 return course == null ? "" : course.getCourseId() + " · "
@@ -92,9 +269,11 @@ public class ScheduleAdminPane extends VBox {
             public Course fromString(String value) {
                 return null;
             }
-        });
-        _dayBox.setItems(FXCollections.observableArrayList(1, 2, 3, 4, 5, 6, 7));
-        _dayBox.setConverter(new StringConverter<>() {
+        };
+    }
+
+    private StringConverter<Integer> dayConverter() {
+        return new StringConverter<>() {
             @Override
             public String toString(Integer day) {
                 return day == null ? "" : CourseViewSupport.dayName(day);
@@ -104,121 +283,34 @@ public class ScheduleAdminPane extends VBox {
             public Integer fromString(String value) {
                 return null;
             }
-        });
-        _classroomField.setPromptText("例如：教一-101");
-        _startField.setPromptText("HH:mm");
-        _endField.setPromptText("HH:mm");
-
-        GridPane form = new GridPane();
-        form.setHgap(10);
-        form.setVgap(8);
-        form.addRow(0, new Label("课程"), _courseBox, new Label("教室"), _classroomField);
-        form.addRow(1, new Label("星期"), _dayBox, new Label("时间"),
-                new HBox(6, _startField, new Label("至"), _endField));
-
-        Button addButton = button("新增", CourseViewSupport.PRIMARY_BUTTON, this::addSchedule);
-        Button updateButton = button("保存修改", CourseViewSupport.SECONDARY_BUTTON, this::updateSchedule);
-        Button deleteButton = button("删除", CourseViewSupport.DANGER_BUTTON, this::deleteSchedule);
-        Button clearButton = button("清空表单", CourseViewSupport.SECONDARY_BUTTON, this::clearForm);
-        Button refreshButton = button("刷新", CourseViewSupport.SECONDARY_BUTTON, this::refresh);
-        getChildren().addAll(_table, form,
-                new HBox(9, addButton, updateButton, deleteButton, clearButton, refreshButton,
-                        _statusLabel));
+        };
     }
 
-    private Snapshot loadSnapshot() throws Exception {
-        List<Course> courses = _client.queryCourse("");
-        Map<String, Course> courseMap = courses.stream()
-                .collect(Collectors.toMap(Course::getCourseId, Function.identity()));
-        List<ScheduleRow> rows = _client.querySchedule().stream()
-                .map(schedule -> new ScheduleRow(schedule, courseMap.get(schedule.getCourseId())))
-                .toList();
-        return new Snapshot(courses, rows);
+    private TextField field(String prompt) {
+        TextField field = new TextField();
+        field.setPromptText(prompt);
+        field.setMaxWidth(Double.MAX_VALUE);
+        return field;
     }
 
-    private void addSchedule() {
-        CourseSchedule schedule;
-        try {
-            schedule = formSchedule(null);
-        } catch (RuntimeException e) {
-            CourseViewSupport.showError(e);
-            return;
+    private void addField(GridPane form, int row, String name, Node field) {
+        Label label = new Label(name);
+        label.getStyleClass().add("field-label");
+        form.add(label, 0, row);
+        form.add(field, 1, row);
+        GridPane.setHgrow(field, Priority.ALWAYS);
+    }
+
+    private String required(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + "不能为空");
         }
-        CourseViewSupport.runAsync(this, () -> _client.addSchedule(schedule), added -> {
-            _statusLabel.setText("排课新增成功：" + added.getScheduleId());
-            clearForm();
-            refresh();
-        });
+        return value.trim();
     }
 
-    private void updateSchedule() {
-        ScheduleRow selected = _table.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            CourseViewSupport.showError(new IllegalArgumentException("请先选择一条排课"));
-            return;
-        }
-        CourseSchedule schedule;
-        try {
-            schedule = formSchedule(selected.schedule().getScheduleId());
-        } catch (RuntimeException e) {
-            CourseViewSupport.showError(e);
-            return;
-        }
-        CourseViewSupport.runAsync(this, () -> _client.updateSchedule(schedule), ignored -> {
-            _statusLabel.setText("排课修改成功");
-            refresh();
-        });
-    }
-
-    private void deleteSchedule() {
-        ScheduleRow selected = _table.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            CourseViewSupport.showError(new IllegalArgumentException("请先选择一条排课"));
-            return;
-        }
-        CourseViewSupport.runAsync(this,
-                () -> _client.deleteSchedule(selected.schedule().getScheduleId()), ignored -> {
-                    _statusLabel.setText("排课删除成功");
-                    clearForm();
-                    refresh();
-                });
-    }
-
-    private CourseSchedule formSchedule(String scheduleId) {
-        Course course = _courseBox.getValue();
-        Integer day = _dayBox.getValue();
-        if (course == null || day == null || _classroomField.getText().isBlank()) {
-            throw new IllegalArgumentException("课程、教室和星期均不能为空");
-        }
-        LocalTime start = CourseViewSupport.parseTime(_startField.getText());
-        LocalTime end = CourseViewSupport.parseTime(_endField.getText());
-        return new CourseSchedule(scheduleId, course.getCourseId(),
-                _classroomField.getText().trim(), day, start, end);
-    }
-
-    private void populateForm(ScheduleRow row) {
-        if (row == null) {
-            return;
-        }
-        _courseBox.setValue(row.course());
-        _classroomField.setText(row.schedule().getClassroom());
-        _dayBox.setValue(row.schedule().getDayOfWeek());
-        _startField.setText(row.schedule().getStartTime().toString());
-        _endField.setText(row.schedule().getEndTime().toString());
-    }
-
-    private void clearForm() {
-        _table.getSelectionModel().clearSelection();
-        _courseBox.setValue(null);
-        _dayBox.setValue(null);
-        _classroomField.clear();
-        _startField.setText("08:00");
-        _endField.setText("09:40");
-    }
-
-    private Button button(String text, String style, Runnable action) {
+    private Button button(String text, String styleClass, Runnable action) {
         Button button = new Button(text);
-        button.setStyle(style);
+        button.getStyleClass().add(styleClass);
         button.setOnAction(event -> action.run());
         return button;
     }

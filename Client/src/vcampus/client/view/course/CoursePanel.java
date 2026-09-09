@@ -1,9 +1,9 @@
 /*
  * CoursePanel
  *
- * Version 1.0
+ * Version 1.1
  *
- * 2026-09-04
+ * 2026-09-08
  *
  * Copyright (c) 2026 Vcampus Team
  */
@@ -14,10 +14,9 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
 import vcampus.client.biz.CourseClientSrv;
 import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.User;
@@ -35,11 +34,7 @@ public class CoursePanel extends BorderPane {
     private SelectedCoursesPane _selectedPane;
     private TimetablePane _timetablePane;
 
-    /**
-     * 使用默认 Course Socket 服务创建面板。
-     *
-     * @param currentUser 当前登录用户
-     */
+    /** 使用默认 Course Socket 服务创建面板。 */
     public CoursePanel(User currentUser) {
         this(currentUser, new CourseClientSrv());
     }
@@ -48,25 +43,43 @@ public class CoursePanel extends BorderPane {
     CoursePanel(User currentUser, ICourseClientSrv client) {
         this._currentUser = currentUser;
         this._client = client;
-        setPrefSize(1020, 650);
-        setStyle("-fx-background-color: white; -fx-background-radius: 16;");
+        setPrefSize(1080, 720);
+        getStyleClass().add("course-root");
+        String stylesheet = CourseViewSupport.stylesheet();
+        if (stylesheet != null) {
+            getStylesheets().add(stylesheet);
+        }
         setTop(buildHeader());
         initializeContent();
     }
 
     private VBox buildHeader() {
+        Label eyebrow = new Label("VCAMPUS ACADEMIC SERVICES");
+        eyebrow.getStyleClass().add("course-eyebrow");
         Label title = new Label("教务选课中心");
-        title.setFont(Font.font("System", FontWeight.BOLD, 22));
-        title.setTextFill(Color.web("#1d2b39"));
+        title.getStyleClass().add("course-title");
+        VBox titles = new VBox(3, eyebrow, title);
+        HBox.setHgrow(titles, Priority.ALWAYS);
+
         String role = _currentUser == null ? "未登录" : safe(_currentUser.getURole());
-        Label subtitle = new Label("当前身份：" + role);
-        subtitle.setTextFill(Color.web("#697687"));
-        VBox header = new VBox(4, title, subtitle);
-        header.setPadding(new Insets(18, 20, 8, 20));
+        String name = _currentUser == null ? "" : safe(_currentUser.getUName());
+        Label identity = new Label(role + (name.isBlank() ? "" : " · " + name));
+        identity.getStyleClass().addAll("role-badge", roleClass(role));
+
+        HBox headline = new HBox(16, titles, identity);
+        headline.getStyleClass().add("course-headline");
+        Label subtitle = new Label("课程检索、学习安排与教务管理");
+        subtitle.getStyleClass().add("course-subtitle");
+        VBox header = new VBox(8, headline, subtitle);
+        header.getStyleClass().add("course-header");
         return header;
     }
 
     private void initializeContent() {
+        _tabs.getStyleClass().add("course-tabs");
+        _tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        BorderPane.setMargin(_tabs, new Insets(0, 20, 20, 20));
+
         if (_currentUser == null) {
             setCenter(message("请先登录后进入教务选课中心。"));
             return;
@@ -83,7 +96,7 @@ public class CoursePanel extends BorderPane {
                 setCenter(message("当前教师账号尚未设置姓名，无法匹配授课课程。"));
                 return;
             }
-            addTab("我教的课程", new TeacherCoursesPane(_client, _currentUser.getUName()));
+            addTab("教师工作台", new TeacherCoursesPane(_client, _currentUser.getUName()));
             setCenter(_tabs);
             return;
         }
@@ -92,7 +105,7 @@ public class CoursePanel extends BorderPane {
             return;
         }
 
-        setCenter(message("正在查询当前用户的学籍信息..."));
+        setCenter(message("正在查询当前用户的学籍信息…"));
         CourseViewSupport.runAsync(this,
                 () -> _client.queryStudentId(_currentUser.getUId()), studentId -> {
                     if (studentId == null || studentId.isBlank()) {
@@ -120,25 +133,33 @@ public class CoursePanel extends BorderPane {
         _timetablePane = new TimetablePane(_client, studentId);
         addTab("课程大厅", _hallPane);
         addTab("我的课程", _selectedPane);
-        addTab("我的课程表", _timetablePane);
+        addTab("我的课表", _timetablePane);
         setCenter(_tabs);
     }
 
     private void addTab(String title, javafx.scene.Node content) {
-        Tab tab = new Tab(title, content);
-        tab.setClosable(false);
-        _tabs.getTabs().add(tab);
+        _tabs.getTabs().add(new Tab(title, content));
     }
 
     private VBox message(String text) {
         Label label = new Label(text);
-        label.setTextFill(Color.web("#697687"));
+        label.getStyleClass().add("empty-state-label");
         VBox box = new VBox(label);
-        box.setPadding(new Insets(28));
+        box.getStyleClass().addAll("course-card", "message-card");
+        BorderPane.setMargin(box, new Insets(0, 20, 20, 20));
         return box;
     }
 
     private String safe(String value) {
         return value == null || value.isBlank() ? "未设置" : value;
+    }
+
+    private String roleClass(String role) {
+        return switch (role) {
+            case "管理员" -> "role-admin";
+            case "教师" -> "role-teacher";
+            case "学生" -> "role-student";
+            default -> "role-unknown";
+        };
     }
 }
