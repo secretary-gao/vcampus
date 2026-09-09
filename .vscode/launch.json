@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "LibraryPanel",
+            "request": "launch",
+            "mainClass": "vcampus.client.view.Library.LibraryPanel",
+            "projectName": "vcampus_db40ecb4"
+        },
+        {
+            "type": "java",
             "name": "Run Server",
             "request": "launch",
             "mainClass": "vcampus.server.srv.Server",
