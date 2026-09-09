@@ -34,6 +34,8 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
@@ -403,14 +405,27 @@ public class StoreFrame extends Application {
                 + " -fx-border-radius: 14; -fx-border-color: rgba(0,0,0,0.06);"
                 + " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12, 0.1, 0, 4);");
 
-        // 占位"图"：类别色块 + 名称首字
-        StackPane img = new StackPane();
-        img.setPrefHeight(120);
-        img.setStyle("-fx-background-radius: 10; -fx-background-color: " + categoryColor(g.getCategory()) + ";");
-        Label imgText = new Label(cardImageText(g));
-        imgText.setFont(Font.font("System", FontWeight.BOLD, 34));
-        imgText.setTextFill(Color.WHITE);
-        img.getChildren().add(imgText);
+        // 占位"图"：类别色块 + 类别 emoji；有图片地址则后台加载真实图片
+        StackPane img = buildPlaceholderImage(g);
+        final StackPane imgHolder = img;
+        String url = g.getImageUrl();
+        if (url != null && !url.isBlank()) {
+            new Thread(() -> {
+                Image im = null;
+                try {
+                    im = new Image(url, 186, 120, true, true);
+                } catch (Exception e) {
+                    im = null;
+                }
+                if (im != null && !im.isError()) {
+                    ImageView iv = new ImageView(im);
+                    iv.setFitWidth(186);
+                    iv.setFitHeight(120);
+                    iv.setPreserveRatio(true);
+                    Platform.runLater(() -> imgHolder.getChildren().setAll(iv));
+                }
+            }).start();
+        }
 
         Label name = new Label(safe(g.getGoodsName()));
         name.setWrapText(true);
@@ -462,14 +477,45 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * 卡片占位图文字（商品名称首字）。
+     * 构建卡片占位图（类别色块 + 类别 emoji）。
      *
      * @param g 商品
-     * @return 首字
+     * @return 占位图
      */
-    private String cardImageText(Goods g) {
-        String n = safe(g.getGoodsName());
-        return n.isEmpty() ? "商品" : n.substring(0, 1);
+    private StackPane buildPlaceholderImage(Goods g) {
+        StackPane img = new StackPane();
+        img.setPrefSize(186, 120);
+        img.setStyle("-fx-background-radius: 10; -fx-background-color: " + categoryColor(g.getCategory()) + ";");
+        Label emoji = new Label(categoryEmoji(g.getCategory()));
+        emoji.setFont(Font.font("System", 40));
+        img.getChildren().add(emoji);
+        return img;
+    }
+
+    /**
+     * 根据类别返回占位 emoji。
+     *
+     * @param category 类别
+     * @return emoji
+     */
+    private String categoryEmoji(String category) {
+        if (category == null) {
+            return "🛒";
+        }
+        switch (category) {
+            case "饮料":
+                return "🥤";
+            case "食品":
+                return "🍞";
+            case "文具":
+                return "📓";
+            case "数码":
+                return "💾";
+            case "生活用品":
+                return "🧺";
+            default:
+                return "🛒";
+        }
     }
 
     /**
