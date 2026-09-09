@@ -39,8 +39,8 @@ public class GoodsDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public boolean insert(Goods goods) throws SQLException, IOException {
-        String sql = "INSERT INTO tblGoods (goodsId, goodsName, category, price, stock) "
-                + "VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO tblGoods (goodsId, goodsName, category, price, stock, imageUrl) "
+                + "VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = DbHelper.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, goods.getGoodsId());
@@ -48,6 +48,7 @@ public class GoodsDAO {
             pstmt.setString(3, goods.getCategory());
             pstmt.setBigDecimal(4, goods.getPrice());
             pstmt.setInt(5, goods.getStock());
+            pstmt.setString(6, goods.getImageUrl());
             return pstmt.executeUpdate() > 0;
         }
     }
@@ -61,7 +62,7 @@ public class GoodsDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public boolean update(Goods goods) throws SQLException, IOException {
-        String sql = "UPDATE tblGoods SET goodsName = ?, category = ?, price = ?, stock = ? "
+        String sql = "UPDATE tblGoods SET goodsName = ?, category = ?, price = ?, stock = ?, imageUrl = ? "
                 + "WHERE goodsId = ?";
         try (Connection conn = DbHelper.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -69,7 +70,8 @@ public class GoodsDAO {
             pstmt.setString(2, goods.getCategory());
             pstmt.setBigDecimal(3, goods.getPrice());
             pstmt.setInt(4, goods.getStock());
-            pstmt.setString(5, goods.getGoodsId());
+            pstmt.setString(5, goods.getImageUrl());
+            pstmt.setString(6, goods.getGoodsId());
             return pstmt.executeUpdate() > 0;
         }
     }
@@ -100,7 +102,7 @@ public class GoodsDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public Goods findByGoodsId(String goodsId) throws SQLException, IOException {
-        String sql = "SELECT goodsId, goodsName, category, price, stock FROM tblGoods WHERE goodsId = ?";
+        String sql = "SELECT goodsId, goodsName, category, price, stock, imageUrl FROM tblGoods WHERE goodsId = ?";
         try (Connection conn = DbHelper.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, goodsId);
@@ -121,7 +123,7 @@ public class GoodsDAO {
      */
     public List<Goods> queryByCondition(String keyword, String category) throws SQLException, IOException {
         StringBuilder sql = new StringBuilder(
-                "SELECT goodsId, goodsName, category, price, stock FROM tblGoods WHERE 1 = 1");
+                "SELECT goodsId, goodsName, category, price, stock, imageUrl FROM tblGoods WHERE 1 = 1");
         List<Object> params = new ArrayList<>();
 
         if (keyword != null && !keyword.isBlank()) {
@@ -160,7 +162,7 @@ public class GoodsDAO {
      * @throws SQLException 数据库操作异常
      */
     public Goods findByGoodsIdForUpdate(Connection conn, String goodsId) throws SQLException {
-        String sql = "SELECT goodsId, goodsName, category, price, stock FROM tblGoods WHERE goodsId = ? FOR UPDATE";
+        String sql = "SELECT goodsId, goodsName, category, price, stock, imageUrl FROM tblGoods WHERE goodsId = ? FOR UPDATE";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, goodsId);
             try (ResultSet rs = pstmt.executeQuery()) {
@@ -202,6 +204,7 @@ public class GoodsDAO {
         goods.setCategory(rs.getString("category"));
         goods.setPrice(rs.getBigDecimal("price"));
         goods.setStock(rs.getInt("stock"));
+        goods.setImageUrl(rs.getString("imageUrl"));
         return goods;
     }
 }
