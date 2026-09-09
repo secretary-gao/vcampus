@@ -292,17 +292,24 @@ public class ServerThread implements Runnable {
     }
 
     private Message handleAddAppointment(Message request) {
-        try {
-            Appointment appoint = (Appointment) request.getData();
-            boolean success = _hospitalSrv.addAppointment(appoint);
-            String code = success ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
-            String msg = success ? "预约成功" : "预约失败";
-            return new Message(request.getUid(), request.getName(), MessageType.DATA, code, msg, "Server");
-        } catch (SQLException | IOException e) {
-            return new Message(request.getUid(), request.getName(), MessageType.DATA,
-                    IConstant.STATUS_ERROR, "新增预约异常：" + e.getMessage(), "Server");
-        }
+    try {
+        Appointment appoint = (Appointment) request.getData();
+        boolean success = _hospitalSrv.addAppointment(appoint);
+        String code = success ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
+        String msg = success ? "预约成功" : "预约失败";
+        return new Message(request.getUid(), request.getName(), MessageType.DATA, code, msg, "Server");
+    } catch (IOException e) {
+        //业务提示（预约时间错误/时段冲突）直接把异常消息返回前端
+        return new Message(request.getUid(), request.getName(), MessageType.DATA,
+                IConstant.STATUS_ERROR, e.getMessage(), "Server");
+    } catch (SQLException e) {
+        //数据库异常
+        return new Message(request.getUid(), request.getName(), MessageType.DATA,
+                IConstant.STATUS_ERROR, "数据库异常：" + e.getMessage(), "Server");
     }
+}
+
+
 
     private Message handleQueryMyAppointment(Message request) {
         try {
@@ -386,17 +393,18 @@ public class ServerThread implements Runnable {
     }
 
     private Message handleDeleteCancelAppoint(Message request) {
-        try {
-            String appointId = (String) request.getData();
-            boolean ok = _hospitalSrv.deleteCancelAppointment(appointId);
-            String code = ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
-            String msg = ok ? "删除已取消预约成功" : "删除失败：仅可删除状态为【已取消】的预约";
-            return new Message(request.getUid(), request.getName(), MessageType.DATA, code, msg, "Server");
-        } catch (SQLException | IOException e) {
-            return new Message(request.getUid(), request.getName(), MessageType.DATA,
-                    IConstant.STATUS_ERROR, "删除预约异常：" + e.getMessage(), "Server");
-        }
+    try {
+        String appointId = (String) request.getData();
+        boolean ok = _hospitalSrv.deleteCancelAppointment(appointId);
+        String code = ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
+        String msg = ok ? "删除预约记录成功" : "删除失败：仅可删除【已取消】或【已就诊】预约记录";
+        return new Message(request.getUid(), request.getName(), MessageType.DATA, code, msg, "Server");
+    } catch (SQLException | IOException e) {
+        return new Message(request.getUid(), request.getName(), MessageType.DATA,
+                IConstant.STATUS_ERROR, "删除预约异常：" + e.getMessage(), "Server");
     }
+}
+
 
     //【新增处理器：查询没有待就诊预约、可以安全删除的医生】
     private Message handleQueryCanDeleteDoctor(Message request) {
