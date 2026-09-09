@@ -16,6 +16,9 @@ public interface IHospitalServerSrv {
      */
     boolean addAppointment(Appointment appoint) throws SQLException, IOException;
     List<Appointment> queryMyAppointment(String userId) throws SQLException, IOException;
+    // 在IHospitalServerSrv接口增加方法声明
+    int autoUpdateExpiredAppointment() throws SQLException, IOException;
+
     /**
      * 【管理员】查询全部挂号记录
      * @return
@@ -34,12 +37,13 @@ public interface IHospitalServerSrv {
      */
     boolean cancelAppointment(String loginUserId,String appointId) throws SQLException, IOException;
 
-        /**
-     * 删除预约：只允许删除状态为【已取消】的预约记录
-     * @param appointId 预约编号
-     * @return true删除成功；false：状态不允许/记录不存在
-     */
-    boolean deleteCancelAppointment(String appointId) throws SQLException, IOException;
+    /**
+ * 删除预约：管理员可删除【已取消 / 已就诊】；待就诊记录不允许删除
+ * @param appointId 预约编号
+ * @return true删除成功；false：状态不允许/记录不存在
+ */
+boolean deleteCancelAppointment(String appointId) throws SQLException, IOException;
+
 
 
     // 管理员维护医生
