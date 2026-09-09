@@ -1,9 +1,9 @@
 /*
  * StoreFrame
  *
- * Version 1.0
+ * Version 2.0
  *
- * 2026-09-04
+ * 2026-09-07
  *
  * Copyright (c) 2026 Vcampus Team
  */
@@ -27,17 +27,22 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.CornerRadii;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -48,14 +53,18 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
- * 虚拟商店模块客户端主界面（JavaFX）。
+ * 虚拟商店模块客户端主界面（JavaFX，电商卡片风格）。
  *
- * <p>包含三个页签：商品浏览与购买（普通用户）、我的购买记录、商品管理（仅管理员）。
- * 所有业务请求通过 {@link StoreClientSrv} 发送到服务器，客户端不直接访问数据库。
+ * <p>包含三个页签：商品商城（卡片网格 + 搜索/分类）、我的订单（购买记录，仅本人/管理员全部）、
+ * 商品管理（仅管理员）。所有业务请求通过 {@link StoreClientSrv} 发送到服务器，客户端不直接访问数据库。
  * 管理员表单的显示由 {@link User#getURole()} 决定，保证非管理员看不到管理入口。</p>
+ *
+ * <p>说明：按说明书"一次购买仅针对单一商品"，本模块不提供购物车；商品卡片不设图片字段，
+ * 用"类别色块 + 名称首字"作为占位图。</p>
  */
 public class StoreFrame extends Application {
 
@@ -68,13 +77,12 @@ public class StoreFrame extends Application {
     /** 商店客户端业务服务。 */
     private final IStoreClientSrv _storeClientSrv = new StoreClientSrv();
 
-    // ---- 商品浏览与购买 ----
-    private TableView<Goods> _goodsTable = new TableView<>();
+    // ---- 商品商城 ----
+    private FlowPane _goodsCards = new FlowPane(16, 16);
     private final TextField _searchField = new TextField();
     private final ComboBox<String> _categoryBox = new ComboBox<>();
-    private final TextField _quantityField = new TextField();
 
-    // ---- 购买记录 ----
+    // ---- 我的订单 ----
     private TableView<PurchaseRecord> _recordsTable = new TableView<>();
 
     // ---- 商品管理（管理员）----
@@ -117,7 +125,7 @@ public class StoreFrame extends Application {
      */
     @Override
     public void start(Stage stage) {
-        _categoryBox.getItems().setAll("全部", "食品", "饮料", "文具", "生活用品", "数码");
+        _categoryBox.getItems().setAll("全部商品", "食品", "饮料", "文具", "生活用品", "数码");
         _categoryBox.getSelectionModel().selectFirst();
         buildUi(stage);
         loadGoods();
@@ -131,7 +139,7 @@ public class StoreFrame extends Application {
      */
     private void buildUi(Stage stage) {
         BorderPane root = new BorderPane();
-        root.setPrefSize(980, 680);
+        root.setPrefSize(1080, 720);
         root.setBackground(new Background(new BackgroundFill(
                 Color.web("#f4f7fb"), CornerRadii.EMPTY, Insets.EMPTY)));
 
@@ -139,8 +147,10 @@ public class StoreFrame extends Application {
 
         TabPane tabPane = new TabPane();
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-        tabPane.getTabs().add(new Tab("商品浏览与购买", buildBuyTab()));
-        tabPane.getTabs().add(new Tab("我的购买记录", buildRecordsTab()));
+        Tab goodsTab = new Tab("商品商城", buildBuyTab());
+        Tab orderTab = new Tab("我的订单", buildRecordsTab());
+        tabPane.getTabs().add(goodsTab);
+        tabPane.getTabs().add(orderTab);
         if (isAdmin()) {
             tabPane.getTabs().add(new Tab("商品管理", buildManageTab()));
         }
@@ -169,12 +179,18 @@ public class StoreFrame extends Application {
     private BorderPane buildBanner() {
         BorderPane banner = new BorderPane();
         banner.setPadding(new Insets(16, 26, 16, 26));
-        banner.setStyle("-fx-background-color: linear-gradient(to right, #2d6a9f, #4f8fc6);");
+        banner.setStyle("-fx-background-color: linear-gradient(to right, #0f8f8f, #38b5a6);"
+                + "-fx-background-radius: 0 0 22 22;");
 
+        VBox titleBlock = new VBox(2);
         Label title = new Label("东南大学 · 虚拟商店");
         title.setTextFill(Color.WHITE);
         title.setFont(Font.font("System", FontWeight.BOLD, 22));
-        banner.setLeft(title);
+        Label crumb = new Label("数字校园 / 虚拟商店");
+        crumb.setTextFill(Color.web("#d6f0ee"));
+        crumb.setFont(Font.font("System", 12));
+        titleBlock.getChildren().addAll(title, crumb);
+        banner.setLeft(titleBlock);
 
         Label userInfo = new Label("用户：" + safe(_currentUser == null ? "" : _currentUser.getUId())
                 + "（" + safe(_currentUser == null ? "" : _currentUser.getURole()) + "）");
@@ -186,57 +202,53 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * 构建"商品浏览与购买"页签。
+     * 构建"商品商城"页签：搜索栏 + 商品卡片网格。
      *
      * @return 页签内容
      */
     private VBox buildBuyTab() {
-        _searchField.setPromptText("按名称/类别查询");
-        _searchField.setPrefWidth(220);
+        _searchField.setPromptText("标题、描述或分类关键字");
+        _searchField.setPrefWidth(300);
 
         Button queryButton = new Button("查询");
         queryButton.setOnAction(e -> loadGoods());
         Button refreshButton = new Button("刷新");
         refreshButton.setOnAction(e -> loadGoods());
-        Button buyButton = new Button("购买");
-        buyButton.setOnAction(e -> onBuy());
 
-        _quantityField.setPromptText("数量");
-
-        HBox searchBar = new HBox(10, new Label("类别"), _categoryBox, _searchField,
-                queryButton, refreshButton);
+        HBox searchBar = new HBox(10, _categoryBox, _searchField, queryButton, refreshButton);
         searchBar.setAlignment(Pos.CENTER_LEFT);
-        searchBar.setPadding(new Insets(10));
+        searchBar.setPadding(new Insets(10, 12, 10, 12));
+        searchBar.setStyle("-fx-background-color: white; -fx-background-radius: 12;"
+                + " -fx-border-radius: 12; -fx-border-color: rgba(0,0,0,0.06);"
+                + " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0.1, 0, 2);");
 
-        setUpGoodsColumns(_goodsTable, 150);
-        VBox.setVgrow(_goodsTable, javafx.scene.layout.Priority.ALWAYS);
+        _goodsCards.setPadding(new Insets(12));
+        ScrollPane scroll = new ScrollPane(_goodsCards);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background-color: transparent;");
 
-        HBox buyBar = new HBox(10, new Label("购买数量"), _quantityField, buyButton,
-                new Label("（选中商品后填写数量并购买）"));
-        buyBar.setAlignment(Pos.CENTER_LEFT);
-        buyBar.setPadding(new Insets(10));
-
-        VBox box = new VBox(6, searchBar, _goodsTable, buyBar);
-        box.setPadding(new Insets(8, 16, 8, 16));
+        VBox box = new VBox(10, searchBar, scroll);
+        box.setPadding(new Insets(12, 16, 12, 16));
         return box;
     }
 
     /**
-     * 构建"我的购买记录"页签。
+     * 构建"我的订单"页签。
      *
      * @return 页签内容
      */
     private VBox buildRecordsTab() {
         setUpRecordsColumns(_recordsTable);
+        VBox.setVgrow(_recordsTable, Priority.ALWAYS);
 
-        Button refreshButton = new Button("刷新记录");
+        Button refreshButton = new Button("刷新订单");
         refreshButton.setOnAction(e -> loadRecords());
         HBox bar = new HBox(refreshButton);
         bar.setAlignment(Pos.CENTER_LEFT);
-        bar.setPadding(new Insets(10));
+        bar.setPadding(new Insets(6));
 
-        VBox box = new VBox(6, bar, _recordsTable);
-        box.setPadding(new Insets(8, 16, 8, 16));
+        VBox box = new VBox(8, bar, _recordsTable);
+        box.setPadding(new Insets(12, 16, 12, 16));
         return box;
     }
 
@@ -283,25 +295,24 @@ public class StoreFrame extends Application {
                 fillForm(sel);
             }
         });
-        setUpGoodsColumns(_manageTable, 150);
-        VBox.setVgrow(_manageTable, javafx.scene.layout.Priority.ALWAYS);
+        setUpGoodsColumns(_manageTable);
+        VBox.setVgrow(_manageTable, Priority.ALWAYS);
 
         VBox box = new VBox(8, new Label("录入商品（管理员）"), form, buttons,
                 new Label("商品列表"), _manageTable);
-        box.setPadding(new Insets(8, 16, 8, 16));
+        box.setPadding(new Insets(12, 16, 12, 16));
         return box;
     }
 
     /**
-     * 设置商品表格的列。
+     * 设置商品表格的列（用于商品管理）。
      *
-     * @param table  表格
-     * @param width  列宽
+     * @param table 表格
      */
-    private void setUpGoodsColumns(TableView<Goods> table, double width) {
-        table.getColumns().add(column("商品编号", g -> safe(g.getGoodsId()), width));
-        table.getColumns().add(column("名称", g -> safe(g.getGoodsName()), width + 20));
-        table.getColumns().add(column("类别", g -> safe(g.getCategory()), width - 20));
+    private void setUpGoodsColumns(TableView<Goods> table) {
+        table.getColumns().add(column("商品编号", g -> safe(g.getGoodsId()), 100));
+        table.getColumns().add(column("名称", g -> safe(g.getGoodsName()), 160));
+        table.getColumns().add(column("类别", g -> safe(g.getCategory()), 110));
         table.getColumns().add(column("单价", g -> g.getPrice() == null ? "" : g.getPrice().toPlainString(), 90));
         table.getColumns().add(column("库存", g -> String.valueOf(g.getStock()), 70));
     }
@@ -336,26 +347,180 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * 加载商品列表并刷新表格。
+     * 加载商品列表并刷新卡片网格与管理列表。
      */
     @SuppressWarnings("unchecked") // 服务器返回的 List 元素类型在运行时是确定的，此处强转安全
     private void loadGoods() {
         String keyword = _searchField.getText().trim();
         String category = _categoryBox.getValue();
-        if ("全部".equals(category)) {
+        if ("全部商品".equals(category)) {
             category = null;
         }
         try {
             Message response = _storeClientSrv.queryGoods(keyword, category);
             if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
                 List<Goods> goods = (List<Goods>) response.getData();
-                _goodsTable.getItems().setAll(goods);
+                renderGoodsCards(goods);
                 _manageTable.getItems().setAll(goods);
             } else {
                 showAlert(Alert.AlertType.ERROR, "查询失败", String.valueOf(response.getData()));
             }
         } catch (IOException | ClassNotFoundException e) {
             showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器，请确认服务器已启动：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 把商品集合渲染为卡片网格。
+     *
+     * @param goods 商品集合
+     */
+    private void renderGoodsCards(List<Goods> goods) {
+        _goodsCards.getChildren().clear();
+        if (goods == null || goods.isEmpty()) {
+            Label empty = new Label("暂无商品");
+            empty.setTextFill(Color.web("#9aa5b1"));
+            empty.setFont(Font.font("System", 14));
+            _goodsCards.getChildren().add(empty);
+            return;
+        }
+        for (Goods g : goods) {
+            _goodsCards.getChildren().add(buildGoodsCard(g));
+        }
+    }
+
+    /**
+     * 构建单个商品卡片。
+     *
+     * @param g 商品
+     * @return 卡片
+     */
+    private VBox buildGoodsCard(Goods g) {
+        VBox card = new VBox(8);
+        card.setPrefWidth(210);
+        card.setPadding(new Insets(12));
+        card.setStyle("-fx-background-color: white; -fx-background-radius: 14;"
+                + " -fx-border-radius: 14; -fx-border-color: rgba(0,0,0,0.06);"
+                + " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12, 0.1, 0, 4);");
+
+        // 占位"图"：类别色块 + 名称首字
+        StackPane img = new StackPane();
+        img.setPrefHeight(120);
+        img.setStyle("-fx-background-radius: 10; -fx-background-color: " + categoryColor(g.getCategory()) + ";");
+        Label imgText = new Label(cardImageText(g));
+        imgText.setFont(Font.font("System", FontWeight.BOLD, 34));
+        imgText.setTextFill(Color.WHITE);
+        img.getChildren().add(imgText);
+
+        Label name = new Label(safe(g.getGoodsName()));
+        name.setWrapText(true);
+        name.setFont(Font.font("System", FontWeight.BOLD, 15));
+        name.setTextFill(Color.web("#1d2b39"));
+
+        Label price = new Label("¥ " + g.getPrice().toPlainString());
+        price.setFont(Font.font("System", FontWeight.BOLD, 18));
+        price.setTextFill(Color.web("#e6604f"));
+
+        Label stock = new Label("库存 " + g.getStock());
+        stock.setTextFill(Color.web("#9aa5b1"));
+        stock.setFont(Font.font("System", 12));
+
+        Button buy = new Button("立即下单");
+        buy.setMaxWidth(Double.MAX_VALUE);
+        buy.setStyle("-fx-background-color: #2fa89a; -fx-text-fill: white;"
+                + " -fx-background-radius: 18; -fx-font-weight: bold; -fx-cursor: hand;");
+        buy.setOnAction(e -> promptAndBuy(g));
+
+        card.getChildren().addAll(img, name, price, stock, buy);
+        return card;
+    }
+
+    /**
+     * 根据类别返回占位色块颜色。
+     *
+     * @param category 类别
+     * @return 颜色
+     */
+    private String categoryColor(String category) {
+        if (category == null) {
+            return "#8d99ae";
+        }
+        switch (category) {
+            case "饮料":
+                return "#38b5a6";
+            case "食品":
+                return "#e0a53b";
+            case "文具":
+                return "#4f8fc6";
+            case "数码":
+                return "#7c65e6";
+            case "生活用品":
+                return "#2fa89a";
+            default:
+                return "#8d99ae";
+        }
+    }
+
+    /**
+     * 卡片占位图文字（商品名称首字）。
+     *
+     * @param g 商品
+     * @return 首字
+     */
+    private String cardImageText(Goods g) {
+        String n = safe(g.getGoodsName());
+        return n.isEmpty() ? "商品" : n.substring(0, 1);
+    }
+
+    /**
+     * 弹出购买数量输入框并执行购买。
+     *
+     * @param g 商品
+     */
+    private void promptAndBuy(Goods g) {
+        TextInputDialog dialog = new TextInputDialog("1");
+        dialog.setTitle("购买数量");
+        dialog.setHeaderText(safe(g.getGoodsName()));
+        dialog.setContentText("购买数量：");
+        Optional<String> result = dialog.showAndWait();
+        if (result.isEmpty()) {
+            return;
+        }
+        int quantity;
+        try {
+            quantity = Integer.parseInt(result.get().trim());
+        } catch (NumberFormatException e) {
+            quantity = -1;
+        }
+        if (quantity <= 0) {
+            showAlert(Alert.AlertType.ERROR, "输入错误", "购买数量必须为正整数");
+            return;
+        }
+        doBuy(g, quantity);
+    }
+
+    /**
+     * 执行购买。
+     *
+     * @param g        商品
+     * @param quantity 数量
+     */
+    private void doBuy(Goods g, int quantity) {
+        try {
+            Message response = _storeClientSrv.purchaseGoods(_currentUser.getUId(), g.getGoodsId(), quantity);
+            if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
+                PurchaseRecord rec = (PurchaseRecord) response.getData();
+                showAlert(Alert.AlertType.INFORMATION, "购买成功",
+                        "订单号：" + rec.getOrderId()
+                                + "\n商品：" + rec.getGoodsName()
+                                + "\n数量：" + rec.getQuantity()
+                                + "\n总价：" + rec.getTotalPrice().toPlainString() + " 元");
+                loadGoods();
+            } else {
+                showAlert(Alert.AlertType.ERROR, "购买失败", String.valueOf(response.getData()));
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器：" + e.getMessage());
         }
     }
 
@@ -372,44 +537,6 @@ public class StoreFrame extends Application {
                 _recordsTable.getItems().setAll(records);
             } else {
                 showAlert(Alert.AlertType.ERROR, "查询失败", String.valueOf(response.getData()));
-            }
-        } catch (IOException | ClassNotFoundException e) {
-            showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器：" + e.getMessage());
-        }
-    }
-
-    /**
-     * 购买商品。
-     */
-    private void onBuy() {
-        Goods selected = _goodsTable.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            showAlert(Alert.AlertType.WARNING, "提示", "请先选中要购买的商品");
-            return;
-        }
-        int quantity;
-        try {
-            quantity = Integer.parseInt(_quantityField.getText().trim());
-        } catch (NumberFormatException e) {
-            showAlert(Alert.AlertType.ERROR, "输入错误", "购买数量必须为整数");
-            return;
-        }
-        if (quantity <= 0) {
-            showAlert(Alert.AlertType.ERROR, "输入错误", "购买数量必须为正整数");
-            return;
-        }
-        try {
-            Message response = _storeClientSrv.purchaseGoods(_currentUser.getUId(), selected.getGoodsId(), quantity);
-            if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
-                PurchaseRecord rec = (PurchaseRecord) response.getData();
-                showAlert(Alert.AlertType.INFORMATION, "购买成功",
-                        "订单号：" + rec.getOrderId()
-                                + "\n商品：" + rec.getGoodsName()
-                                + "\n数量：" + rec.getQuantity()
-                                + "\n总价：" + rec.getTotalPrice().toPlainString() + " 元");
-                loadGoods();
-            } else {
-                showAlert(Alert.AlertType.ERROR, "购买失败", String.valueOf(response.getData()));
             }
         } catch (IOException | ClassNotFoundException e) {
             showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器：" + e.getMessage());
