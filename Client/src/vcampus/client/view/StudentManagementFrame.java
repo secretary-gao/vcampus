@@ -8,6 +8,7 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -40,6 +41,7 @@ import vcampus.client.biz.StudentClientException;
 import vcampus.client.biz.StudentClientSrv;
 import vcampus.common.vo.Student;
 import vcampus.common.vo.StudentStatus;
+import vcampus.common.vo.User;
 
 import java.net.URL;
 import java.nio.file.Files;
@@ -61,7 +63,8 @@ public class StudentManagementFrame extends Application {
     private static final String STYLE_FILE =
             "Client/src/vcampus/client/view/student-management.css";
 
-    private final StudentClientSrv _studentClientSrv = new StudentClientSrv();
+    private final User _currentUser;
+    private final StudentClientSrv _studentClientSrv;
     private final ObservableList<Student> _students = FXCollections.observableArrayList();
     private final TableView<Student> _table = new TableView<>(_students);
 
@@ -86,8 +89,18 @@ public class StudentManagementFrame extends Application {
     private final Button _deleteButton = new Button("删除记录");
     private final List<Button> _operationButtons = new ArrayList<>();
     private final Map<TextField, String> _fieldErrors = new LinkedHashMap<>();
+    private final Map<String, Label> _detailValues = new LinkedHashMap<>();
     private boolean _operationRunning;
     private BorderPane _root;
+
+    public StudentManagementFrame() {
+        this(null);
+    }
+
+    public StudentManagementFrame(User currentUser) {
+        this._currentUser = currentUser;
+        this._studentClientSrv = new StudentClientSrv(currentUser);
+    }
 
     @Override
     public void start(Stage stage) {
@@ -105,7 +118,7 @@ public class StudentManagementFrame extends Application {
         stage.setScene(scene);
         stage.centerOnScreen();
         stage.show();
-        refreshStudents();
+        refresh();
     }
 
     /**
@@ -132,28 +145,46 @@ public class StudentManagementFrame extends Application {
      * 刷新学生列表，供主界面嵌入后调用。
      */
     public void refresh() {
-        refreshStudents();
+        if (isStudent()) {
+            refreshMyStudentInfo();
+        } else {
+            refreshStudents();
+        }
     }
 
     private VBox createHeader() {
-        Label title = new Label("学生学籍管理");
+        Label title = new Label(isStudent() ? "我的学籍" : "学生学籍管理");
         title.getStyleClass().add("page-title");
+
+        Label roleLabel = new Label(roleText());
+        roleLabel.getStyleClass().add("role-label");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         _countLabel.getStyleClass().add("count-label");
-        HBox titleRow = new HBox(16, title, spacer, _countLabel);
+        HBox titleRow = new HBox(12, title, roleLabel, spacer, _countLabel);
         titleRow.setAlignment(Pos.CENTER_LEFT);
         titleRow.getStyleClass().add("title-row");
 
-        _queryTypeBox.getItems().addAll("学号", "一卡通号", "姓名");
+        if (isStudent()) {
+            Label tip = new Label("已根据当前登录账号自动读取本人学籍信息");
+            tip.getStyleClass().add("student-self-hint");
+            return new VBox(titleRow, tip);
+        }
+
+        _queryTypeBox.getItems().addAll("学号", "姓名");
+        if (isAdmin()) {
+            _queryTypeBox.getItems().add(1, "一卡通号");
+        }
         _queryTypeBox.setValue("学号");
         _queryTypeBox.setPrefWidth(120);
         _queryTypeBox.getStyleClass().add("query-type");
 
         _queryField.setPromptText("输入精确查询内容");
         _queryField.setPrefWidth(300);
-        _queryField.setAccessibleHelp("可按学号、一卡通号或姓名精确查询");
+        _queryField.setAccessibleHelp(isAdmin()
+                ? "可按学号、一卡通号或姓名精确查询"
+                : "可按学号或姓名精确查询");
         HBox.setHgrow(_queryField, Priority.ALWAYS);
 
         Button queryButton = new Button("查询");
@@ -162,7 +193,7 @@ public class StudentManagementFrame extends Application {
         queryButton.setOnAction(event ->
                 queryStudents(_queryTypeBox.getValue(), _queryField.getText()));
 
-        Button resetButton = new Button("显示全部");
+        Button resetButton = new Button(isTeacher() ? "我的学生" : "显示全部");
         resetButton.getStyleClass().addAll("button", "secondary-button");
         resetButton.setOnAction(event -> {
             _queryField.clear();
@@ -188,8 +219,17 @@ public class StudentManagementFrame extends Application {
         return new VBox(titleRow, searchBar);
     }
 
-    private SplitPane createWorkspace() {
+    private Node createWorkspace() {
+        if (isStudent()) {
+            return createStudentDetail();
+        }
         VBox tableSection = createTableSection();
+        if (!isAdmin()) {
+            VBox workspace = new VBox(tableSection);
+            workspace.getStyleClass().add("workspace");
+            VBox.setVgrow(tableSection, Priority.ALWAYS);
+            return workspace;
+        }
         ScrollPane editor = new ScrollPane(createEditor());
         editor.setFitToWidth(true);
         editor.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
@@ -203,10 +243,47 @@ public class StudentManagementFrame extends Application {
         return workspace;
     }
 
+    private VBox createStudentDetail() {
+        Label sectionTitle = new Label("本人学籍档案");
+        sectionTitle.getStyleClass().add("section-title");
+        Label sectionHint = new Label("该页面仅供查看，如信息有误请联系管理员处理");
+        sectionHint.getStyleClass().add("section-hint");
+
+        GridPane grid = new GridPane();
+        grid.getStyleClass().add("detail-grid");
+        grid.setHgap(18);
+        grid.setVgap(10);
+        addDetailRow(grid, 0, "学号", "studentId");
+        addDetailRow(grid, 1, "一卡通号", "campusCardNo");
+        addDetailRow(grid, 2, "姓名", "name");
+        addDetailRow(grid, 3, "班级", "className");
+        addDetailRow(grid, 4, "专业", "major");
+        addDetailRow(grid, 5, "年级", "grade");
+        addDetailRow(grid, 6, "入学日期", "enrollmentDate");
+        addDetailRow(grid, 7, "学籍状态", "status");
+
+        VBox detail = new VBox(18, new VBox(3, sectionTitle, sectionHint), grid);
+        detail.getStyleClass().addAll("workspace", "student-detail");
+        return detail;
+    }
+
+    private void addDetailRow(GridPane grid, int row, String title, String key) {
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("detail-label");
+        Label valueLabel = new Label("正在读取...");
+        valueLabel.getStyleClass().add("detail-value");
+        valueLabel.setWrapText(true);
+        _detailValues.put(key, valueLabel);
+        grid.add(titleLabel, 0, row);
+        grid.add(valueLabel, 1, row);
+    }
+
     private VBox createTableSection() {
         Label sectionTitle = new Label("学生列表");
         sectionTitle.getStyleClass().add("section-title");
-        Label sectionHint = new Label("选中记录后可在右侧修改");
+        Label sectionHint = new Label(isAdmin()
+                ? "选中记录后可在右侧修改或审核学籍状态"
+                : "仅显示自己任教课程的学生及其公开学籍字段");
         sectionHint.getStyleClass().add("section-hint");
         VBox heading = new VBox(2, sectionTitle, sectionHint);
         heading.getStyleClass().add("section-heading");
@@ -242,25 +319,25 @@ public class StudentManagementFrame extends Application {
         addFormRow(form, row++, "专业 *", _majorField);
         addFormRow(form, row++, "年级 *", _gradeField);
         addFormRow(form, row++, "入学日期", _enrollmentDatePicker);
-        addFormRow(form, row, "学籍状态", _statusBox);
+        addFormRow(form, row, "学籍状态（审核）", _statusBox);
 
         _formErrorLabel.getStyleClass().add("form-error");
         _formErrorLabel.setWrapText(true);
         _formErrorLabel.setVisible(false);
         _formErrorLabel.setManaged(false);
 
-        Button addButton = new Button("新增学生");
+        Button addButton = new Button("新增档案");
         addButton.setMaxWidth(Double.MAX_VALUE);
         addButton.getStyleClass().addAll("button", "primary-button");
         addButton.setOnAction(event -> addStudent());
 
-        _updateButton.setText("保存修改");
+        _updateButton.setText("保存并审核");
         _updateButton.setMaxWidth(Double.MAX_VALUE);
         _updateButton.getStyleClass().addAll("button", "secondary-button");
         _updateButton.setDisable(true);
         _updateButton.setOnAction(event -> updateStudent());
 
-        _deleteButton.setText("删除记录");
+        _deleteButton.setText("删除档案");
         _deleteButton.setMaxWidth(Double.MAX_VALUE);
         _deleteButton.getStyleClass().addAll("button", "danger-button");
         _deleteButton.setDisable(true);
@@ -344,27 +421,34 @@ public class StudentManagementFrame extends Application {
 
     private void configureTable() {
         addTextColumn("学号", 112, Student::getStudentId);
-        addTextColumn("一卡通号", 130, Student::getCampusCardNo);
+        if (isAdmin()) {
+            addTextColumn("一卡通号", 130, Student::getCampusCardNo);
+            addTextColumn("用户账号", 105, Student::getUserId);
+        }
         addTextColumn("姓名", 88, Student::getName);
         addTextColumn("班级", 116, Student::getClassName);
         addTextColumn("专业", 150, Student::getMajor);
         addTextColumn("年级", 74, Student::getGrade);
-        addTextColumn("入学日期", 105, student -> student.getEnrollmentDate() == null
-                ? "-" : DATE_FORMAT.format(student.getEnrollmentDate()));
+        if (isAdmin()) {
+            addTextColumn("入学日期", 105, student -> student.getEnrollmentDate() == null
+                    ? "-" : DATE_FORMAT.format(student.getEnrollmentDate()));
+        }
         addStatusColumn();
 
         _table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         _table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         Label emptyTitle = new Label("未找到学生记录");
         emptyTitle.getStyleClass().add("empty-state-title");
-        Label emptyHint = new Label("可修改查询条件，或显示全部记录");
+        Label emptyHint = new Label("可修改查询条件后重试");
         emptyHint.getStyleClass().add("empty-state-hint");
         VBox emptyState = new VBox(4, emptyTitle, emptyHint);
         emptyState.setAlignment(Pos.CENTER);
         _table.setPlaceholder(emptyState);
         _table.getStyleClass().add("student-table");
-        _table.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, selected) -> fillForm(selected));
+        if (isAdmin()) {
+            _table.getSelectionModel().selectedItemProperty().addListener(
+                    (observable, oldValue, selected) -> fillForm(selected));
+        }
     }
 
     private void addTextColumn(String title, double width, Function<Student, String> getter) {
@@ -431,12 +515,46 @@ public class StudentManagementFrame extends Application {
     }
 
     private void refreshStudents() {
+        if (isStudent()) {
+            refreshMyStudentInfo();
+            return;
+        }
         runOperation("正在刷新...", "已刷新学生列表",
                 _studentClientSrv::findAll,
                 (List<Student> students) -> _students.setAll(students));
     }
 
+    private void refreshMyStudentInfo() {
+        runOperation("正在读取本人学籍...", "本人学籍已加载",
+                _studentClientSrv::getMyStudentInfo, this::showMyStudentInfo);
+    }
+
+    private void showMyStudentInfo(Student student) {
+        setDetailValue("studentId", student == null ? null : student.getStudentId());
+        setDetailValue("campusCardNo", student == null ? null : student.getCampusCardNo());
+        setDetailValue("name", student == null ? null : student.getName());
+        setDetailValue("className", student == null ? null : student.getClassName());
+        setDetailValue("major", student == null ? null : student.getMajor());
+        setDetailValue("grade", student == null ? null : student.getGrade());
+        setDetailValue("enrollmentDate", student == null || student.getEnrollmentDate() == null
+                ? null : DATE_FORMAT.format(student.getEnrollmentDate()));
+        setDetailValue("status", student == null || student.getStatus() == null
+                ? null : student.getStatus().toString());
+        _countLabel.setText(student == null ? "暂无档案" : "本人档案");
+    }
+
+    private void setDetailValue(String key, String value) {
+        Label label = _detailValues.get(key);
+        if (label != null) {
+            label.setText(value == null || value.isBlank() ? "未填写" : value);
+        }
+    }
+
     private void queryStudents(String type, String value) {
+        if (isStudent()) {
+            refreshMyStudentInfo();
+            return;
+        }
         if (value == null || value.trim().isEmpty()) {
             refreshStudents();
             return;
@@ -455,6 +573,10 @@ public class StudentManagementFrame extends Application {
     }
 
     private void addStudent() {
+        if (!isAdmin()) {
+            setInlineStatus("只有管理员可以新增学籍档案", true);
+            return;
+        }
         if (!validateForm()) {
             return;
         }
@@ -468,6 +590,10 @@ public class StudentManagementFrame extends Application {
     }
 
     private void updateStudent() {
+        if (!isAdmin()) {
+            setInlineStatus("只有管理员可以修改或审核学籍档案", true);
+            return;
+        }
         Student selected = _table.getSelectionModel().getSelectedItem();
         if (selected == null) {
             setInlineStatus("请先从列表中选择一条学生记录", true);
@@ -486,6 +612,10 @@ public class StudentManagementFrame extends Application {
     }
 
     private void deleteStudent() {
+        if (!isAdmin()) {
+            setInlineStatus("只有管理员可以删除学籍档案", true);
+            return;
+        }
         Student selected = _table.getSelectionModel().getSelectedItem();
         if (selected == null) {
             setInlineStatus("请先从列表中选择一条学生记录", true);
@@ -530,6 +660,9 @@ public class StudentManagementFrame extends Application {
     }
 
     private void fillForm(Student student) {
+        if (!isAdmin()) {
+            return;
+        }
         boolean editing = student != null;
         clearValidation();
         _updateButton.setDisable(!editing);
@@ -638,6 +771,11 @@ public class StudentManagementFrame extends Application {
     }
 
     private void updateEditingButtons() {
+        if (!isAdmin()) {
+            _updateButton.setDisable(true);
+            _deleteButton.setDisable(true);
+            return;
+        }
         boolean editing = _table.getSelectionModel().getSelectedItem() != null;
         _updateButton.setDisable(_operationRunning || !editing);
         _deleteButton.setDisable(_operationRunning || !editing);
@@ -650,7 +788,34 @@ public class StudentManagementFrame extends Application {
     }
 
     private void updateCount() {
-        _countLabel.setText("共 " + _students.size() + " 条");
+        if (!isStudent()) {
+            _countLabel.setText("共 " + _students.size() + " 条");
+        }
+    }
+
+    private boolean isStudent() {
+        return _currentUser != null && _currentUser.isStudent();
+    }
+
+    private boolean isTeacher() {
+        return _currentUser != null && _currentUser.isTeacher();
+    }
+
+    private boolean isAdmin() {
+        return _currentUser != null && _currentUser.isAdmin();
+    }
+
+    private String roleText() {
+        if (isStudent()) {
+            return "学生视图";
+        }
+        if (isTeacher()) {
+            return "教师视图";
+        }
+        if (isAdmin()) {
+            return "管理员视图";
+        }
+        return "未登录";
     }
 
     /**

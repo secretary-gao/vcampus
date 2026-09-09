@@ -169,6 +169,7 @@ public class ServerThread implements Runnable {
 
         // ========= 学籍模块 =========
         _handlerMap.put(StudentProtocol.LIST, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.GET_SELF, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.QUERY_BY_ID, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.QUERY_BY_CARD, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.QUERY_BY_NAME, this::handleStudentRequest);

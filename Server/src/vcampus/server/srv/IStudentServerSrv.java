@@ -11,6 +11,12 @@ public interface IStudentServerSrv {
 
     List<Student> findAll() throws SQLException, IOException;
 
+    List<Student> findStudentsTaughtBy(String teacherUserId)
+            throws SQLException, IOException, StudentServiceException;
+
+    Student findByUserId(String userId)
+            throws SQLException, IOException, StudentServiceException;
+
     Student findByStudentId(String studentId)
             throws SQLException, IOException, StudentServiceException;
 
