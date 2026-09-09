@@ -36,6 +36,18 @@ public class AIServerSrv implements IAIServerSrv {
     /** ai.properties 相对项目根目录的路径。 */
     private static final String CONFIG_PATH = "Server/ai.properties";
 
+    /**
+     * 系统提示词：告诉模型它是谁、嵌在什么系统里，并要求用纯文本回答
+     * （不带 Markdown 标记），因为客户端界面是 JavaFX 的普通 {@code Label}，
+     * 不会渲染 Markdown，直接显示 {@code ###}/{@code **} 这些符号会很难看。
+     */
+    private static final String SYSTEM_PROMPT = "你叫\"校园AI\"，是东南大学 Vcampus 虚拟校园系统里内置的智能助手，"
+            + "通过该系统的服务器程序转发问题、调用你来回答，服务对象是登录系统的学生、教师和管理员，"
+            + "可以帮忙解答学习、校园生活、图书馆/学籍/选课/医院/商店等系统功能相关的问题，也能闲聊。"
+            + "回答时只用纯文本自然语言，不要使用任何 Markdown 标记"
+            + "（不要出现 #、##、###、**、*、-、` 这类符号，不要用星号加粗，不要用井号做标题），"
+            + "需要分点时直接用「一、二、三」或者「1、2、3」这种文字加换行来表达。";
+
     /** 单次请求超时时间。 */
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
 
@@ -74,8 +86,10 @@ public class AIServerSrv implements IAIServerSrv {
                 + "/services/aigc/text-generation/generation";
 
         String requestBody = "{\"model\":\"" + escapeJson(model)
-                + "\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\""
-                + escapeJson(question) + "\"}]},\"parameters\":{}}";
+                + "\",\"input\":{\"messages\":["
+                + "{\"role\":\"system\",\"content\":\"" + escapeJson(SYSTEM_PROMPT) + "\"},"
+                + "{\"role\":\"user\",\"content\":\"" + escapeJson(question) + "\"}"
+                + "]},\"parameters\":{}}";
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(endpoint))
@@ -103,7 +117,10 @@ public class AIServerSrv implements IAIServerSrv {
         if (text == null) {
             throw new IOException("AI 服务响应格式不符合预期，未找到 text 字段：" + response.body());
         }
-        return text;
+        // 系统提示词已经要求模型不要用 Markdown，这里再兜底清洗一遍——大模型不是
+        // 100%听话，万一还是带了 #/**/- 这些标记，界面用的是普通 Label，不会渲染
+        // Markdown，直接显示符号会很难看，所以再做一层保险。
+        return stripMarkdown(text);
     }
 
     /**
@@ -124,6 +141,29 @@ public class AIServerSrv implements IAIServerSrv {
             properties = p;
         }
         return properties;
+    }
+
+    /**
+     * 把回答文本里常见的 Markdown 标记去掉，改成客户端 {@code Label} 能
+     * 正常显示的纯文本。不追求完美还原排版，只求不出现裸露的符号。
+     *
+     * @param text 原始回答文本
+     * @return 去掉 Markdown 标记后的纯文本
+     */
+    private static String stripMarkdown(String text) {
+        String result = text;
+        // 标题：行首连续的 # 去掉（可能带一个空格）。
+        result = result.replaceAll("(?m)^#{1,6}\\s*", "");
+        // 加粗/斜体：**文字**、__文字__、*文字*、_文字_ 只保留文字本身。
+        result = result.replaceAll("\\*\\*(.+?)\\*\\*", "$1");
+        result = result.replaceAll("__(.+?)__", "$1");
+        result = result.replaceAll("(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)", "$1");
+        result = result.replaceAll("(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", "$1");
+        // 行内代码/代码块的反引号直接去掉。
+        result = result.replace("`", "");
+        // 无序列表的行首 -/* 换成中文顿号，看起来还是个列表。
+        result = result.replaceAll("(?m)^\\s*[-*+]\\s+", "• ");
+        return result.trim();
     }
 
     /**
