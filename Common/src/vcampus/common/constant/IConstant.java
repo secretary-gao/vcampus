@@ -34,6 +34,14 @@ public interface IConstant {
     /** 状态码：请求参数不符合业务要求。 */
     String STATUS_BAD_REQUEST = "400";
 
+    /**
+     * 状态码：当前用户无权执行该操作（如学籍模块的角色权限校验、
+     * 非管理员尝试执行管理员专属操作）。跟 {@link #STATUS_ACCOUNT_DISABLED}
+     * 数值上都是 403，但用在不同的消息类型（{@code Message.getName()}）
+     * 下，客户端按各自的消息类型分别判断，不会混淆。
+     */
+    String STATUS_FORBIDDEN = "403";
+
     /** 状态码：注册时用户名已存在。 */
     String STATUS_USER_EXISTS = "409";
     /** 状态码：服务器内部异常。 */
@@ -41,9 +49,6 @@ public interface IConstant {
 
     /** 状态码：账号已被管理员禁用。 */
     String STATUS_ACCOUNT_DISABLED = "403";
-
-    /** 状态码：权限不足（如非管理员尝试执行管理员专属操作）。 */
-    String STATUS_FORBIDDEN = "410";
 
     // ========= 用户模块消息 =========
     /** 消息名：登录请求，对应 {@link vcampus.common.vo.Message#getName()}。 */
@@ -64,6 +69,25 @@ public interface IConstant {
     String MSG_BORROW_BOOK = "borrowBook";
     String MSG_RETURN_BOOK = "returnBook";
     String MSG_GET_BORROW_RECORDS = "getBorrowRecords";
+    String MSG_ADD_BOOK = "addBook";
+    String MSG_UPDATE_BOOK = "updateBook";
+    String MSG_DELETE_BOOK = "deleteBook";
+
+    // ========== 选课模块消息类型 ==========
+    String MSG_COURSE_QUERY = "courseQuery";
+    String MSG_COURSE_ADD = "courseAdd";
+    String MSG_COURSE_UPDATE = "courseUpdate";
+    String MSG_COURSE_DELETE = "courseDelete";
+    String MSG_COURSE_SELECT = "courseSelect";
+    String MSG_COURSE_DROP = "courseDrop";
+    String MSG_COURSE_SELECTED_QUERY = "courseSelectedQuery";
+    String MSG_COURSE_STUDENT_ID_QUERY = "courseStudentIdQuery";
+    String MSG_COURSE_SCHEDULE_QUERY = "courseScheduleQuery";
+    String MSG_COURSE_SCHEDULE_ADD = "courseScheduleAdd";
+    String MSG_COURSE_SCHEDULE_UPDATE = "courseScheduleUpdate";
+    String MSG_COURSE_SCHEDULE_DELETE = "courseScheduleDelete";
+    String MSG_STUDENT_TIMETABLE_QUERY = "studentTimetableQuery";
+    String MSG_TEACHER_COURSE_ENROLLMENTS_QUERY = "teacherCourseEnrollmentsQuery";
 
     // ---------- 虚拟商店模块（store）消息名与状态码 ----------
 
@@ -118,4 +142,8 @@ public interface IConstant {
     String STATUS_APPOINT_NOT_FOUND = "601";
     /** 预约取消失败 */
     String STATUS_APPOINT_CANCEL_FAIL = "602";
+
+    // ========== AI 问答模块消息类型 ==========
+    /** 消息名：向 AI 提问，请求 data 为问题文本（String），成功响应 data 为回答文本。 */
+    String MSG_AI_ASK = "aiAsk";
 }

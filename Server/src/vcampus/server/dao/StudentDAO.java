@@ -35,11 +35,55 @@ public class StudentDAO {
         return students;
     }
 
+    /**
+     * 查询选修当前教师所授课程的学生。
+     *
+     * <p>课程模块目前以教师姓名保存授课教师，因此先用唯一账号找到教师姓名，
+     * 并排除教师重名的情况，避免两个同名教师互相看到对方的学生。</p>
+     */
+    public List<Student> findStudentsTaughtBy(String teacherUserId)
+            throws SQLException, IOException {
+        String sql = "SELECT DISTINCT " + qualifiedColumns("s")
+                + " FROM tblStudent s"
+                + " JOIN tblSelectCourse sc ON BINARY sc.studentId = BINARY s.studentId"
+                + " JOIN tblCourse c ON BINARY c.courseId = BINARY sc.courseId"
+                + " JOIN tblUser t ON t.uId = ? AND t.uRole = '教师'"
+                + " WHERE BINARY c.teacher = BINARY t.uName"
+                + " AND NOT EXISTS (SELECT 1 FROM tblUser duplicateTeacher"
+                + " WHERE duplicateTeacher.uRole = '教师'"
+                + " AND duplicateTeacher.uName = t.uName"
+                + " AND duplicateTeacher.uId <> t.uId)"
+                + " ORDER BY s.studentId";
+        List<Student> students = new ArrayList<>();
+        try (Connection connection = DbHelper.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, teacherUserId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    students.add(mapRow(resultSet));
+                }
+            }
+        } catch (SQLException exception) {
+            if (isMissingCourseTable(exception)) {
+                return students;
+            }
+            throw exception;
+        }
+        return students;
+    }
+
     /** 按学号精确查询；未找到时返回 null。 */
     public Student findByStudentId(String studentId) throws SQLException, IOException {
         String sql = "SELECT " + SELECT_COLUMNS
                 + " FROM tblStudent WHERE studentId = ?";
         return findOne(sql, studentId);
+    }
+
+    /** 按登录账号查询其唯一绑定的学籍。 */
+    public Student findByUserId(String userId) throws SQLException, IOException {
+        String sql = "SELECT " + SELECT_COLUMNS
+                + " FROM tblStudent WHERE userId = ?";
+        return findOne(sql, userId);
     }
 
     /** 按一卡通号精确查询；未找到时返回 null。 */
@@ -69,6 +113,18 @@ public class StudentDAO {
     /** 检查学生关联的用户账号是否存在。 */
     public boolean userExists(String userId) throws SQLException, IOException {
         String sql = "SELECT 1 FROM tblUser WHERE uId = ?";
+        try (Connection connection = DbHelper.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, userId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        }
+    }
+
+    /** 检查账号存在且角色为学生。 */
+    public boolean studentUserExists(String userId) throws SQLException, IOException {
+        String sql = "SELECT 1 FROM tblUser WHERE uId = ? AND uRole = '学生'";
         try (Connection connection = DbHelper.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, userId);
@@ -125,6 +181,19 @@ public class StudentDAO {
                 return resultSet.next() ? mapRow(resultSet) : null;
             }
         }
+    }
+
+    private static String qualifiedColumns(String tableAlias) {
+        return tableAlias + ".studentId, " + tableAlias + ".campusCardNo, "
+                + tableAlias + ".userId, " + tableAlias + ".name, "
+                + tableAlias + ".className, " + tableAlias + ".major, "
+                + tableAlias + ".grade, " + tableAlias + ".enrollmentDate, "
+                + tableAlias + ".status, " + tableAlias + ".version, "
+                + tableAlias + ".updatedAt";
+    }
+
+    private static boolean isMissingCourseTable(SQLException exception) {
+        return exception.getErrorCode() == 1146 || "42S02".equals(exception.getSQLState());
     }
 
     private static void bindInsertValues(PreparedStatement statement, Student student)

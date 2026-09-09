@@ -7,6 +7,7 @@ import vcampus.server.dao.StudentDAO;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 
 /** 学籍业务实现：负责输入校验、重复检查和修改冲突判断。 */
@@ -25,6 +26,18 @@ public class StudentServerSrv implements IStudentServerSrv {
     @Override
     public List<Student> findAll() throws SQLException, IOException {
         return _studentDAO.findAll();
+    }
+
+    @Override
+    public List<Student> findStudentsTaughtBy(String teacherUserId)
+            throws SQLException, IOException, StudentServiceException {
+        return _studentDAO.findStudentsTaughtBy(requireText(teacherUserId, "教师账号"));
+    }
+
+    @Override
+    public Student findByUserId(String userId)
+            throws SQLException, IOException, StudentServiceException {
+        return _studentDAO.findByUserId(requireText(userId, "用户账号"));
     }
 
     @Override
@@ -56,6 +69,7 @@ public class StudentServerSrv implements IStudentServerSrv {
             throw conflict("一卡通号已存在：" + student.getCampusCardNo());
         }
         ensureUserExists(student.getUserId());
+        ensureUserNotBound(student.getUserId(), student.getStudentId());
         if (!_studentDAO.insert(student)) {
             throw new StudentServiceException(StudentProtocol.STATUS_ERROR, "新增学生失败");
         }
@@ -77,6 +91,7 @@ public class StudentServerSrv implements IStudentServerSrv {
             throw conflict("一卡通号已被其他学生使用：" + student.getCampusCardNo());
         }
         ensureUserExists(student.getUserId());
+        ensureUserNotBound(student.getUserId(), student.getStudentId());
 
         if (!_studentDAO.update(student)) {
             throw conflict("该学生信息已被其他操作修改，请刷新后重试");
@@ -95,9 +110,17 @@ public class StudentServerSrv implements IStudentServerSrv {
 
     private void ensureUserExists(String userId)
             throws SQLException, IOException, StudentServiceException {
-        if (!_studentDAO.userExists(userId)) {
+        if (!_studentDAO.studentUserExists(userId)) {
             throw new StudentServiceException(StudentProtocol.STATUS_BAD_REQUEST,
-                    "关联的用户账号不存在：" + userId);
+                    "关联账号不存在或账号角色不是学生：" + userId);
+        }
+    }
+
+    private void ensureUserNotBound(String userId, String studentId)
+            throws SQLException, IOException, StudentServiceException {
+        Student boundStudent = _studentDAO.findByUserId(userId);
+        if (boundStudent != null && !boundStudent.getStudentId().equals(studentId)) {
+            throw conflict("该用户账号已绑定其他学籍：" + userId);
         }
     }
 
@@ -122,6 +145,10 @@ public class StudentServerSrv implements IStudentServerSrv {
         }
         if (student.getStatus() == null) {
             student.setStatus(StudentStatus.ENROLLED);
+        }
+        if (student.getEnrollmentDate() != null
+                && student.getEnrollmentDate().isAfter(LocalDate.now())) {
+            throw badRequest("入学日期不能晚于当前日期");
         }
     }
 

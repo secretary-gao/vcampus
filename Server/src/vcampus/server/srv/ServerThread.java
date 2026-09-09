@@ -61,6 +61,9 @@ public class ServerThread implements Runnable {
     /** 医院挂号模块业务服务 */
     private final IHospitalServerSrv _hospitalSrv = new HospitalServerSrv();
 
+    /** AI 问答模块业务服务。 */
+    private final IAIServerSrv _aiServerSrv = new AIServerSrv();
+
     /** 各业务模块的请求处理器列表（模块化接入，见 {@link ModuleHandler}）。 */
     private final List<ModuleHandler> _moduleHandlers = new ArrayList<>();
 
@@ -76,6 +79,7 @@ public class ServerThread implements Runnable {
         this._socket = socket;
         registerHandlers();
         _moduleHandlers.add(new StoreModuleHandler());
+        _moduleHandlers.add(new CourseHandler());
     }
 
     /**
@@ -159,9 +163,13 @@ public class ServerThread implements Runnable {
         _handlerMap.put(IConstant.MSG_BORROW_BOOK, this::handleLibraryRequest);
         _handlerMap.put(IConstant.MSG_RETURN_BOOK, this::handleLibraryRequest);
         _handlerMap.put(IConstant.MSG_GET_BORROW_RECORDS, this::handleLibraryRequest);
+        _handlerMap.put(IConstant.MSG_ADD_BOOK, this::handleLibraryRequest);
+        _handlerMap.put(IConstant.MSG_UPDATE_BOOK, this::handleLibraryRequest);
+        _handlerMap.put(IConstant.MSG_DELETE_BOOK, this::handleLibraryRequest);
 
         // ========= 学籍模块 =========
         _handlerMap.put(StudentProtocol.LIST, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.GET_SELF, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.QUERY_BY_ID, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.QUERY_BY_CARD, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.QUERY_BY_NAME, this::handleStudentRequest);
@@ -169,6 +177,7 @@ public class ServerThread implements Runnable {
         _handlerMap.put(StudentProtocol.UPDATE, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.DELETE, this::handleStudentRequest);
         _handlerMap.put(IConstant.MSG_USER_SET_STATUS, this::handleSetUserStatus);
+        _handlerMap.put(IConstant.MSG_AI_ASK, this::handleAiAsk);
 
         // ========= 医院挂号模块【新增，只追加不删除原有】 =========
         _handlerMap.put(IConstant.MSG_HOSPITAL_QUERY_ALL_DOCTOR, this::handleQueryAllDoctor);
@@ -284,17 +293,24 @@ public class ServerThread implements Runnable {
     }
 
     private Message handleAddAppointment(Message request) {
-        try {
-            Appointment appoint = (Appointment) request.getData();
-            boolean success = _hospitalSrv.addAppointment(appoint);
-            String code = success ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
-            String msg = success ? "预约成功" : "预约失败";
-            return new Message(request.getUid(), request.getName(), MessageType.DATA, code, msg, "Server");
-        } catch (SQLException | IOException e) {
-            return new Message(request.getUid(), request.getName(), MessageType.DATA,
-                    IConstant.STATUS_ERROR, "新增预约异常：" + e.getMessage(), "Server");
-        }
+    try {
+        Appointment appoint = (Appointment) request.getData();
+        boolean success = _hospitalSrv.addAppointment(appoint);
+        String code = success ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
+        String msg = success ? "预约成功" : "预约失败";
+        return new Message(request.getUid(), request.getName(), MessageType.DATA, code, msg, "Server");
+    } catch (IOException e) {
+        //业务提示（预约时间错误/时段冲突）直接把异常消息返回前端
+        return new Message(request.getUid(), request.getName(), MessageType.DATA,
+                IConstant.STATUS_ERROR, e.getMessage(), "Server");
+    } catch (SQLException e) {
+        //数据库异常
+        return new Message(request.getUid(), request.getName(), MessageType.DATA,
+                IConstant.STATUS_ERROR, "数据库异常：" + e.getMessage(), "Server");
     }
+}
+
+
 
     private Message handleQueryMyAppointment(Message request) {
         try {
@@ -378,17 +394,18 @@ public class ServerThread implements Runnable {
     }
 
     private Message handleDeleteCancelAppoint(Message request) {
-        try {
-            String appointId = (String) request.getData();
-            boolean ok = _hospitalSrv.deleteCancelAppointment(appointId);
-            String code = ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
-            String msg = ok ? "删除已取消预约成功" : "删除失败：仅可删除状态为【已取消】的预约";
-            return new Message(request.getUid(), request.getName(), MessageType.DATA, code, msg, "Server");
-        } catch (SQLException | IOException e) {
-            return new Message(request.getUid(), request.getName(), MessageType.DATA,
-                    IConstant.STATUS_ERROR, "删除预约异常：" + e.getMessage(), "Server");
-        }
+    try {
+        String appointId = (String) request.getData();
+        boolean ok = _hospitalSrv.deleteCancelAppointment(appointId);
+        String code = ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
+        String msg = ok ? "删除预约记录成功" : "删除失败：仅可删除【已取消】或【已就诊】预约记录";
+        return new Message(request.getUid(), request.getName(), MessageType.DATA, code, msg, "Server");
+    } catch (SQLException | IOException e) {
+        return new Message(request.getUid(), request.getName(), MessageType.DATA,
+                IConstant.STATUS_ERROR, "删除预约异常：" + e.getMessage(), "Server");
     }
+}
+
 
     //【新增处理器：查询没有待就诊预约、可以安全删除的医生】
     private Message handleQueryCanDeleteDoctor(Message request) {
@@ -430,6 +447,27 @@ public class ServerThread implements Runnable {
         } catch (SQLException | IOException e) {
             return new Message(request.getUid(), IConstant.MSG_USER_SET_STATUS, MessageType.DATA,
                     IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理 AI 问答请求。
+     *
+     * @param request 请求消息，{@code data} 为问题文本（{@link String}）
+     * @return 响应消息：成功时 {@code data} 为 AI 回答文本，失败时为错误提示
+     */
+    private Message handleAiAsk(Message request) {
+        try {
+            String question = (String) request.getData();
+            String answer = _aiServerSrv.ask(question);
+            return new Message(request.getUid(), IConstant.MSG_AI_ASK, MessageType.DATA,
+                    IConstant.STATUS_SUCCESS, answer, "Server");
+        } catch (IllegalArgumentException | ClassCastException e) {
+            return new Message(request.getUid(), IConstant.MSG_AI_ASK, MessageType.DATA,
+                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
+        } catch (IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_AI_ASK, MessageType.DATA,
+                    IConstant.STATUS_ERROR, e.getMessage(), "Server");
         }
     }
 

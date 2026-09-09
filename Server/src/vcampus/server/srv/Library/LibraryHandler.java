@@ -1,5 +1,6 @@
 package vcampus.server.srv.Library;
 
+import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.Library.Book;
@@ -38,6 +39,12 @@ public class LibraryHandler {
                     return handleReturnBook(request);
                 case "getBorrowRecords":
                     return handleGetBorrowRecords(request);
+                case "addBook":
+                    return handleAddBook(request);
+                case "updateBook":
+                    return handleUpdateBook(request);
+                case "deleteBook":
+                    return handleDeleteBook(request);
                 default:
                     return new Message(
                         request.getUid(),
@@ -146,5 +153,53 @@ public class LibraryHandler {
             records,
             "Server"
         );
+    }
+
+    /**
+ * 处理新增图书请求（管理员）
+ */
+    private Message handleAddBook(Message request) {
+        try {
+            Book book = (Book) request.getData();
+            boolean success = bookService.addBook(book);
+            return new Message(request.getUid(), IConstant.MSG_ADD_BOOK, MessageType.DATA,
+                    success ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR,
+                    success ? "图书添加成功" : "图书添加失败，请检查书号是否已存在", "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_ADD_BOOK, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理修改图书请求（管理员）
+     */
+    private Message handleUpdateBook(Message request) {
+        try {
+            Book book = (Book) request.getData();
+            boolean success = bookService.updateBook(book);
+            return new Message(request.getUid(), IConstant.MSG_UPDATE_BOOK, MessageType.DATA,
+                    success ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR,
+                    success ? "图书修改成功" : "图书修改失败，请检查书号是否存在", "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_UPDATE_BOOK, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理删除图书请求（管理员）
+     */
+    private Message handleDeleteBook(Message request) {
+        try {
+            String bookId = (String) request.getData();
+            boolean success = bookService.deleteBook(bookId);
+            return new Message(request.getUid(), IConstant.MSG_DELETE_BOOK, MessageType.DATA,
+                    success ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR,
+                    success ? "图书删除成功" : "图书删除失败，请检查书号是否存在", "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_DELETE_BOOK, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器异常：" + e.getMessage(), "Server");
+        }
     }
 }

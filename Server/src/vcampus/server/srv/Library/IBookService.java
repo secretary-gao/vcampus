@@ -78,4 +78,9 @@ public interface IBookService {
      * @throws IOException 配置文件读取异常
      */
     BorrowRecord getRecordById(String recordId) throws SQLException, IOException;
+
+    boolean addBook(Book book) throws SQLException, IOException;
+    boolean updateBook(Book book) throws SQLException, IOException;
+    boolean deleteBook(String bookId) throws SQLException, IOException;
+
 }
