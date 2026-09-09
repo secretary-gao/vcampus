@@ -61,6 +61,9 @@ public class ServerThread implements Runnable {
     /** 医院挂号模块业务服务 */
     private final IHospitalServerSrv _hospitalSrv = new HospitalServerSrv();
 
+    /** AI 问答模块业务服务。 */
+    private final IAIServerSrv _aiServerSrv = new AIServerSrv();
+
     /** 各业务模块的请求处理器列表（模块化接入，见 {@link ModuleHandler}）。 */
     private final List<ModuleHandler> _moduleHandlers = new ArrayList<>();
 
@@ -170,6 +173,7 @@ public class ServerThread implements Runnable {
         _handlerMap.put(StudentProtocol.UPDATE, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.DELETE, this::handleStudentRequest);
         _handlerMap.put(IConstant.MSG_USER_SET_STATUS, this::handleSetUserStatus);
+        _handlerMap.put(IConstant.MSG_AI_ASK, this::handleAiAsk);
 
         // ========= 医院挂号模块【新增，只追加不删除原有】 =========
         _handlerMap.put(IConstant.MSG_HOSPITAL_QUERY_ALL_DOCTOR, this::handleQueryAllDoctor);
@@ -431,6 +435,27 @@ public class ServerThread implements Runnable {
         } catch (SQLException | IOException e) {
             return new Message(request.getUid(), IConstant.MSG_USER_SET_STATUS, MessageType.DATA,
                     IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理 AI 问答请求。
+     *
+     * @param request 请求消息，{@code data} 为问题文本（{@link String}）
+     * @return 响应消息：成功时 {@code data} 为 AI 回答文本，失败时为错误提示
+     */
+    private Message handleAiAsk(Message request) {
+        try {
+            String question = (String) request.getData();
+            String answer = _aiServerSrv.ask(question);
+            return new Message(request.getUid(), IConstant.MSG_AI_ASK, MessageType.DATA,
+                    IConstant.STATUS_SUCCESS, answer, "Server");
+        } catch (IllegalArgumentException | ClassCastException e) {
+            return new Message(request.getUid(), IConstant.MSG_AI_ASK, MessageType.DATA,
+                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
+        } catch (IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_AI_ASK, MessageType.DATA,
+                    IConstant.STATUS_ERROR, e.getMessage(), "Server");
         }
     }
 

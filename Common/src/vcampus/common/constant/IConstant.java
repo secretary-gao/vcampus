@@ -134,4 +134,8 @@ public interface IConstant {
     String STATUS_APPOINT_NOT_FOUND = "601";
     /** 预约取消失败 */
     String STATUS_APPOINT_CANCEL_FAIL = "602";
+
+    // ========== AI 问答模块消息类型 ==========
+    /** 消息名：向 AI 提问，请求 data 为问题文本（String），成功响应 data 为回答文本。 */
+    String MSG_AI_ASK = "aiAsk";
 }
