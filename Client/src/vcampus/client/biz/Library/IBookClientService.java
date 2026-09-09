@@ -57,4 +57,7 @@ public interface IBookClientService {
      * @throws ClassNotFoundException 反序列化异常
      */
     List<BorrowRecord> getBorrowRecords(String userId) throws IOException, ClassNotFoundException;
+    boolean addBook(Book book) throws IOException, ClassNotFoundException;
+    boolean updateBook(Book book) throws IOException, ClassNotFoundException;
+    boolean deleteBook(String bookId) throws IOException, ClassNotFoundException;
 }

@@ -1,5 +1,6 @@
 package vcampus.client.biz.Library;
 
+import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.Library.Book;
@@ -115,5 +116,44 @@ public class BookClientServiceImpl implements IBookClientService {
 
             return (Message) in.readObject();
         }
+    }
+
+    @Override
+    public boolean addBook(Book book) throws IOException, ClassNotFoundException {
+        Message request = new Message();
+        request.setUid(System.currentTimeMillis());
+        request.setName(IConstant.MSG_ADD_BOOK);
+        request.setType(MessageType.COMMAND);
+        request.setData(book);
+        request.setSender("admin");
+
+        Message response = sendAndReceive(request);
+        return IConstant.STATUS_SUCCESS.equals(response.getStatusCode());
+    }
+
+    @Override
+    public boolean updateBook(Book book) throws IOException, ClassNotFoundException {
+        Message request = new Message();
+        request.setUid(System.currentTimeMillis());
+        request.setName(IConstant.MSG_UPDATE_BOOK);
+        request.setType(MessageType.COMMAND);
+        request.setData(book);
+        request.setSender("admin");
+
+        Message response = sendAndReceive(request);
+        return IConstant.STATUS_SUCCESS.equals(response.getStatusCode());
+    }
+
+    @Override
+    public boolean deleteBook(String bookId) throws IOException, ClassNotFoundException {
+        Message request = new Message();
+        request.setUid(System.currentTimeMillis());
+        request.setName(IConstant.MSG_DELETE_BOOK);
+        request.setType(MessageType.COMMAND);
+        request.setData(bookId);
+        request.setSender("admin");
+
+        Message response = sendAndReceive(request);
+        return IConstant.STATUS_SUCCESS.equals(response.getStatusCode());
     }
 }
