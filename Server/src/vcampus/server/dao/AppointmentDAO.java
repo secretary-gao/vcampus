@@ -239,4 +239,21 @@ public class AppointmentDAO {
     return false;
 }
 
+/**
+ * 自动更新过期预约：预约时间已经过去，状态为待就诊 → 修改为【已就诊】，已取消不受影响
+ * @return 更新的行数
+ */
+public int autoUpdateExpiredAppointment() throws SQLException, IOException {
+    String sql = "UPDATE tblappointment " +
+            "SET status = '已就诊' " +
+            "WHERE appointmentTime < ? AND (status IS NULL OR status = '待就诊')";
+    try (Connection conn = DbHelper.getConnection();
+         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        pstmt.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
+        return pstmt.executeUpdate();
+    }
+}
+
+
+
 }
