@@ -282,8 +282,8 @@ public class MainFrame extends Application {
                 () -> showModulePage("教务", "课表、选课、考试通知", "edu", "#e0a53b")));
         navList.getChildren().add(buildNavItem("商店", "shop", "#2fa89a",
                 () -> showModulePage("商店", "商品、支付、订单", "shop", "#2fa89a")));
-        navList.getChildren().add(buildNavItem("智能问答", "ai", "#1c5a97",
-                () -> showModulePage("智能问答", "接入通义千问，随时问问题", "ai", "#1c5a97")));
+        navList.getChildren().add(buildNavItem("校园AI", "ai", "#1c5a97",
+                () -> showModulePage("校园AI", "有什么问题都可以问问", "ai", "#1c5a97")));
         if (isAdmin()) {
             navList.getChildren().add(buildNavItem("账号管理", "usermgmt", "#d4a017",
                     () -> showModulePage("账号管理", "禁用/启用用户账号", "usermgmt", "#d4a017")));
@@ -638,7 +638,7 @@ public class MainFrame extends Application {
      * 都能用。和图书馆/学籍/教务同一套"左侧选、右侧显示"布局。
      */
     private void showAiChatPage() {
-        AIChatPanel aiChatPanel = new AIChatPanel();
+        AIChatPanel aiChatPanel = new AIChatPanel(_currentUser);
 
         VBox wrapper = new VBox(0, aiChatPanel);
         VBox.setVgrow(aiChatPanel, javafx.scene.layout.Priority.ALWAYS);
