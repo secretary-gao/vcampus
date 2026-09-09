@@ -26,12 +26,12 @@ public class TeacherCourseEnrollmentDAO {
     /** 查询教师所授全部课程，课程无人选时仍返回一行空学生记录。 */
     public List<TeacherCourseEnrollment> findByTeacher(String teacher)
             throws SQLException, IOException {
-        String sql = "SELECT c.courseId, c.courseName, s.studentId, s.name, "
-                + "s.className, s.major, sc.selectTime "
-                + "FROM tblCourse c "
-                + "LEFT JOIN tblSelectCourse sc ON sc.courseId = c.courseId "
+        String sql = "SELECT c.courseId, c.courseName, tc.teachingClassId, tc.classNumber, "
+                + "s.studentId, s.name, s.className, s.major, sc.selectTime "
+                + "FROM tblTeachingClass tc JOIN tblCourse c ON c.courseId=tc.courseId "
+                + "LEFT JOIN tblSelectCourse sc ON sc.teachingClassId=tc.teachingClassId "
                 + "LEFT JOIN tblStudent s ON s.studentId = sc.studentId "
-                + "WHERE c.teacher = ? ORDER BY c.courseId, s.studentId";
+                + "WHERE tc.teacher = ? ORDER BY c.courseId, tc.classNumber, s.studentId";
         try (Connection conn = DbHelper.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, teacher);
@@ -39,11 +39,14 @@ public class TeacherCourseEnrollmentDAO {
                 List<TeacherCourseEnrollment> rows = new ArrayList<>();
                 while (rs.next()) {
                     Timestamp selectTime = rs.getTimestamp("selectTime");
-                    rows.add(new TeacherCourseEnrollment(
+                    TeacherCourseEnrollment row = new TeacherCourseEnrollment(
                             rs.getString("courseId"), rs.getString("courseName"),
                             rs.getString("studentId"), rs.getString("name"),
                             rs.getString("className"), rs.getString("major"),
-                            selectTime == null ? null : selectTime.toLocalDateTime()));
+                            selectTime == null ? null : selectTime.toLocalDateTime());
+                    row.setTeachingClassId(rs.getString("teachingClassId"));
+                    row.setClassNumber(rs.getString("classNumber"));
+                    rows.add(row);
                 }
                 return rows;
             }

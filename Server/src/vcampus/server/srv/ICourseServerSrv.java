@@ -13,6 +13,7 @@ import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
+import vcampus.common.vo.TeachingClass;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -32,6 +33,18 @@ public interface ICourseServerSrv {
      * @throws IOException  数据库配置文件读取异常
      */
     List<Course> queryCourse(String keyword) throws SQLException, IOException;
+
+    /** Queries concrete teaching classes by course, name, teacher, or class ID. */
+    List<TeachingClass> queryTeachingClass(String keyword) throws SQLException, IOException;
+
+    TeachingClass addTeachingClass(TeachingClass teachingClass)
+            throws SQLException, IOException, CourseServiceException;
+
+    boolean updateTeachingClass(TeachingClass teachingClass)
+            throws SQLException, IOException, CourseServiceException;
+
+    boolean deleteTeachingClass(String teachingClassId)
+            throws SQLException, IOException, CourseServiceException;
 
     /** 新增课程主数据。 */
     Course addCourse(Course course)

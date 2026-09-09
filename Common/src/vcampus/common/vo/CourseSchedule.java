@@ -13,8 +13,8 @@ import java.io.Serializable;
 import java.time.LocalTime;
 
 /**
- * 课程排课实体类，对应 tblCourseSchedule。授课教师通过 courseId 关联
- * {@link Course} 获取，不在排课表重复保存，避免出现两个不一致的教师来源。
+ * 课程排课实体类，对应 tblCourseSchedule。排课关联具体教学班，授课教师由
+ * {@link TeachingClass} 提供，不在排课表重复保存。
  */
 public class CourseSchedule implements Serializable {
 
@@ -25,6 +25,17 @@ public class CourseSchedule implements Serializable {
 
     /** 课程号。 */
     private String _courseId;
+
+    /** 所属教学班。 */
+    private String _teachingClassId;
+
+    /** 起止教学周。 */
+    private int _weekStart;
+    private int _weekEnd;
+
+    /** 起止节次。 */
+    private int _startPeriod;
+    private int _endPeriod;
 
     /** 教室。 */
     private String _classroom;
@@ -67,6 +78,46 @@ public class CourseSchedule implements Serializable {
 
     public void setCourseId(String courseId) {
         this._courseId = courseId;
+    }
+
+    public String getTeachingClassId() {
+        return _teachingClassId;
+    }
+
+    public void setTeachingClassId(String teachingClassId) {
+        _teachingClassId = teachingClassId;
+    }
+
+    public int getWeekStart() {
+        return _weekStart;
+    }
+
+    public void setWeekStart(int weekStart) {
+        _weekStart = weekStart;
+    }
+
+    public int getWeekEnd() {
+        return _weekEnd;
+    }
+
+    public void setWeekEnd(int weekEnd) {
+        _weekEnd = weekEnd;
+    }
+
+    public int getStartPeriod() {
+        return _startPeriod;
+    }
+
+    public void setStartPeriod(int startPeriod) {
+        _startPeriod = startPeriod;
+    }
+
+    public int getEndPeriod() {
+        return _endPeriod;
+    }
+
+    public void setEndPeriod(int endPeriod) {
+        _endPeriod = endPeriod;
     }
 
     public String getClassroom() {

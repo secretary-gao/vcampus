@@ -32,7 +32,8 @@ public class SelectCourseDAO {
 
     /** 查询选课记录时使用的公共字段列表。 */
     private static final String SELECT_FIELDS =
-            "SELECT selectId, studentId, courseId, selectTime FROM tblSelectCourse ";
+            "SELECT selectId, studentId, teachingClassId, courseId, selectTime "
+                    + "FROM tblSelectCourse ";
 
     /**
      * 插入一条选课记录。
@@ -57,14 +58,28 @@ public class SelectCourseDAO {
      * @throws SQLException 数据库操作异常
      */
     public boolean insertSelectCourse(Connection conn, SelectCourse selectCourse) throws SQLException {
-        String sql = "INSERT INTO tblSelectCourse (selectId, studentId, courseId, selectTime) "
-                + "VALUES (?, ?, ?, ?)";
+        String teachingClassId = selectCourse.getTeachingClassId();
+        if (teachingClassId == null || teachingClassId.isBlank()) {
+            teachingClassId = defaultTeachingClassId(conn, selectCourse.getCourseId());
+            selectCourse.setTeachingClassId(teachingClassId);
+        } else {
+            String courseId = courseIdForTeachingClass(conn, teachingClassId);
+            if (selectCourse.getCourseId() != null
+                    && !selectCourse.getCourseId().equals(courseId)) {
+                throw new SQLException("教学班与课程号不一致");
+            }
+            selectCourse.setCourseId(courseId);
+        }
+        String sql = "INSERT INTO tblSelectCourse "
+                + "(selectId, studentId, teachingClassId, courseId, selectTime) "
+                + "VALUES (?, ?, ?, ?, ?)";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, selectCourse.getSelectId());
             pstmt.setString(2, selectCourse.getStudentId());
-            pstmt.setString(3, selectCourse.getCourseId());
-            pstmt.setTimestamp(4, Timestamp.valueOf(selectCourse.getSelectTime()));
+            pstmt.setString(3, teachingClassId);
+            pstmt.setString(4, selectCourse.getCourseId());
+            pstmt.setTimestamp(5, Timestamp.valueOf(selectCourse.getSelectTime()));
             return pstmt.executeUpdate() > 0;
         }
     }
@@ -104,6 +119,17 @@ public class SelectCourseDAO {
         }
     }
 
+    /** Deletes the student's selection of one concrete teaching class. */
+    public boolean deleteByTeachingClass(Connection conn, String studentId,
+                                         String teachingClassId) throws SQLException {
+        try (PreparedStatement pstmt = conn.prepareStatement(
+                "DELETE FROM tblSelectCourse WHERE studentId=? AND teachingClassId=?")) {
+            pstmt.setString(1, studentId);
+            pstmt.setString(2, teachingClassId);
+            return pstmt.executeUpdate() == 1;
+        }
+    }
+
     /**
      * 根据学号和课程号查询唯一的选课记录。
      *
@@ -136,6 +162,20 @@ public class SelectCourseDAO {
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, studentId);
             pstmt.setString(2, courseId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next() ? mapRow(rs) : null;
+            }
+        }
+    }
+
+    /** Finds a student's selection for one concrete teaching class. */
+    public SelectCourse findByStudentAndTeachingClass(Connection conn, String studentId,
+                                                       String teachingClassId)
+            throws SQLException {
+        String sql = SELECT_FIELDS + "WHERE studentId = ? AND teachingClassId = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, studentId);
+            pstmt.setString(2, teachingClassId);
             try (ResultSet rs = pstmt.executeQuery()) {
                 return rs.next() ? mapRow(rs) : null;
             }
@@ -218,10 +258,37 @@ public class SelectCourseDAO {
         selectCourse.setSelectId(rs.getString("selectId"));
         selectCourse.setStudentId(rs.getString("studentId"));
         selectCourse.setCourseId(rs.getString("courseId"));
+        selectCourse.setTeachingClassId(rs.getString("teachingClassId"));
         Timestamp selectTime = rs.getTimestamp("selectTime");
         if (selectTime != null) {
             selectCourse.setSelectTime(selectTime.toLocalDateTime());
         }
         return selectCourse;
+    }
+
+    private String defaultTeachingClassId(Connection conn, String courseId) throws SQLException {
+        try (PreparedStatement statement = conn.prepareStatement(
+                "SELECT teachingClassId FROM tblTeachingClass WHERE courseId=? "
+                        + "ORDER BY classNumber LIMIT 1")) {
+            statement.setString(1, courseId);
+            try (ResultSet rs = statement.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("课程没有可用教学班：" + courseId);
+                }
+                return rs.getString(1);
+            }
+        }
+    }
+
+    private String courseIdForTeachingClass(Connection conn, String teachingClassId)
+            throws SQLException {
+        try (PreparedStatement statement = conn.prepareStatement(
+                "SELECT courseId FROM tblTeachingClass WHERE teachingClassId=?")) {
+            statement.setString(1, teachingClassId);
+            try (ResultSet rs = statement.executeQuery()) {
+                if (!rs.next()) throw new SQLException("教学班不存在：" + teachingClassId);
+                return rs.getString(1);
+            }
+        }
     }
 }

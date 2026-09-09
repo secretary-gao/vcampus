@@ -23,6 +23,7 @@ import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.SelectCourse;
+import vcampus.common.vo.TeachingClass;
 
 import java.util.List;
 import java.util.Map;
@@ -76,10 +77,12 @@ public class SelectedCoursesPane extends VBox {
         _courseTable.getColumns().addAll(
                 CourseViewSupport.textColumn("课程号", 115,
                         row -> row.course().getCourseId()),
+                CourseViewSupport.textColumn("教学班", 70,
+                        row -> row.teachingClass().getClassNumber()),
                 CourseViewSupport.textColumn("课程名称", 190,
                         row -> row.course().getCourseName()),
                 CourseViewSupport.textColumn("教师", 110,
-                        row -> row.course().getTeacher()),
+                        row -> row.teachingClass().getTeacher()),
                 CourseViewSupport.textColumn("学分", 65,
                         row -> String.valueOf(row.course().getCredit())),
                 CourseViewSupport.textColumn("时间 / 教室", 290,
@@ -95,19 +98,22 @@ public class SelectedCoursesPane extends VBox {
 
     private List<SelectedCourseRow> loadRows() throws Exception {
         List<SelectCourse> selections = _client.querySelectedCourse(_studentId);
-        Set<String> selectedIds = selections.stream()
-                .map(SelectCourse::getCourseId)
-                .collect(Collectors.toSet());
         Map<String, Course> courses = _client.queryCourse("").stream()
                 .collect(Collectors.toMap(Course::getCourseId, Function.identity(), (a, b) -> a));
+        Map<String, TeachingClass> classes = _client.queryTeachingClass("").stream()
+                .collect(Collectors.toMap(TeachingClass::getTeachingClassId,
+                        Function.identity(), (a, b) -> a));
         Map<String, List<CourseSchedule>> schedules = _client.queryStudentSchedule(_studentId).stream()
-                .collect(Collectors.groupingBy(CourseSchedule::getCourseId));
-        return selectedIds.stream()
-                .map(courses::get)
-                .filter(course -> course != null)
-                .sorted((left, right) -> left.getCourseId().compareTo(right.getCourseId()))
-                .map(course -> new SelectedCourseRow(course,
-                        formatSchedules(schedules.getOrDefault(course.getCourseId(), List.of()))))
+                .collect(Collectors.groupingBy(CourseSchedule::getTeachingClassId));
+        return selections.stream()
+                .map(selection -> new SelectedCourseRow(
+                        courses.get(selection.getCourseId()),
+                        classes.get(selection.getTeachingClassId()),
+                        formatSchedules(schedules.getOrDefault(
+                                selection.getTeachingClassId(), List.of()))))
+                .filter(row -> row.course() != null && row.teachingClass() != null)
+                .sorted((left, right) -> left.course().getCourseId()
+                        .compareTo(right.course().getCourseId()))
                 .toList();
     }
 
@@ -121,8 +127,8 @@ public class SelectedCoursesPane extends VBox {
                     return byDay != 0 ? byDay : left.getStartTime().compareTo(right.getStartTime());
                 })
                 .map(schedule -> CourseViewSupport.dayName(schedule.getDayOfWeek()) + " "
-                        + CourseViewSupport.timeRange(
-                                schedule.getStartTime(), schedule.getEndTime())
+                        + schedule.getWeekStart() + "-" + schedule.getWeekEnd() + " 周 "
+                        + schedule.getStartPeriod() + "-" + schedule.getEndPeriod() + " 节"
                         + " · " + CourseViewSupport.safe(schedule.getClassroom(), "教室待定"))
                 .collect(Collectors.joining("；"));
     }
@@ -160,12 +166,14 @@ public class SelectedCoursesPane extends VBox {
             return;
         }
         CourseViewSupport.runAsync(this,
-                () -> _client.dropCourse(_studentId, course.getCourseId()), ignored -> {
+                () -> _client.dropCourse(_studentId,
+                        row.teachingClass().getTeachingClassId()), ignored -> {
                     _statusLabel.setText("已退选：" + course.getCourseName());
                     _onEnrollmentChanged.run();
                 });
     }
 
-    private record SelectedCourseRow(Course course, String scheduleSummary) {
+    private record SelectedCourseRow(Course course, TeachingClass teachingClass,
+                                     String scheduleSummary) {
     }
 }

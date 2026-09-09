@@ -14,6 +14,7 @@ import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.Course;
+import vcampus.common.vo.TeachingClass;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -60,6 +61,10 @@ public class CourseHandler implements ModuleHandler {
                 IConstant.MSG_COURSE_SCHEDULE_DELETE,
                 IConstant.MSG_STUDENT_TIMETABLE_QUERY,
                 IConstant.MSG_TEACHER_COURSE_ENROLLMENTS_QUERY
+                , IConstant.MSG_TEACHING_CLASS_QUERY
+                , IConstant.MSG_TEACHING_CLASS_ADD
+                , IConstant.MSG_TEACHING_CLASS_UPDATE
+                , IConstant.MSG_TEACHING_CLASS_DELETE
         );
     }
 
@@ -75,6 +80,14 @@ public class CourseHandler implements ModuleHandler {
             return switch (request.getName()) {
                 case IConstant.MSG_COURSE_QUERY -> success(
                         request, _courseServerSrv.queryCourse((String) request.getData()));
+                case IConstant.MSG_TEACHING_CLASS_QUERY -> success(
+                        request, _courseServerSrv.queryTeachingClass((String) request.getData()));
+                case IConstant.MSG_TEACHING_CLASS_ADD -> success(request,
+                        _courseServerSrv.addTeachingClass((TeachingClass) request.getData()));
+                case IConstant.MSG_TEACHING_CLASS_UPDATE -> success(request,
+                        _courseServerSrv.updateTeachingClass((TeachingClass) request.getData()));
+                case IConstant.MSG_TEACHING_CLASS_DELETE -> success(request,
+                        _courseServerSrv.deleteTeachingClass((String) request.getData()));
                 case IConstant.MSG_COURSE_ADD -> success(
                         request, _courseServerSrv.addCourse((Course) request.getData()));
                 case IConstant.MSG_COURSE_UPDATE -> success(
@@ -115,7 +128,7 @@ public class CourseHandler implements ModuleHandler {
     private Message handleSelect(Message request)
             throws SQLException, IOException, CourseServiceException {
         Map<String, String> params = stringMap(request.getData());
-        _courseServerSrv.selectCourse(params.get("studentId"), params.get("courseId"));
+        _courseServerSrv.selectCourse(params.get("studentId"), classIdentifier(params));
         return success(request, "选课成功");
     }
 
@@ -123,7 +136,7 @@ public class CourseHandler implements ModuleHandler {
     private Message handleDrop(Message request)
             throws SQLException, IOException, CourseServiceException {
         Map<String, String> params = stringMap(request.getData());
-        _courseServerSrv.dropCourse(params.get("studentId"), params.get("courseId"));
+        _courseServerSrv.dropCourse(params.get("studentId"), classIdentifier(params));
         return success(request, "退课成功");
     }
 
@@ -134,6 +147,11 @@ public class CourseHandler implements ModuleHandler {
             throw new CourseServiceException("请求参数格式错误");
         }
         return (Map<String, String>) data;
+    }
+
+    private String classIdentifier(Map<String, String> params) {
+        String value = params.get("teachingClassId");
+        return value == null ? params.get("courseId") : value;
     }
 
     /** 创建成功响应。 */

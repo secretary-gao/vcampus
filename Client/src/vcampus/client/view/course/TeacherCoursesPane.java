@@ -105,6 +105,7 @@ public class TeacherCoursesPane extends VBox {
                 Label name = new Label(item.course().getCourseName());
                 name.getStyleClass().add("course-list-name");
                 Label meta = new Label(item.course().getCourseId() + "  ·  "
+                        + item.classNumber() + " 班  ·  "
                         + item.course().getCredit() + " 学分  ·  "
                         + item.roster().size() + " 人");
                 meta.getStyleClass().add("course-list-meta");
@@ -148,27 +149,26 @@ public class TeacherCoursesPane extends VBox {
     private Snapshot loadSnapshot() throws Exception {
         List<TeacherCourseEnrollment> enrollments =
                 _client.queryTeacherCourseEnrollments(_teacherName);
-        Map<String, List<TeacherCourseEnrollment>> byCourse = enrollments.stream()
-                .filter(row -> row.getCourseId() != null)
-                .collect(Collectors.groupingBy(TeacherCourseEnrollment::getCourseId,
+        Map<String, List<TeacherCourseEnrollment>> byClass = enrollments.stream()
+                .filter(row -> row.getTeachingClassId() != null)
+                .collect(Collectors.groupingBy(TeacherCourseEnrollment::getTeachingClassId,
                         LinkedHashMap::new, Collectors.toList()));
 
+        Map<String, Course> courseMap = _client.queryCourse("").stream()
+                .collect(Collectors.toMap(Course::getCourseId, course -> course,
+                        (left, right) -> left, LinkedHashMap::new));
         Map<String, TeacherCourse> courses = new LinkedHashMap<>();
-        _client.queryCourse("").stream()
-                .filter(course -> _teacherName.equals(course.getTeacher()))
-                .sorted(Comparator.comparing(Course::getCourseId))
-                .forEach(course -> courses.put(course.getCourseId(),
-                        new TeacherCourse(course, realStudents(
-                                byCourse.getOrDefault(course.getCourseId(), List.of())))));
-
-        for (TeacherCourseEnrollment row : enrollments) {
-            if (!courses.containsKey(row.getCourseId())) {
-                Course course = new Course(row.getCourseId(),
-                        CourseViewSupport.safe(row.getCourseName(), row.getCourseId()),
+        for (Map.Entry<String, List<TeacherCourseEnrollment>> entry : byClass.entrySet()) {
+            TeacherCourseEnrollment first = entry.getValue().get(0);
+            Course course = courseMap.get(first.getCourseId());
+            if (course == null) {
+                course = new Course(first.getCourseId(),
+                        CourseViewSupport.safe(first.getCourseName(), first.getCourseId()),
                         _teacherName, 0, 0, 0);
-                courses.put(row.getCourseId(), new TeacherCourse(course,
-                        realStudents(byCourse.getOrDefault(row.getCourseId(), List.of()))));
             }
+            courses.put(entry.getKey(), new TeacherCourse(course,
+                    CourseViewSupport.safe(first.getClassNumber(), "—"),
+                    realStudents(entry.getValue())));
         }
 
         List<TeacherCourse> result = new ArrayList<>(courses.values());
@@ -191,7 +191,8 @@ public class TeacherCoursesPane extends VBox {
             _rosterTable.getItems().clear();
             return;
         }
-        _rosterTitle.setText(selected.course().getCourseName() + " · 选课学生");
+        _rosterTitle.setText(selected.course().getCourseName() + " · "
+                + selected.classNumber() + " 班 · 选课学生");
         _currentCountValue.setText(String.valueOf(selected.roster().size()));
         _rosterTable.setItems(FXCollections.observableArrayList(selected.roster()));
     }
@@ -217,7 +218,8 @@ public class TeacherCoursesPane extends VBox {
         return label;
     }
 
-    private record TeacherCourse(Course course, List<TeacherCourseEnrollment> roster) {
+    private record TeacherCourse(Course course, String classNumber,
+                                 List<TeacherCourseEnrollment> roster) {
     }
 
     private record Snapshot(List<TeacherCourse> courses, int totalStudents) {

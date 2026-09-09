@@ -80,6 +80,10 @@ public interface IConstant {
     String MSG_COURSE_SCHEDULE_DELETE = "courseScheduleDelete";
     String MSG_STUDENT_TIMETABLE_QUERY = "studentTimetableQuery";
     String MSG_TEACHER_COURSE_ENROLLMENTS_QUERY = "teacherCourseEnrollmentsQuery";
+    String MSG_TEACHING_CLASS_QUERY = "teachingClassQuery";
+    String MSG_TEACHING_CLASS_ADD = "teachingClassAdd";
+    String MSG_TEACHING_CLASS_UPDATE = "teachingClassUpdate";
+    String MSG_TEACHING_CLASS_DELETE = "teachingClassDelete";
 
     // ---------- 虚拟商店模块（store）消息名与状态码 ----------
 

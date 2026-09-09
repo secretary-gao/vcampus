@@ -25,10 +25,14 @@ import javafx.scene.layout.VBox;
 import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.SelectCourse;
+import vcampus.common.vo.TeachingClass;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /** 学生课程大厅：检索课程、按状态筛选并在课程行内发起选课。 */
 public class CourseHallPane extends VBox {
@@ -37,10 +41,10 @@ public class CourseHallPane extends VBox {
     private final String _studentId;
     private final Runnable _onEnrollmentChanged;
     private final TextField _keywordField = new TextField();
-    private final TableView<Course> _courseTable = new TableView<>();
+    private final TableView<TeachingClassRow> _courseTable = new TableView<>();
     private final Label _statusLabel = new Label();
     private final ToggleGroup _filterGroup = new ToggleGroup();
-    private List<Course> _allCourses = List.of();
+    private List<TeachingClassRow> _allClasses = List.of();
     private Set<String> _selectedIds = Set.of();
 
     /** 创建课程大厅。 */
@@ -59,7 +63,7 @@ public class CourseHallPane extends VBox {
         String keyword = _keywordField.getText();
         _statusLabel.setText("正在读取课程…");
         CourseViewSupport.runAsync(this, () -> loadSnapshot(keyword), snapshot -> {
-            _allCourses = snapshot.courses();
+            _allClasses = snapshot.rows();
             _selectedIds = snapshot.selectedIds();
             applyFilter();
         });
@@ -100,13 +104,21 @@ public class CourseHallPane extends VBox {
         searchBar.setAlignment(Pos.CENTER_LEFT);
 
         _courseTable.getColumns().addAll(
-                CourseViewSupport.textColumn("课程号", 125, Course::getCourseId),
-                CourseViewSupport.textColumn("课程名称", 220, Course::getCourseName),
-                CourseViewSupport.textColumn("教师", 130, Course::getTeacher),
-                CourseViewSupport.textColumn("学分", 70,
-                        course -> String.valueOf(course.getCredit())),
+                CourseViewSupport.textColumn("课程号", 105,
+                        row -> row.course().getCourseId()),
+                CourseViewSupport.textColumn("教学班", 70,
+                        row -> row.teachingClass().getClassNumber()),
+                CourseViewSupport.textColumn("课程名称", 190,
+                        row -> row.course().getCourseName()),
+                CourseViewSupport.textColumn("教师", 120,
+                        row -> row.teachingClass().getTeacher()),
+                CourseViewSupport.textColumn("性质", 70,
+                        row -> CourseViewSupport.safe(row.course().getCourseNature(), "待补充")),
+                CourseViewSupport.textColumn("学分", 60,
+                        row -> String.valueOf(row.course().getCredit())),
                 CourseViewSupport.textColumn("已选 / 容量", 115,
-                        course -> course.getSelectedCount() + " / " + course.getCapacity()),
+                        row -> row.teachingClass().getSelectedCount() + " / "
+                                + row.teachingClass().getCapacity()),
                 actionColumn()
         );
         CourseViewSupport.configureTable(_courseTable, "暂无可选课程");
@@ -125,31 +137,40 @@ public class CourseHallPane extends VBox {
     }
 
     private Snapshot loadSnapshot(String keyword) throws Exception {
-        List<Course> courses = _client.queryCourse(keyword);
+        Map<String, Course> courses = _client.queryCourse("").stream()
+                .collect(Collectors.toMap(Course::getCourseId, Function.identity(), (a, b) -> a));
+        List<TeachingClassRow> rows = _client.queryTeachingClass(keyword).stream()
+                .filter(teachingClass -> courses.containsKey(teachingClass.getCourseId()))
+                .map(teachingClass -> new TeachingClassRow(
+                        courses.get(teachingClass.getCourseId()), teachingClass))
+                .toList();
         Set<String> selectedIds = new HashSet<>();
         for (SelectCourse selection : _client.querySelectedCourse(_studentId)) {
-            selectedIds.add(selection.getCourseId());
+            selectedIds.add(selection.getTeachingClassId());
         }
-        return new Snapshot(courses, selectedIds);
+        return new Snapshot(rows, selectedIds);
     }
 
     private void applyFilter() {
         String filter = _filterGroup.getSelectedToggle() == null ? "all"
                 : String.valueOf(_filterGroup.getSelectedToggle().getUserData());
-        List<Course> visible = _allCourses.stream()
-                .filter(course -> switch (filter) {
-                    case "available" -> course.getSelectedCount() < course.getCapacity();
-                    case "selected" -> _selectedIds.contains(course.getCourseId());
+        List<TeachingClassRow> visible = _allClasses.stream()
+                .filter(row -> switch (filter) {
+                    case "available" -> row.teachingClass().getSelectedCount()
+                            < row.teachingClass().getCapacity();
+                    case "selected" -> _selectedIds.contains(
+                            row.teachingClass().getTeachingClassId());
                     default -> true;
                 })
                 .toList();
         _courseTable.setItems(FXCollections.observableArrayList(visible));
         _courseTable.refresh();
-        _statusLabel.setText("显示 " + visible.size() + " 门，共 " + _allCourses.size() + " 门课程");
+        _statusLabel.setText("显示 " + visible.size() + " 个，共 "
+                + _allClasses.size() + " 个教学班");
     }
 
-    private TableColumn<Course, Void> actionColumn() {
-        TableColumn<Course, Void> column = new TableColumn<>("操作");
+    private TableColumn<TeachingClassRow, Void> actionColumn() {
+        TableColumn<TeachingClassRow, Void> column = new TableColumn<>("操作");
         column.setPrefWidth(105);
         column.setSortable(false);
         column.setCellFactory(ignored -> new TableCell<>() {
@@ -158,9 +179,9 @@ public class CourseHallPane extends VBox {
             {
                 _button.getStyleClass().add("table-action");
                 _button.setOnAction(event -> {
-                    Course course = getTableRow().getItem();
-                    if (course != null) {
-                        selectCourse(course);
+                    TeachingClassRow row = getTableRow().getItem();
+                    if (row != null) {
+                        selectCourse(row);
                     }
                 });
             }
@@ -168,17 +189,18 @@ public class CourseHallPane extends VBox {
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                Course course = empty ? null : getTableRow().getItem();
-                if (course == null) {
+                TeachingClassRow row = empty ? null : getTableRow().getItem();
+                if (row == null) {
                     setGraphic(null);
                     return;
                 }
                 _button.getStyleClass().removeAll("primary", "success", "warning");
-                if (_selectedIds.contains(course.getCourseId())) {
+                TeachingClass teachingClass = row.teachingClass();
+                if (_selectedIds.contains(teachingClass.getTeachingClassId())) {
                     _button.setText("已选");
                     _button.setDisable(true);
                     _button.getStyleClass().add("success");
-                } else if (course.getSelectedCount() >= course.getCapacity()) {
+                } else if (teachingClass.getSelectedCount() >= teachingClass.getCapacity()) {
                     _button.setText("已满");
                     _button.setDisable(true);
                     _button.getStyleClass().add("warning");
@@ -193,14 +215,19 @@ public class CourseHallPane extends VBox {
         return column;
     }
 
-    private void selectCourse(Course course) {
+    private void selectCourse(TeachingClassRow row) {
         CourseViewSupport.runAsync(this,
-                () -> _client.selectCourse(_studentId, course.getCourseId()), ignored -> {
-                    _statusLabel.setText("已选：" + course.getCourseName());
+                () -> _client.selectCourse(_studentId,
+                        row.teachingClass().getTeachingClassId()), ignored -> {
+                    _statusLabel.setText("已选：" + row.course().getCourseName()
+                            + " · " + row.teachingClass().getClassNumber() + " 班");
                     _onEnrollmentChanged.run();
                 });
     }
 
-    private record Snapshot(List<Course> courses, Set<String> selectedIds) {
+    private record TeachingClassRow(Course course, TeachingClass teachingClass) {
+    }
+
+    private record Snapshot(List<TeachingClassRow> rows, Set<String> selectedIds) {
     }
 }

@@ -21,6 +21,7 @@ import javafx.scene.layout.VBox;
 import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
+import vcampus.common.vo.TeachingClass;
 
 import java.time.LocalTime;
 import java.util.Comparator;
@@ -90,8 +91,12 @@ public class TimetablePane extends VBox {
         List<CourseSchedule> schedules = _client.queryStudentSchedule(_studentId);
         Map<String, Course> courses = _client.queryCourse("").stream()
                 .collect(Collectors.toMap(Course::getCourseId, Function.identity(), (a, b) -> a));
+        Map<String, TeachingClass> classes = _client.queryTeachingClass("").stream()
+                .collect(Collectors.toMap(TeachingClass::getTeachingClassId,
+                        Function.identity(), (a, b) -> a));
         return schedules.stream()
-                .map(schedule -> new TimetableRow(schedule, courses.get(schedule.getCourseId())))
+                .map(schedule -> new TimetableRow(schedule, courses.get(schedule.getCourseId()),
+                        classes.get(schedule.getTeachingClassId())))
                 .sorted(Comparator.comparing((TimetableRow row) -> row.schedule().getStartTime())
                         .thenComparing(row -> row.schedule().getDayOfWeek()))
                 .toList();
@@ -188,8 +193,8 @@ public class TimetablePane extends VBox {
     private VBox courseCard(TimetableRow row) {
         Course course = row.course();
         String courseName = course == null ? row.schedule().getCourseId() : course.getCourseName();
-        String teacher = course == null ? "教师待定" : CourseViewSupport.safe(
-                course.getTeacher(), "教师待定");
+        String teacher = row.teachingClass() == null ? "教师待定" : CourseViewSupport.safe(
+                row.teachingClass().getTeacher(), "教师待定");
         Label name = new Label(courseName);
         name.setWrapText(true);
         name.getStyleClass().add("timetable-course-name");
@@ -208,6 +213,7 @@ public class TimetablePane extends VBox {
     }
 
     /** 课程表展示行，将排课与课程主数据在客户端只读组合。 */
-    private record TimetableRow(CourseSchedule schedule, Course course) {
+    private record TimetableRow(CourseSchedule schedule, Course course,
+                                TeachingClass teachingClass) {
     }
 }

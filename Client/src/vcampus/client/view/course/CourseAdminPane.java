@@ -145,6 +145,8 @@ public class CourseAdminPane extends VBox {
         TextField teacher = field("与教师账号姓名一致");
         TextField credit = field("正整数");
         TextField capacity = field("正整数");
+        TextField nature = field("例如：必修 / 任选（可留空）");
+        TextField openingUnit = field("开课单位（可留空）");
         if (editing) {
             courseId.setText(original.getCourseId());
             courseId.setDisable(true);
@@ -152,6 +154,8 @@ public class CourseAdminPane extends VBox {
             teacher.setText(original.getTeacher());
             credit.setText(String.valueOf(original.getCredit()));
             capacity.setText(String.valueOf(original.getCapacity()));
+            nature.setText(original.getCourseNature());
+            openingUnit.setText(original.getOpeningUnit());
         }
 
         GridPane form = new GridPane();
@@ -161,6 +165,8 @@ public class CourseAdminPane extends VBox {
         addField(form, 2, "授课教师", teacher);
         addField(form, 3, "学分", credit);
         addField(form, 4, "课程容量", capacity);
+        addField(form, 5, "课程性质", nature);
+        addField(form, 6, "开课单位", openingUnit);
         dialog.getDialogPane().setContent(form);
         dialog.getDialogPane().setPrefWidth(430);
 
@@ -170,13 +176,16 @@ public class CourseAdminPane extends VBox {
         saveButton.addEventFilter(ActionEvent.ACTION, event -> {
             try {
                 int selectedCount = editing ? original.getSelectedCount() : 0;
-                result.set(new Course(
+                Course value = new Course(
                         required(courseId.getText(), "课程号"),
                         required(courseName.getText(), "课程名称"),
                         required(teacher.getText(), "授课教师"),
                         positiveInt(credit.getText(), "学分"),
                         positiveInt(capacity.getText(), "课程容量"),
-                        selectedCount));
+                        selectedCount);
+                value.setCourseNature(optional(nature.getText()));
+                value.setOpeningUnit(optional(openingUnit.getText()));
+                result.set(value);
             } catch (RuntimeException exception) {
                 CourseViewSupport.showError(exception);
                 event.consume();
@@ -248,6 +257,10 @@ public class CourseAdminPane extends VBox {
             throw new IllegalArgumentException(fieldName + "不能为空");
         }
         return value.trim();
+    }
+
+    private String optional(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private int positiveInt(String value, String fieldName) {

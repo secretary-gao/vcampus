@@ -16,6 +16,7 @@ import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
+import vcampus.common.vo.TeachingClass;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -30,6 +31,41 @@ import java.util.Map;
  * {@link Message} 并读取一个响应，连接方式与 {@link UserClientSrv} 一致。
  */
 public class CourseClientSrv implements ICourseClientSrv {
+
+    @Override
+    public List<TeachingClass> queryTeachingClass(String keyword)
+            throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_TEACHING_CLASS_QUERY, keyword, "Client");
+        ensureSuccess(response);
+        return castList(response.getData());
+    }
+
+    @Override
+    public TeachingClass addTeachingClass(TeachingClass teachingClass)
+            throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_TEACHING_CLASS_ADD, teachingClass, "Admin");
+        ensureSuccess(response);
+        if (!(response.getData() instanceof TeachingClass added)) {
+            throw new CourseClientException(IConstant.STATUS_ERROR, "服务器响应格式错误");
+        }
+        return added;
+    }
+
+    @Override
+    public boolean updateTeachingClass(TeachingClass teachingClass)
+            throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_TEACHING_CLASS_UPDATE, teachingClass, "Admin");
+        ensureSuccess(response);
+        return true;
+    }
+
+    @Override
+    public boolean deleteTeachingClass(String teachingClassId)
+            throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_TEACHING_CLASS_DELETE, teachingClassId, "Admin");
+        ensureSuccess(response);
+        return true;
+    }
 
     /** {@inheritDoc} */
     @Override
@@ -161,10 +197,10 @@ public class CourseClientSrv implements ICourseClientSrv {
     }
 
     /** 创建学号与课程号参数。 */
-    private Map<String, String> idParams(String studentId, String courseId) {
+    private Map<String, String> idParams(String studentId, String teachingClassId) {
         Map<String, String> params = new HashMap<>();
         params.put("studentId", studentId);
-        params.put("courseId", courseId);
+        params.put("teachingClassId", teachingClassId);
         return params;
     }
 
