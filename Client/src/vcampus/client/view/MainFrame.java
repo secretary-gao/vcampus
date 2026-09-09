@@ -12,6 +12,7 @@ package vcampus.client.view;
 import vcampus.client.biz.IUserClientSrv;
 import vcampus.client.biz.UserClientSrv;
 import vcampus.client.view.Library.LibraryPanel;
+import vcampus.client.view.ai.AIChatPanel;
 import vcampus.client.view.course.CoursePanel;
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
@@ -279,10 +280,10 @@ public class MainFrame extends Application {
                 () -> showModulePage("医院", "挂号、预约、健康服务", "hospital", "#e6604f")));
         navList.getChildren().add(buildNavItem("教务", "edu", "#e0a53b",
                 () -> showModulePage("教务", "课表、选课、考试通知", "edu", "#e0a53b")));
-        navList.getChildren().add(buildNavItem("宿舍", "dorm", "#7c65e6",
-                () -> showModulePage("宿舍", "入住、报修、查寝", "dorm", "#7c65e6")));
         navList.getChildren().add(buildNavItem("商店", "shop", "#2fa89a",
                 () -> showModulePage("商店", "商品、支付、订单", "shop", "#2fa89a")));
+        navList.getChildren().add(buildNavItem("智能问答", "ai", "#1c5a97",
+                () -> showModulePage("智能问答", "接入通义千问，随时问问题", "ai", "#1c5a97")));
         if (isAdmin()) {
             navList.getChildren().add(buildNavItem("账号管理", "usermgmt", "#d4a017",
                     () -> showModulePage("账号管理", "禁用/启用用户账号", "usermgmt", "#d4a017")));
@@ -406,6 +407,10 @@ public class MainFrame extends Application {
         }
         if ("edu".equals(moduleKey)) {
             showCoursePage();
+            return;
+        }
+        if ("ai".equals(moduleKey)) {
+            showAiChatPage();
             return;
         }
         VBox page = new VBox(16);
@@ -622,6 +627,21 @@ public class MainFrame extends Application {
 
         VBox wrapper = new VBox(0, coursePanel);
         VBox.setVgrow(coursePanel, javafx.scene.layout.Priority.ALWAYS);
+        wrapper.setMaxWidth(1120);
+        wrapper.setMaxHeight(Double.MAX_VALUE);
+        wrapper.setStyle(CARD_STYLE);
+        _contentStack.getChildren().setAll(wrapper);
+    }
+
+    /**
+     * 打开 AI 问答面板（{@link AIChatPanel}），嵌入右侧内容区，所有角色
+     * 都能用。和图书馆/学籍/教务同一套"左侧选、右侧显示"布局。
+     */
+    private void showAiChatPage() {
+        AIChatPanel aiChatPanel = new AIChatPanel();
+
+        VBox wrapper = new VBox(0, aiChatPanel);
+        VBox.setVgrow(aiChatPanel, javafx.scene.layout.Priority.ALWAYS);
         wrapper.setMaxWidth(1120);
         wrapper.setMaxHeight(Double.MAX_VALUE);
         wrapper.setStyle(CARD_STYLE);
