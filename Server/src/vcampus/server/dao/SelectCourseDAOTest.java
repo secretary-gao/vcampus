@@ -57,7 +57,7 @@ public class SelectCourseDAOTest {
             CourseTestData.prepareStudent(TEST_USER_ID, TEST_STUDENT_ID);
             Course course = new Course(
                     TEST_COURSE_ID, "选课 DAO 测试课程", "测试教师", 1, 5, 0);
-            require(courseDAO.insertCourse(course), "准备测试课程");
+            require(CourseTestData.prepareCourse(course), "准备测试课程和教学班");
 
             LocalDateTime selectTime = LocalDateTime.of(2026, 9, 4, 10, 30);
             SelectCourse record = new SelectCourse(
@@ -132,7 +132,7 @@ public class SelectCourseDAOTest {
             throws SQLException, IOException {
         selectCourseDAO.deleteSelectCourse(TEST_STUDENT_ID, TEST_COURSE_ID);
         if (courseDAO.findById(TEST_COURSE_ID) != null) {
-            courseDAO.deleteCourse(TEST_COURSE_ID);
+            CourseTestData.cleanupCourse(TEST_COURSE_ID);
         }
         CourseTestData.cleanupStudent(TEST_USER_ID, TEST_STUDENT_ID);
     }

@@ -12,6 +12,7 @@ package vcampus.client.biz;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
+import vcampus.common.vo.TeachingClass;
 
 import java.util.List;
 
@@ -43,11 +44,16 @@ public class CourseClientSrvTest {
 
         List<Course> courses = client.queryCourse("Socket");
         require(findCourse(courses, NORMAL_COURSE_ID) != null, "Socket 查询课程");
+        require(client.queryTeachingClass(NORMAL_COURSE_ID).stream()
+                .anyMatch(value -> NORMAL_COURSE_ID.equals(value.getCourseId())),
+                "Socket 查询具体教学班");
 
         require(client.selectCourse(STUDENT_A, NORMAL_COURSE_ID), "Socket 正常选课");
         List<SelectCourse> selected = client.querySelectedCourse(STUDENT_A);
         require(selected.stream().anyMatch(r -> NORMAL_COURSE_ID.equals(r.getCourseId())),
                 "Socket 查询本人已选课程");
+        require(selected.stream().anyMatch(r -> r.getTeachingClassId() != null),
+                "Socket 选课记录包含教学班 ID");
 
         expectFailure(() -> client.selectCourse(STUDENT_A, NORMAL_COURSE_ID), "400",
                 "Socket 重复选课失败");
@@ -88,6 +94,14 @@ public class CourseClientSrvTest {
         Course added = client.addCourse(new Course(
                 ADMIN_COURSE_ID, "Socket 管理课程", "Socket 教师", 2, 25, 8));
         require(added.getSelectedCount() == 0, "Socket 管理员新增课程");
+        TeachingClass extra = client.addTeachingClass(new TeachingClass(
+                ADMIN_COURSE_ID + "-02", ADMIN_COURSE_ID, "02", "Socket 教师乙",
+                12, 99, null, "Socket test"));
+        require(extra.getSelectedCount() == 0, "Socket 管理员新增教学班");
+        extra.setCapacity(15);
+        require(client.updateTeachingClass(extra), "Socket 管理员修改教学班");
+        require(client.deleteTeachingClass(extra.getTeachingClassId()),
+                "Socket 管理员删除教学班");
         require(client.updateCourse(new Course(
                 ADMIN_COURSE_ID, "Socket 管理课程已改", "Socket 教师", 3, 30, 99)),
                 "Socket 管理员修改课程");

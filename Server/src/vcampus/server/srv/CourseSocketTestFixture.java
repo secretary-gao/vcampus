@@ -60,11 +60,11 @@ public class CourseSocketTestFixture {
         CourseTestData.prepareStudent(USER_A, STUDENT_A);
         CourseTestData.prepareStudent(USER_B, STUDENT_B);
         CourseDAO courseDAO = new CourseDAO();
-        courseDAO.insertCourse(new Course(
+        CourseTestData.prepareCourse(new Course(
                 NORMAL_COURSE_ID, "Socket 正常课程", "共同教师", 2, 2, 0));
-        courseDAO.insertCourse(new Course(
+        CourseTestData.prepareCourse(new Course(
                 FULL_COURSE_ID, "Socket 满员课程", "另一教师", 1, 1, 1));
-        courseDAO.insertCourse(new Course(
+        CourseTestData.prepareCourse(new Course(
                 ROLLBACK_COURSE_ID, "Socket 回滚课程", "共同教师", 1, 2, 0));
 
         try (Connection conn = DbHelper.getConnection();
@@ -149,7 +149,7 @@ public class CourseSocketTestFixture {
     /** 按 ID 删除存在的测试课程。 */
     private static void deleteIfPresent(CourseDAO courseDAO, String courseId) throws Exception {
         if (courseDAO.findById(courseId) != null) {
-            courseDAO.deleteCourse(courseId);
+            CourseTestData.cleanupCourse(courseId);
         }
     }
 }
