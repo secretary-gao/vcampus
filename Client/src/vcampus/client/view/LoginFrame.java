@@ -77,7 +77,10 @@ public class LoginFrame extends Application {
     }
 
     /**
-     * 搭建窗口上的各个控件与布局：浅色渐变背景上居中放置一张登录卡片。
+     * 搭建窗口上的各个控件与布局：铺满整个窗口的东南大学校园背景轮播图
+     * （见 {@link CampusBackground}，找不到图片时自动退回浅色渐变），
+     * 上面居中放置一张登录卡片。窗口默认最大化占满屏幕，参照真实统一
+     * 身份认证页"全屏大图背景 + 居中登录框"的视觉效果。
      */
     private void buildUi(Stage stage) {
         StackPane root = new StackPane();
@@ -86,14 +89,16 @@ public class LoginFrame extends Application {
                         new Stop(0, Color.web("#eef3f8")),
                         new Stop(1, Color.web("#dde8f4"))),
                 CornerRadii.EMPTY, Insets.EMPTY)));
-        root.getChildren().add(buildLoginCard());
+        root.getChildren().addAll(CampusBackground.build(), buildLoginCard());
 
         Scene scene = new Scene(root, 1200, 780);
         stage.setTitle("东南大学 Vcampus 身份认证中心");
-        stage.setResizable(false);
+        stage.setResizable(true);
         stage.setScene(scene);
-        stage.centerOnScreen();
         stage.setOnCloseRequest(e -> Platform.exit());
+        // centerOnScreen() 会把窗口拉回非最大化的默认尺寸，所以最大化要放在
+        // 最后设置，且不能再调用 centerOnScreen()，否则窗口会被重新变小。
+        stage.setMaximized(true);
     }
 
     /**

@@ -15,6 +15,8 @@ import vcampus.server.dao.DoctorDAO;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Date;
+
 /**
  * {@link IHospitalServerSrv} 的实现类，承载医院模块业务逻辑，
  * 数据库读写委托给 DoctorDAO 和 AppointmentDAO。
@@ -31,24 +33,42 @@ public class HospitalServerSrv implements IHospitalServerSrv {
     public List<Doctor> queryDoctorByDept(String department) throws SQLException, IOException {
         return _doctorDAO.selectByDepartment(department);
     }
+    
     @Override
     public boolean addAppointment(Appointment appoint) throws SQLException, IOException {
-        // 【新增业务校验】同一个用户同一时间不能重复预约
-        boolean repeat = _appointDAO.existSameTimeAppointment(appoint.getUserId(), appoint.getAppointmentTime());
-        if(repeat){
-            // 重复预约，直接返回false，不执行插入
-            return false;
-        }
-        return _appointDAO.insert(appoint);
+    Date appointTime = appoint.getAppointmentTime();
+    Date now = new Date();
+    //①校验：不能预约过去时间
+    if(appointTime.before(now)){
+        throw new IOException("无法选择过去的时间");
     }
+    //②校验：同一用户该时间已经预约
+    boolean repeat = _appointDAO.existSameTimeAppointment(appoint.getUserId(), appoint.getAppointmentTime());
+    if(repeat){
+        throw new IOException("该时段该医生已有预约");
+    }
+    return _appointDAO.insert(appoint);
+}
+
+
+   @Override
+public List<Appointment> queryMyAppointment(String userId) throws SQLException, IOException {
+    // 查询个人预约前：自动刷新过期预约状态
+    _appointDAO.autoUpdateExpiredAppointment();
+    return _appointDAO.selectByUserId(userId);
+}
+
+@Override
+public List<Appointment> queryAllAppointment() throws SQLException, IOException {
+    // 查询全部预约前：自动刷新过期预约状态
+    _appointDAO.autoUpdateExpiredAppointment();
+    return _appointDAO.selectAll();
+}
+
     @Override
-    public List<Appointment> queryMyAppointment(String userId) throws SQLException, IOException {
-        return _appointDAO.selectByUserId(userId);
-    }
-    @Override
-    public List<Appointment> queryAllAppointment() throws SQLException, IOException {
-        return _appointDAO.selectAll();
-    }
+public int autoUpdateExpiredAppointment() throws SQLException, IOException {
+    return _appointDAO.autoUpdateExpiredAppointment();
+}
 
     @Override
     public Appointment findById(String appointId) throws SQLException, IOException {
@@ -93,18 +113,22 @@ public class HospitalServerSrv implements IHospitalServerSrv {
 }
 
     @Override
-    public boolean deleteCancelAppointment(String appointId) throws SQLException, IOException {
-        Appointment apt = _appointDAO.findById(appointId);
-        // 记录不存在
-        if(apt == null){
-            return false;
-        }
-        // 业务校验：**只允许删除状态为已取消的记录**
-        if(!"已取消".equals(apt.getStatus())){
-            return false;
-        }
-        return _appointDAO.deleteById(appointId);
+public boolean deleteCancelAppointment(String appointId) throws SQLException, IOException {
+    Appointment apt = _appointDAO.findById(appointId);
+    // 记录不存在
+    if(apt == null){
+        return false;
     }
+    // 修改规则：允许删除【已取消、已就诊】；待就诊不允许删除
+    String status = apt.getStatus();
+    if(!"已取消".equals(status) && !"已就诊".equals(status)){
+        return false;
+    }
+    return _appointDAO.deleteById(appointId);
+}
+
+
+
 
 
 }

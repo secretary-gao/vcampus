@@ -40,6 +40,9 @@ public class Goods implements Serializable {
     /** 库存数量（>=0）。 */
     private int _stock;
 
+    /** 商品图片地址（可空；为空时界面用类别图标占位）。 */
+    private String _imageUrl;
+
     /**
      * 无参构造方法。
      */
@@ -61,6 +64,25 @@ public class Goods implements Serializable {
         this._category = category;
         this._price = price;
         this._stock = stock;
+    }
+
+    /**
+     * 全参构造方法（含图片地址）。
+     *
+     * @param goodsId   商品编号
+     * @param goodsName 商品名称
+     * @param category  商品类别
+     * @param price     单价
+     * @param stock     库存数量
+     * @param imageUrl  商品图片地址
+     */
+    public Goods(String goodsId, String goodsName, String category, BigDecimal price, int stock, String imageUrl) {
+        this._goodsId = goodsId;
+        this._goodsName = goodsName;
+        this._category = category;
+        this._price = price;
+        this._stock = stock;
+        this._imageUrl = imageUrl;
     }
 
     /**
@@ -154,6 +176,24 @@ public class Goods implements Serializable {
     }
 
     /**
+     * 获取商品图片地址。
+     *
+     * @return 图片地址
+     */
+    public String getImageUrl() {
+        return _imageUrl;
+    }
+
+    /**
+     * 设置商品图片地址。
+     *
+     * @param imageUrl 图片地址
+     */
+    public void setImageUrl(String imageUrl) {
+        this._imageUrl = imageUrl;
+    }
+
+    /**
      * 返回该商品的可读字符串表示。
      *
      * @return 商品信息的字符串描述
@@ -166,6 +206,7 @@ public class Goods implements Serializable {
                 ", category='" + _category + '\'' +
                 ", price=" + _price +
                 ", stock=" + _stock +
+                ", imageUrl='" + _imageUrl + '\'' +
                 '}';
     }
 }

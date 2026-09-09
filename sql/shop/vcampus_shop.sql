@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS tblGoods (
     category  VARCHAR(30)           COMMENT '商品类别',
     price     DECIMAL(8,2)  NOT NULL DEFAULT 0 COMMENT '单价（>=0）',
     stock     INT           NOT NULL DEFAULT 0 COMMENT '库存数量（>=0）',
+    imageUrl  VARCHAR(255)          COMMENT '商品图片地址（可空）',
     PRIMARY KEY (goodsId),
     CONSTRAINT chk_tblGoods_price CHECK (price >= 0),
     CONSTRAINT chk_tblGoods_stock CHECK (stock >= 0)
@@ -52,11 +53,11 @@ CREATE TABLE IF NOT EXISTS tblPurchase (
 -- ------------------------------------------------------------
 -- 示例数据（商品）
 -- ------------------------------------------------------------
-INSERT IGNORE INTO tblGoods (goodsId, goodsName, category, price, stock) VALUES
-('G001', '农夫山泉', '饮料', 2.00, 100),
-('G002', '可口可乐', '饮料', 3.50, 80),
-('G003', '面包', '食品', 5.00, 50),
-('G004', '笔记本', '文具', 8.00, 200),
-('G005', '中性笔', '文具', 2.00, 300),
-('G006', 'U盘64G', '数码', 45.00, 30),
-('G007', '洗衣液', '生活用品', 15.00, 40);
+INSERT IGNORE INTO tblGoods (goodsId, goodsName, category, price, stock, imageUrl) VALUES
+('G001', '农夫山泉', '饮料', 2.00, 100, 'https://picsum.photos/seed/g001/300/200'),
+('G002', '可口可乐', '饮料', 3.50, 80, 'https://picsum.photos/seed/g002/300/200'),
+('G003', '面包', '食品', 5.00, 50, 'https://picsum.photos/seed/g003/300/200'),
+('G004', '笔记本', '文具', 8.00, 200, 'https://picsum.photos/seed/g004/300/200'),
+('G005', '中性笔', '文具', 2.00, 300, 'https://picsum.photos/seed/g005/300/200'),
+('G006', 'U盘64G', '数码', 45.00, 30, 'https://picsum.photos/seed/g006/300/200'),
+('G007', '洗衣液', '生活用品', 15.00, 40, 'https://picsum.photos/seed/g007/300/200');
