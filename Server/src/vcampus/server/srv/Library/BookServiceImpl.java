@@ -96,4 +96,19 @@ public class BookServiceImpl implements IBookService {
     public BorrowRecord getRecordById(String recordId) throws SQLException, IOException {
         return borrowDAO.getRecordById(recordId);
     }
+
+    @Override
+    public boolean addBook(Book book) throws SQLException, IOException {
+        return bookDAO.addBook(book);
+    }
+
+    @Override
+    public boolean updateBook(Book book) throws SQLException, IOException {
+        return bookDAO.updateBook(book);
+    }
+
+    @Override
+    public boolean deleteBook(String bookId) throws SQLException, IOException {
+        return bookDAO.deleteBook(bookId);
+    }
 }

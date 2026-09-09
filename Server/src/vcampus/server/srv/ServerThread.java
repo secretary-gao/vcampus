@@ -159,6 +159,9 @@ public class ServerThread implements Runnable {
         _handlerMap.put(IConstant.MSG_BORROW_BOOK, this::handleLibraryRequest);
         _handlerMap.put(IConstant.MSG_RETURN_BOOK, this::handleLibraryRequest);
         _handlerMap.put(IConstant.MSG_GET_BORROW_RECORDS, this::handleLibraryRequest);
+        _handlerMap.put(IConstant.MSG_ADD_BOOK, this::handleLibraryRequest);
+        _handlerMap.put(IConstant.MSG_UPDATE_BOOK, this::handleLibraryRequest);
+        _handlerMap.put(IConstant.MSG_DELETE_BOOK, this::handleLibraryRequest);
 
         // ========= 学籍模块 =========
         _handlerMap.put(StudentProtocol.LIST, this::handleStudentRequest);

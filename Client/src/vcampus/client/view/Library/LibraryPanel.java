@@ -25,6 +25,7 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Date;
 
+import vcampus.common.vo.User;
 /**
  * 图书馆主面板
  * 
@@ -45,17 +46,20 @@ public class LibraryPanel extends VBox {
     private TableView<BorrowRecord> recordTable;
     private Button borrowBtn;
     private StackPane contentArea;
+    private HBox searchBox;
 
     // 数据
     private ObservableList<Book> bookData = FXCollections.observableArrayList();
     private ObservableList<BorrowRecord> recordData = FXCollections.observableArrayList();
-
+    private User currentUser;
+    
     // 标签状态
     private Button libraryTab;
     private Button borrowTab;
     private Button manageTab;
 
-    public LibraryPanel() {
+    public LibraryPanel(User user) {
+        currentUser = user;
         initUI();
         initEvents();
         // 默认加载所有图书
@@ -83,7 +87,10 @@ public class LibraryPanel extends VBox {
         borrowTab = createTabButton("📋 我的借阅", false);
         manageTab = createTabButton("⚙️ 图书管理", false);
 
-        HBox tabBox = new HBox(0, libraryTab, borrowTab, manageTab);
+        HBox tabBox = new HBox(0, libraryTab, borrowTab);
+        if (isAdmin()) {
+            tabBox.getChildren().add(manageTab);
+        }        
         tabBox.setPadding(new Insets(0, 30, 0, 30));
         tabBox.setStyle("-fx-background-color: white;");
 
@@ -104,7 +111,7 @@ public class LibraryPanel extends VBox {
             "-fx-cursor: hand;"
         );
 
-        HBox searchBox = new HBox(12, searchField, searchBtn);
+        searchBox = new HBox(12, searchField, searchBtn);
         searchBox.setPadding(new Insets(20, 30, 15, 30));
         searchBox.setStyle("-fx-background-color: white;");
 
@@ -126,7 +133,8 @@ public class LibraryPanel extends VBox {
 
         contentArea = new StackPane();
         contentArea.getChildren().addAll(bookTable, recordTable);
-        contentArea.setPadding(new Insets(0, 30, 10, 30));
+        contentArea.setPadding(new Insets(8, 30, 10, 30));
+        contentArea.setAlignment(Pos.TOP_LEFT);
         VBox.setVgrow(contentArea, Priority.ALWAYS);
 
         // ========== 5. 底部操作按钮 ==========
@@ -181,7 +189,7 @@ public class LibraryPanel extends VBox {
 
     private void doSearch(String keyword) {
         // 切换到图书标签
-        switchTab("library");
+        //switchTab("library");
 
         bookData.clear();
         borrowBtn.setDisable(true);
@@ -313,29 +321,48 @@ public class LibraryPanel extends VBox {
         libraryTab.setStyle(createTabStyle("library".equals(tab)));
         borrowTab.setStyle(createTabStyle("borrow".equals(tab)));
         manageTab.setStyle(createTabStyle("manage".equals(tab)));
+        contentArea.getChildren().clear();
 
         // 切换内容
         switch (tab) {
             case "library":
+                contentArea.getChildren().add(bookTable);
                 bookTable.setVisible(true);
                 recordTable.setVisible(false);
                 searchField.setVisible(true);
+                searchField.setManaged(true);
                 searchBtn.setVisible(true);
+                searchBtn.setManaged(true);
                 borrowBtn.setVisible(true);
+                searchBox.setVisible(true);
+                searchBox.setManaged(true);
+                doSearch(searchField.getText().trim());
                 break;
             case "borrow":
+                contentArea.getChildren().add(recordTable);
                 bookTable.setVisible(false);
                 recordTable.setVisible(true);
                 searchField.setVisible(false);
+                searchField.setManaged(false);
                 searchBtn.setVisible(false);
+                searchBtn.setManaged(false);
                 borrowBtn.setVisible(false);
+                searchBox.setVisible(false);
+                searchBox.setManaged(false);
                 loadBorrowRecords();
                 break;
             case "manage":
-                // 管理员功能，暂不实现
-                showAlert("提示", "管理员功能开发中");
-                // 切回图书馆
-                switchTab("library");
+                BookManagePanel managePanel = new BookManagePanel();
+                contentArea.getChildren().add(managePanel);
+                bookTable.setVisible(false);
+                recordTable.setVisible(false);
+                searchField.setVisible(false);
+                searchField.setManaged(false);
+                searchBtn.setVisible(false);
+                searchBtn.setManaged(false);
+                borrowBtn.setVisible(false);
+                searchBox.setVisible(false);
+                searchBox.setManaged(false);
                 break;
         }
     }
@@ -544,12 +571,7 @@ public class LibraryPanel extends VBox {
         alert.showAndWait();
     }
 
-    public void setCurrentUserId(String userId) {
-        this.currentUserId = userId;
-        if (userId != null && !userId.isEmpty()) {
-            doSearch("");
-        }
-    }
+
     private <T> TableCell<T, String> createCenterCell() {
         return new TableCell<T, String>() {
             @Override
@@ -591,20 +613,23 @@ public class LibraryPanel extends VBox {
             }
         };
     }
-    // ========== 测试入口 ==========
-    public static void main(String[] args) {
-        javafx.application.Application.launch(TestApp.class);
-    }
 
-    public static class TestApp extends javafx.application.Application {
-        @Override
-        public void start(javafx.stage.Stage stage) {
-            LibraryPanel panel = new LibraryPanel();
-            panel.setCurrentUserId("zhangsan");
-            javafx.scene.Scene scene = new javafx.scene.Scene(panel, 950, 650);
-            stage.setTitle("图书馆模块测试");
-            stage.setScene(scene);
-            stage.show();
-        }
+    private boolean isAdmin() {
+        return currentUser != null && "管理员".equals(currentUser.getURole());
     }
+    // ========== 测试入口 ==========
+    // public static void main(String[] args) {
+    //     javafx.application.Application.launch(TestApp.class);
+    // }
+
+    // public static class TestApp extends javafx.application.Application {
+    //     @Override
+    //     public void start(javafx.stage.Stage stage) {
+    //         LibraryPanel panel = new LibraryPanel();
+    //         javafx.scene.Scene scene = new javafx.scene.Scene(panel, 950, 650);
+    //         stage.setTitle("图书馆模块测试");
+    //         stage.setScene(scene);
+    //         stage.show();
+    //     }
+    // }
 }

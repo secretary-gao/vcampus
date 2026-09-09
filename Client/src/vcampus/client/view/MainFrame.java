@@ -570,10 +570,7 @@ public class MainFrame extends Application {
      * 打开图书馆模块的真实业务界面（{@link LibraryPanel}），而不是通用占位页。
      */
     private void showLibraryPage() {
-        LibraryPanel libraryPanel = new LibraryPanel();
-        if (_currentUser != null) {
-            libraryPanel.setCurrentUserId(_currentUser.getUId());
-        }
+        LibraryPanel libraryPanel = new LibraryPanel(_currentUser);
 
         VBox wrapper = new VBox(0, libraryPanel);
         wrapper.setMaxWidth(900);

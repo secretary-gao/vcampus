@@ -64,6 +64,9 @@ public interface IConstant {
     String MSG_BORROW_BOOK = "borrowBook";
     String MSG_RETURN_BOOK = "returnBook";
     String MSG_GET_BORROW_RECORDS = "getBorrowRecords";
+    String MSG_ADD_BOOK = "addBook";
+    String MSG_UPDATE_BOOK = "updateBook";
+    String MSG_DELETE_BOOK = "deleteBook";
 
     // ---------- 虚拟商店模块（store）消息名与状态码 ----------
 
