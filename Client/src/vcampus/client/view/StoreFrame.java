@@ -423,10 +423,14 @@ public class StoreFrame extends Application {
         final StackPane imgHolder = img;
         String url = g.getImageUrl();
         if (url != null && !url.isBlank()) {
+            // 网络地址直接加载；相对路径（相对于项目根目录）转成 file: URI，与 CampusBackground 一致
+            final String imageUri = (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file:"))
+                    ? url
+                    : new java.io.File(url).toURI().toString();
             new Thread(() -> {
                 Image im = null;
                 try {
-                    im = new Image(url, 186, 120, true, true);
+                    im = new Image(imageUri, 186, 120, true, true);
                 } catch (Exception e) {
                     im = null;
                 }
