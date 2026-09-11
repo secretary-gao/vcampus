@@ -21,6 +21,18 @@ public class SelectionMigrationTest {
                     "教学班 selectedCount 与选课记录一致");
             require(count(statement, "SELECT COUNT(*) FROM tblTeachingClass "
                     + "WHERE selectedCount>capacity") == 0, "无教学班超容量");
+            require(count(statement, "SELECT COUNT(*) FROM ("
+                    + "SELECT DISTINCT a.studentId,a.teachingClassId classA,"
+                    + "b.teachingClassId classB FROM tblSelectCourse a "
+                    + "JOIN tblSelectCourse b ON b.studentId=a.studentId "
+                    + "AND a.teachingClassId<b.teachingClassId "
+                    + "JOIN tblCourseSchedule sa ON sa.teachingClassId=a.teachingClassId "
+                    + "JOIN tblCourseSchedule sb ON sb.teachingClassId=b.teachingClassId "
+                    + "WHERE sa.dayOfWeek=sb.dayOfWeek "
+                    + "AND sa.weekStart<=sb.weekEnd AND sa.weekEnd>=sb.weekStart "
+                    + "AND sa.startPeriod<=sb.endPeriod "
+                    + "AND sa.endPeriod>=sb.startPeriod) conflicts") == 0,
+                    "无学生已选教学班时间冲突");
             require(count(statement, "SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS "
                     + "WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='tblSelectCourse' "
                     + "AND CONSTRAINT_NAME='fk_tblSelectCourse_class_course'") == 1,

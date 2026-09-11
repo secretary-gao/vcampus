@@ -170,37 +170,52 @@ SELECT CONCAT('2024',LPAD(n,6,'0')), CONCAT('VC24',LPAD(n,6,'0')),
        '2024-09-01', '在读'
 FROM seq;
 
--- Seven selections per synthetic student. Required bilingual pairs are exclusive;
--- optional courses vary by student. Each wanted Course resolves to exactly one class.
-INSERT IGNORE INTO tblSelectCourse
+-- Rebuild only the synthetic students' selections so this seed remains idempotent
+-- after its enrollment strategy changes. Normal demo and business data are untouched.
+DELETE sc FROM tblSelectCourse sc
+JOIN tblStudent s ON s.studentId=sc.studentId
+JOIN tblUser u ON u.uId=s.userId
+WHERE s.studentId REGEXP '^2024[0-9]{6}$'
+  AND u.uId REGEXP '^C24[0-9]{5}$'
+  AND s.major='计算机科学与技术'
+  AND s.grade='2024';
+
+-- Seven selections per synthetic student. The 15 templates were validated against
+-- every Schedule row with inclusive week/period overlap semantics. Cycling through
+-- them preserves varied hot/cold demand while preventing timetable conflicts.
+INSERT INTO tblSelectCourse
     (selectId,studentId,teachingClassId,courseId,selectTime)
 WITH RECURSIVE seq(n) AS (
     SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n<150
-), slots(slot) AS (
-    SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
-    UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7
-), wanted AS (
-    SELECT n,slot,
-      CASE slot
-        WHEN 1 THEN IF(MOD(n,5)=0,'B09D0013','B09D0012')
-        WHEN 2 THEN IF(MOD(n,5)=0,'B09N0015','B09N0014')
-        WHEN 3 THEN IF(MOD(n,5)=0,'B71S0033','B71S0032')
-        WHEN 4 THEN 'BJSL0120'
-        WHEN 5 THEN 'B09H1040'
-        WHEN 6 THEN ELT(MOD(n-1,8)+1,'B09A1111','B09D1021','B09G1031','B09G1061',
-                        'B09H1050','B09H1060','B58A1042','B58A1061')
-        ELSE ELT(MOD(n+2,8)+1,'B0493021','B09N1031','B09T1060','B1604101',
-                 'B58A1032','B71S1041','B71S1061','B71S1131')
-      END courseId
-    FROM seq CROSS JOIN slots
-), ranked AS (
-    SELECT tc.*, ROW_NUMBER() OVER (PARTITION BY courseId ORDER BY classNumber) rn,
-           COUNT(*) OVER (PARTITION BY courseId) classCount
-    FROM tblTeachingClass tc
+), templates(templateId,class1,class2,class3,class4,class5,class6,class7) AS (
+    SELECT 1,'BJSL0120-01','B09N0014-06','B71S0032-01','B09N1031-01','B58A1061-01','B09H1040-04','B09G1031-02' UNION ALL
+    SELECT 2,'BJSL0120-01','B09D0012-03','B09G0011-02','B09H1060-01','B71S1041-01','B09H1050-01','B09G1061-01' UNION ALL
+    SELECT 3,'BJSL0120-05','B09N0014-02','B09G0011-03','B09T1060-02','B09A1111-01','B58A1032-01','B09H1040-03' UNION ALL
+    SELECT 4,'BJSL0120-05','B09D0012-02','B09G0011-01','B09D1021-01','B1604101-02','B71S1061-01','B09H1040-01' UNION ALL
+    SELECT 5,'BJSL0120-04','B09N0015-01','B71S0033-01','B09H1040-02','B58A1042-01','B09T1060-01','B09G1031-02' UNION ALL
+    SELECT 6,'BJSL0120-04','B09N0014-04','B71S0032-01','B0203750-02','B09H1060-01','B09H1040-02','B09A1111-01' UNION ALL
+    SELECT 7,'BJSL0120-04','B09D0013-01','B71S0033-01','B09G1031-03','B09H1040-04','B09T1060-02','B71S1041-01' UNION ALL
+    SELECT 8,'BJSL0120-05','B09N0015-01','B71S0032-01','B58A1061-01','B09H1040-01','B71S1061-01','B1604101-02' UNION ALL
+    SELECT 9,'BJSL0120-04','B09N0014-06','B09G0011-03','B71S1131-01','B09T1060-01','B09H1040-03','B71S1061-01' UNION ALL
+    SELECT 10,'BJSL0120-05','B09D0012-03','B09G0011-01','B09A1131-01','B09H1040-03','B09G1031-02','B1604101-02' UNION ALL
+    SELECT 11,'BJSL0120-01','B09D0012-02','B71S0032-01','B58A1042-01','B58A1032-01','B09A1111-01','B09H1040-02' UNION ALL
+    SELECT 12,'BJSL0120-01','B09D0013-01','B09G0011-02','B09D1021-01','B09N1031-01','B09G1061-01','B09T1060-02' UNION ALL
+    SELECT 13,'BJSL0120-04','B09N0014-04','B71S0033-01','B09H1050-01','B09H1040-04','B09T1060-01','B09H1060-01' UNION ALL
+    SELECT 14,'BJSL0120-05','B09N0015-01','B71S0032-01','B09G1061-01','B09H1040-01','B71S1061-01','B09A1111-01' UNION ALL
+    SELECT 15,'BJSL0120-01','B09N0014-02','B71S0033-01','B09G1031-03','B09A1131-01','B09H1040-01','B1604101-02'
+), templateSlots AS (
+    SELECT templateId,1 slot,class1 teachingClassId FROM templates UNION ALL
+    SELECT templateId,2,class2 FROM templates UNION ALL
+    SELECT templateId,3,class3 FROM templates UNION ALL
+    SELECT templateId,4,class4 FROM templates UNION ALL
+    SELECT templateId,5,class5 FROM templates UNION ALL
+    SELECT templateId,6,class6 FROM templates UNION ALL
+    SELECT templateId,7,class7 FROM templates
 ), chosen AS (
-    SELECT w.n,w.slot,w.courseId,r.teachingClassId
-    FROM wanted w JOIN ranked r ON r.courseId=w.courseId
-      AND r.rn=MOD(w.n+w.slot-2,r.classCount)+1
+    SELECT seq.n,ts.slot,tc.courseId,tc.teachingClassId
+    FROM seq
+    JOIN templateSlots ts ON ts.templateId=MOD(seq.n-1,15)+1
+    JOIN tblTeachingClass tc ON tc.teachingClassId=ts.teachingClassId
 ), numbered AS (
     SELECT *, ROW_NUMBER() OVER (ORDER BY n,slot) sequenceNumber FROM chosen
 )
