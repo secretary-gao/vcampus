@@ -10,6 +10,7 @@
 package vcampus.server.srv;
 
 import vcampus.common.vo.Course;
+import vcampus.common.vo.CourseSchedule;
 import vcampus.server.dao.CourseDAO;
 import vcampus.server.dao.CourseScheduleDAO;
 import vcampus.server.dao.CourseTestData;
@@ -19,6 +20,7 @@ import vcampus.server.dao.SelectCourseDAO;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.time.LocalTime;
 
 /**
  * Course Socket 端到端测试的数据夹具。客户端测试不接触数据库；本服务端工具负责
@@ -30,6 +32,8 @@ public class CourseSocketTestFixture {
     public static final String FULL_COURSE_ID = "T_E2E_FULL_0904";
     public static final String ROLLBACK_COURSE_ID = "T_E2E_ROLL_0904";
     public static final String ADMIN_COURSE_ID = "T_E2E_ADMIN_0907";
+    public static final String TIME_SOURCE_COURSE_ID = "T_E2E_TIME_SRC";
+    public static final String TIME_CONFLICT_COURSE_ID = "T_E2E_TIME_CONFLICT";
     public static final String STUDENT_A = "E2E0904001";
     public static final String STUDENT_B = "E2E0904002";
     public static final String USER_A = "CE2EA904";
@@ -66,6 +70,16 @@ public class CourseSocketTestFixture {
                 FULL_COURSE_ID, "Socket 满员课程", "另一教师", 1, 1, 1));
         CourseTestData.prepareCourse(new Course(
                 ROLLBACK_COURSE_ID, "Socket 回滚课程", "共同教师", 1, 2, 0));
+        CourseTestData.prepareCourse(new Course(
+                TIME_SOURCE_COURSE_ID, "Socket 时间来源课程", "时间教师甲", 1, 2, 0));
+        CourseTestData.prepareCourse(new Course(
+                TIME_CONFLICT_COURSE_ID, "Socket 时间冲突课程", "时间教师乙", 1, 2, 0));
+
+        CourseScheduleDAO scheduleDAO = new CourseScheduleDAO();
+        scheduleDAO.insertSchedule(schedule(TIME_SOURCE_COURSE_ID, "T_E2E_TIME_S1",
+                "Socket时间教室甲"));
+        scheduleDAO.insertSchedule(schedule(TIME_CONFLICT_COURSE_ID, "T_E2E_TIME_S2",
+                "Socket时间教室乙"));
 
         try (Connection conn = DbHelper.getConnection();
              Statement stmt = conn.createStatement()) {
@@ -90,6 +104,8 @@ public class CourseSocketTestFixture {
             if (schedule.getCourseId().equals(NORMAL_COURSE_ID)
                         || schedule.getCourseId().equals(FULL_COURSE_ID)
                         || schedule.getCourseId().equals(ROLLBACK_COURSE_ID)
+                        || schedule.getCourseId().equals(TIME_SOURCE_COURSE_ID)
+                        || schedule.getCourseId().equals(TIME_CONFLICT_COURSE_ID)
                         || schedule.getCourseId().equals(ADMIN_COURSE_ID)) {
                 scheduleDAO.deleteSchedule(schedule.getScheduleId());
             }
@@ -100,11 +116,15 @@ public class CourseSocketTestFixture {
         selectDAO.deleteSelectCourse(STUDENT_A, FULL_COURSE_ID);
         selectDAO.deleteSelectCourse(STUDENT_B, FULL_COURSE_ID);
         selectDAO.deleteSelectCourse(STUDENT_B, ROLLBACK_COURSE_ID);
+        selectDAO.deleteSelectCourse(STUDENT_B, TIME_SOURCE_COURSE_ID);
+        selectDAO.deleteSelectCourse(STUDENT_B, TIME_CONFLICT_COURSE_ID);
 
         CourseDAO courseDAO = new CourseDAO();
         deleteIfPresent(courseDAO, NORMAL_COURSE_ID);
         deleteIfPresent(courseDAO, FULL_COURSE_ID);
         deleteIfPresent(courseDAO, ROLLBACK_COURSE_ID);
+        deleteIfPresent(courseDAO, TIME_SOURCE_COURSE_ID);
+        deleteIfPresent(courseDAO, TIME_CONFLICT_COURSE_ID);
         deleteIfPresent(courseDAO, ADMIN_COURSE_ID);
         CourseTestData.cleanupStudent(USER_A, STUDENT_A);
         CourseTestData.cleanupStudent(USER_B, STUDENT_B);
@@ -119,14 +139,22 @@ public class CourseSocketTestFixture {
         residue += courseDAO.findById(NORMAL_COURSE_ID) == null ? 0 : 1;
         residue += courseDAO.findById(FULL_COURSE_ID) == null ? 0 : 1;
         residue += courseDAO.findById(ROLLBACK_COURSE_ID) == null ? 0 : 1;
+        residue += courseDAO.findById(TIME_SOURCE_COURSE_ID) == null ? 0 : 1;
+        residue += courseDAO.findById(TIME_CONFLICT_COURSE_ID) == null ? 0 : 1;
         residue += courseDAO.findById(ADMIN_COURSE_ID) == null ? 0 : 1;
         residue += selectDAO.findByStudentAndCourse(STUDENT_A, NORMAL_COURSE_ID) == null ? 0 : 1;
         residue += selectDAO.findByStudentAndCourse(STUDENT_B, ROLLBACK_COURSE_ID) == null ? 0 : 1;
+        residue += selectDAO.findByStudentAndCourse(
+                STUDENT_B, TIME_SOURCE_COURSE_ID) == null ? 0 : 1;
+        residue += selectDAO.findByStudentAndCourse(
+                STUDENT_B, TIME_CONFLICT_COURSE_ID) == null ? 0 : 1;
         CourseScheduleDAO scheduleDAO = new CourseScheduleDAO();
         residue += scheduleDAO.findAll().stream()
                 .filter(schedule -> schedule.getCourseId().equals(NORMAL_COURSE_ID)
                         || schedule.getCourseId().equals(FULL_COURSE_ID)
                         || schedule.getCourseId().equals(ROLLBACK_COURSE_ID)
+                        || schedule.getCourseId().equals(TIME_SOURCE_COURSE_ID)
+                        || schedule.getCourseId().equals(TIME_CONFLICT_COURSE_ID)
                         || schedule.getCourseId().equals(ADMIN_COURSE_ID))
                 .count();
         residue += CourseTestData.countResidue(USER_A, STUDENT_A);
@@ -151,5 +179,17 @@ public class CourseSocketTestFixture {
         if (courseDAO.findById(courseId) != null) {
             CourseTestData.cleanupCourse(courseId);
         }
+    }
+
+    /** Creates one fixed overlapping schedule for the Socket conflict scenario. */
+    private static CourseSchedule schedule(String courseId, String scheduleId, String room) {
+        CourseSchedule schedule = new CourseSchedule(
+                scheduleId, courseId, room, 3, LocalTime.of(14, 0), LocalTime.of(15, 35));
+        schedule.setTeachingClassId(courseId + "-01");
+        schedule.setWeekStart(1);
+        schedule.setWeekEnd(8);
+        schedule.setStartPeriod(6);
+        schedule.setEndPeriod(7);
+        return schedule;
     }
 }

@@ -333,11 +333,20 @@ public class CourseServerSrv implements ICourseServerSrv {
         try (Connection conn = DbHelper.getConnection()) {
             conn.setAutoCommit(false);
             try {
+                if (!_selectCourseDAO.lockStudent(conn, normalizedStudentId)) {
+                    throw new CourseServiceException("学生不存在：" + normalizedStudentId);
+                }
                 TeachingClass teachingClass = resolveTeachingClass(conn, normalizedClassId, true);
                 String normalizedCourseId = teachingClass.getCourseId();
                 if (_selectCourseDAO.findByStudentAndCourse(
                         conn, normalizedStudentId, normalizedCourseId) != null) {
                     throw new CourseServiceException("请勿重复选择同一门课程");
+                }
+                CourseScheduleDAO.StudentScheduleConflict conflict =
+                        _courseScheduleDAO.findStudentScheduleConflict(
+                                conn, normalizedStudentId, teachingClass.getTeachingClassId());
+                if (conflict != null) {
+                    throw new CourseServiceException(formatScheduleConflict(conflict));
                 }
                 if (teachingClass.getSelectedCount() >= teachingClass.getCapacity()) {
                     throw new CourseServiceException("教学班已满");
@@ -375,6 +384,9 @@ public class CourseServerSrv implements ICourseServerSrv {
         try (Connection conn = DbHelper.getConnection()) {
             conn.setAutoCommit(false);
             try {
+                if (!_selectCourseDAO.lockStudent(conn, normalizedStudentId)) {
+                    throw new CourseServiceException("学生不存在：" + normalizedStudentId);
+                }
                 TeachingClass teachingClass = resolveTeachingClass(conn, normalizedClassId, true);
                 String normalizedCourseId = teachingClass.getCourseId();
                 SelectCourse selected = _selectCourseDAO.findByStudentAndTeachingClass(
@@ -411,6 +423,30 @@ public class CourseServerSrv implements ICourseServerSrv {
                 throw e;
             }
         }
+    }
+
+    /** Builds a stable, user-facing explanation for a rejected selection. */
+    private String formatScheduleConflict(
+            CourseScheduleDAO.StudentScheduleConflict conflict) {
+        return "选课失败：与《" + conflict.courseName() + "》第 "
+                + conflict.weekStart() + "-" + conflict.weekEnd() + " 周 "
+                + dayName(conflict.dayOfWeek()) + " "
+                + conflict.startPeriod() + "-" + conflict.endPeriod()
+                + " 节课程时间冲突";
+    }
+
+    /** Converts the persisted ISO weekday number into the UI wording. */
+    private String dayName(int dayOfWeek) {
+        return switch (dayOfWeek) {
+            case 1 -> "周一";
+            case 2 -> "周二";
+            case 3 -> "周三";
+            case 4 -> "周四";
+            case 5 -> "周五";
+            case 6 -> "周六";
+            case 7 -> "周日";
+            default -> "星期" + dayOfWeek;
+        };
     }
 
     /** {@inheritDoc} */

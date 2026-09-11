@@ -29,6 +29,8 @@ public class CourseClientSrvTest {
     private static final String STUDENT_B = "E2E0904002";
     private static final String USER_A = "CE2EA904";
     private static final String ADMIN_COURSE_ID = "T_E2E_ADMIN_0907";
+    private static final String TIME_SOURCE_COURSE_ID = "T_E2E_TIME_SRC";
+    private static final String TIME_CONFLICT_COURSE_ID = "T_E2E_TIME_CONFLICT";
 
     /**
      * 程序入口。
@@ -83,6 +85,20 @@ public class CourseClientSrvTest {
         require(rollbackCourse != null && rollbackCourse.getSelectedCount() == 0,
                 "Socket 回滚后 selectedCount 为 0");
 
+        require(client.selectCourse(STUDENT_B, TIME_SOURCE_COURSE_ID),
+                "Socket 准备时间冲突来源课程");
+        expectFailure(() -> client.selectCourse(STUDENT_B, TIME_CONFLICT_COURSE_ID),
+                "400", "课程时间冲突", "Socket 绕过 UI 仍拒绝时间冲突教学班");
+        require(client.querySelectedCourse(STUDENT_B).stream()
+                        .noneMatch(r -> TIME_CONFLICT_COURSE_ID.equals(r.getCourseId())),
+                "Socket 冲突拒绝后 SelectCourse 不新增");
+        Course conflictCourse = findCourse(
+                client.queryCourse(TIME_CONFLICT_COURSE_ID), TIME_CONFLICT_COURSE_ID);
+        require(conflictCourse != null && conflictCourse.getSelectedCount() == 0,
+                "Socket 冲突拒绝后 selectedCount 不变化");
+        require(client.dropCourse(STUDENT_B, TIME_SOURCE_COURSE_ID),
+                "Socket 清理时间冲突来源课程");
+
         require(client.dropCourse(STUDENT_A, NORMAL_COURSE_ID), "Socket 正常退课");
         require(client.querySelectedCourse(STUDENT_A).stream()
                         .noneMatch(r -> NORMAL_COURSE_ID.equals(r.getCourseId())),
@@ -125,11 +141,21 @@ public class CourseClientSrvTest {
     /** 断言客户端调用以指定状态码失败。 */
     private static void expectFailure(CheckedAction action, String statusCode, String description)
             throws Exception {
+        expectFailure(action, statusCode, null, description);
+    }
+
+    /** Asserts both the response status and, when supplied, a clear error fragment. */
+    private static void expectFailure(CheckedAction action, String statusCode,
+                                      String messageFragment, String description)
+            throws Exception {
         boolean failed = false;
         try {
             action.run();
         } catch (CourseClientException expected) {
-            failed = statusCode.equals(expected.getStatusCode());
+            failed = statusCode.equals(expected.getStatusCode())
+                    && (messageFragment == null
+                    || (expected.getMessage() != null
+                    && expected.getMessage().contains(messageFragment)));
         }
         require(failed, description);
     }

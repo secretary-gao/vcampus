@@ -161,6 +161,47 @@ public class CourseScheduleDAO {
         }
     }
 
+    /**
+     * Finds one schedule that conflicts with a student's existing selections.
+     * Every candidate schedule is compared with every schedule of every selected
+     * teaching class using inclusive week and period intervals.
+     */
+    public StudentScheduleConflict findStudentScheduleConflict(
+            Connection conn, String studentId, String candidateTeachingClassId)
+            throws SQLException {
+        String sql = "SELECT c.courseName, existing.weekStart, existing.weekEnd, "
+                + "existing.dayOfWeek, existing.startPeriod, existing.endPeriod "
+                + "FROM tblCourseSchedule candidate "
+                + "JOIN tblSelectCourse sc ON sc.studentId=? "
+                + "JOIN tblCourseSchedule existing "
+                + "ON existing.teachingClassId=sc.teachingClassId "
+                + "JOIN tblCourse c ON c.courseId=sc.courseId "
+                + "WHERE candidate.teachingClassId=? "
+                + "AND candidate.dayOfWeek=existing.dayOfWeek "
+                + "AND candidate.weekStart<=existing.weekEnd "
+                + "AND candidate.weekEnd>=existing.weekStart "
+                + "AND candidate.startPeriod<=existing.endPeriod "
+                + "AND candidate.endPeriod>=existing.startPeriod "
+                + "ORDER BY existing.dayOfWeek, existing.startPeriod, "
+                + "existing.weekStart, sc.selectTime LIMIT 1";
+        try (PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setString(1, studentId);
+            statement.setString(2, candidateTeachingClassId);
+            try (ResultSet rs = statement.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                return new StudentScheduleConflict(
+                        rs.getString("courseName"),
+                        rs.getInt("weekStart"),
+                        rs.getInt("weekEnd"),
+                        rs.getInt("dayOfWeek"),
+                        rs.getInt("startPeriod"),
+                        rs.getInt("endPeriod"));
+            }
+        }
+    }
+
     /** 判断同一教室是否存在时间重叠，并锁定匹配范围。 */
     public boolean hasClassroomConflict(Connection conn, CourseSchedule schedule,
                                         String excludeScheduleId) throws SQLException {
@@ -312,5 +353,15 @@ public class CourseScheduleDAO {
         if (minutes < 1175) return 11;
         if (minutes < 1225) return 12;
         return 13;
+    }
+
+    /** Details of one existing course schedule that blocks a selection. */
+    public record StudentScheduleConflict(
+            String courseName,
+            int weekStart,
+            int weekEnd,
+            int dayOfWeek,
+            int startPeriod,
+            int endPeriod) {
     }
 }

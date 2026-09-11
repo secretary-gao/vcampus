@@ -36,6 +36,20 @@ public class SelectCourseDAO {
                     + "FROM tblSelectCourse ";
 
     /**
+     * Locks the student row for the current transaction. Enrollment changes for one
+     * student must take this lock before checking duplicates or schedule conflicts.
+     */
+    public boolean lockStudent(Connection conn, String studentId) throws SQLException {
+        try (PreparedStatement statement = conn.prepareStatement(
+                "SELECT 1 FROM tblStudent WHERE studentId=? FOR UPDATE")) {
+            statement.setString(1, studentId);
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    /**
      * 插入一条选课记录。
      *
      * @param selectCourse 待插入的选课记录
