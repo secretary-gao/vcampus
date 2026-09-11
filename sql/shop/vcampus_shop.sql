@@ -54,10 +54,10 @@ CREATE TABLE IF NOT EXISTS tblPurchase (
 -- 示例数据（商品）
 -- ------------------------------------------------------------
 INSERT IGNORE INTO tblGoods (goodsId, goodsName, category, price, stock, imageUrl) VALUES
-('G001', '农夫山泉', '饮料', 2.00, 100, 'https://picsum.photos/seed/g001/300/200'),
-('G002', '可口可乐', '饮料', 3.50, 80, 'https://picsum.photos/seed/g002/300/200'),
-('G003', '面包', '食品', 5.00, 50, 'https://picsum.photos/seed/g003/300/200'),
-('G004', '笔记本', '文具', 8.00, 200, 'https://picsum.photos/seed/g004/300/200'),
-('G005', '中性笔', '文具', 2.00, 300, 'https://picsum.photos/seed/g005/300/200'),
-('G006', 'U盘64G', '数码', 45.00, 30, 'https://picsum.photos/seed/g006/300/200'),
-('G007', '洗衣液', '生活用品', 15.00, 40, 'https://picsum.photos/seed/g007/300/200');
+('G001', '农夫山泉', '饮料', 2.00, 100, 'Client/src/vcampus/client/view/assets/store/G001.jpg'),
+('G002', '可口可乐', '饮料', 3.50, 80, 'Client/src/vcampus/client/view/assets/store/G002.jpg'),
+('G003', '面包', '食品', 5.00, 50, 'Client/src/vcampus/client/view/assets/store/G003.jpg'),
+('G004', '笔记本', '文具', 8.00, 200, 'Client/src/vcampus/client/view/assets/store/G004.jpg'),
+('G005', '中性笔', '文具', 2.00, 300, 'Client/src/vcampus/client/view/assets/store/G005.jpg'),
+('G006', 'U盘64G', '数码', 45.00, 30, 'Client/src/vcampus/client/view/assets/store/G006.jpg'),
+('G007', '洗衣液', '生活用品', 15.00, 40, 'Client/src/vcampus/client/view/assets/store/G007.jpg');
