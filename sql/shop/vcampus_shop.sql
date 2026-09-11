@@ -51,6 +51,18 @@ CREATE TABLE IF NOT EXISTS tblPurchase (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品购买记录表';
 
 -- ------------------------------------------------------------
+-- tblWallet：校园卡钱包表（商店模块自建，用于"余额 + 充值 + 购买扣款"）
+-- 每个用户一条余额记录；购买时校验并扣减余额，余额不足则下单失败。
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tblWallet (
+    userId  VARCHAR(10)   NOT NULL COMMENT '用户ID，外键->tblUser.uId',
+    balance DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '余额（>=0）',
+    PRIMARY KEY (userId),
+    CONSTRAINT fk_wallet_user FOREIGN KEY (userId) REFERENCES tblUser(uId),
+    CONSTRAINT chk_tblWallet_balance CHECK (balance >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='校园卡钱包表';
+
+-- ------------------------------------------------------------
 -- 示例数据（商品）
 -- ------------------------------------------------------------
 INSERT IGNORE INTO tblGoods (goodsId, goodsName, category, price, stock, imageUrl) VALUES
@@ -61,3 +73,12 @@ INSERT IGNORE INTO tblGoods (goodsId, goodsName, category, price, stock, imageUr
 ('G005', '中性笔', '文具', 2.00, 300, 'Client/src/vcampus/client/view/assets/store/G005.jpg'),
 ('G006', 'U盘64G', '数码', 45.00, 30, 'Client/src/vcampus/client/view/assets/store/G006.jpg'),
 ('G007', '洗衣液', '生活用品', 15.00, 40, 'Client/src/vcampus/client/view/assets/store/G007.jpg');
+
+-- ------------------------------------------------------------
+-- 示例余额（依赖 seed_demo_data.sql 里的示例用户）
+-- ------------------------------------------------------------
+INSERT IGNORE INTO tblWallet (userId, balance) VALUES
+('09010101', 200.00),
+('09010102', 150.00),
+('09010103', 300.00),
+('admin', 500.00);
