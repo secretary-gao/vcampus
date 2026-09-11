@@ -16,6 +16,7 @@ import vcampus.common.vo.Doctor;
 import vcampus.common.vo.HospitalAdminReq;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
+import vcampus.common.vo.Student;
 import vcampus.common.vo.User;
 import vcampus.server.srv.Library.LibraryHandler;
 
@@ -57,6 +58,14 @@ public class ServerThread implements Runnable {
 
     /** 学籍模块请求处理器，由统一服务器负责分发请求。 */
     private final StudentRequestHandler _studentRequestHandler = new StudentRequestHandler();
+
+    /**
+     * 学籍模块业务服务，单独再持有一份（不经过 {@link StudentRequestHandler}），
+     * 专门给"学生自助注册顺带写学籍记录"这个场景用——{@code StudentRequestHandler}
+     * 那层的新增/修改学籍是管理员专属操作，会做权限校验，但注册时创建自己的
+     * 学籍记录不应该被这个校验拦住，所以直接调业务层，绕开权限检查这一层。
+     */
+    private final StudentServerSrv _studentServerSrv = new StudentServerSrv();
 
     /** 医院挂号模块业务服务 */
     private final IHospitalServerSrv _hospitalSrv = new HospitalServerSrv();
@@ -177,6 +186,8 @@ public class ServerThread implements Runnable {
         _handlerMap.put(StudentProtocol.UPDATE, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.DELETE, this::handleStudentRequest);
         _handlerMap.put(IConstant.MSG_USER_SET_STATUS, this::handleSetUserStatus);
+        _handlerMap.put(IConstant.MSG_USER_LIST_PENDING, this::handleListPendingUsers);
+        _handlerMap.put(IConstant.MSG_REGISTER_STUDENT, this::handleRegisterStudent);
         _handlerMap.put(IConstant.MSG_AI_ASK, this::handleAiAsk);
 
         // ========= 医院挂号模块【新增，只追加不删除原有】 =========
@@ -213,6 +224,9 @@ public class ServerThread implements Runnable {
         } catch (UserDisabledException e) {
             return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
                     IConstant.STATUS_ACCOUNT_DISABLED, e.getMessage(), "Server");
+        } catch (UserPendingApprovalException e) {
+            return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
+                    IConstant.STATUS_ACCOUNT_PENDING, e.getMessage(), "Server");
         } catch (IllegalArgumentException e) {
             return new Message(request.getUid(), IConstant.MSG_LOGIN, MessageType.DATA,
                     IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
@@ -244,6 +258,58 @@ public class ServerThread implements Runnable {
                     IConstant.STATUS_USER_EXISTS, e.getMessage(), "Server");
         } catch (SQLException | IOException e) {
             return new Message(request.getUid(), IConstant.MSG_REGISTER, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理"学生"角色自助注册请求：先按普通流程创建登录账号（状态强制为
+     * 待审核），成功后紧接着直接调用学籍模块的业务层 {@link StudentServerSrv}
+     * 插入一条对应的学籍记录——学号、一卡通号由服务器根据登录ID自动生成，
+     * 不用学生自己填，也不会跟已有数据冲突。
+     *
+     * <p>注意这里是直接调 {@code StudentServerSrv}，不经过
+     * {@link StudentRequestHandler}（那一层的新增学籍是管理员专属操作，
+     * 会做权限校验），因为这是注册流程内部触发的，不是学生自己调用了
+     * 管理员接口。</p>
+     *
+     * @param request 请求消息，{@code data} 约定为
+     *                {@code Object[]{User newUser, Student profile}}
+     * @return 处理结果消息
+     */
+    private Message handleRegisterStudent(Message request) {
+        try {
+            Object[] args = (Object[]) request.getData();
+            User newUser = (User) args[0];
+            Student profile = (Student) args[1];
+
+            boolean userOk = _userServerSrv.register(newUser);
+            if (!userOk) {
+                return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
+                        IConstant.STATUS_ERROR, "注册失败，请稍后重试", "Server");
+            }
+
+            profile.setUserId(newUser.getUId());
+            profile.setEnrollmentDate(java.time.LocalDate.now());
+            if (profile.getStatus() == null) {
+                profile.setStatus(vcampus.common.vo.StudentStatus.ENROLLED);
+            }
+            _studentServerSrv.addStudent(profile);
+
+            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
+                    IConstant.STATUS_SUCCESS, "注册成功，账号和学籍信息都已提交，请等待管理员审核", "Server");
+        } catch (IllegalArgumentException | ClassCastException e) {
+            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
+                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
+        } catch (UserExistsException e) {
+            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
+                    IConstant.STATUS_USER_EXISTS, e.getMessage(), "Server");
+        } catch (StudentServiceException e) {
+            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
+                    IConstant.STATUS_ERROR,
+                    "账号已创建，但学籍信息保存失败（" + e.getMessage() + "），请联系管理员补录", "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
                     IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
         }
     }
@@ -446,6 +512,30 @@ public class ServerThread implements Runnable {
                     IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
         } catch (SQLException | IOException e) {
             return new Message(request.getUid(), IConstant.MSG_USER_SET_STATUS, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理"查询待审核账号列表"请求，仅管理员可用。
+     *
+     * @param request 请求消息，{@code data} 为操作者登录ID（{@code String}）
+     * @return 操作结果消息：成功时 {@code data} 为 {@code List<User>}
+     */
+    private Message handleListPendingUsers(Message request) {
+        try {
+            String operatorUId = (String) request.getData();
+            java.util.List<User> pending = _userServerSrv.listPendingUsers(operatorUId);
+            return new Message(request.getUid(), IConstant.MSG_USER_LIST_PENDING, MessageType.DATA,
+                    IConstant.STATUS_SUCCESS, pending, "Server");
+        } catch (PermissionDeniedException e) {
+            return new Message(request.getUid(), IConstant.MSG_USER_LIST_PENDING, MessageType.DATA,
+                    IConstant.STATUS_FORBIDDEN, e.getMessage(), "Server");
+        } catch (IllegalArgumentException | ClassCastException e) {
+            return new Message(request.getUid(), IConstant.MSG_USER_LIST_PENDING, MessageType.DATA,
+                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_USER_LIST_PENDING, MessageType.DATA,
                     IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
         }
     }

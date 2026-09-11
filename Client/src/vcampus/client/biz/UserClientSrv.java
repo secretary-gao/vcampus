@@ -12,6 +12,7 @@ package vcampus.client.biz;
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
+import vcampus.common.vo.Student;
 import vcampus.common.vo.User;
 
 import java.io.IOException;
@@ -67,6 +68,27 @@ public class UserClientSrv implements IUserClientSrv {
         Object[] payload = new Object[] {operatorUId, targetUId, newStatus};
         Message request = new Message(System.currentTimeMillis(), IConstant.MSG_USER_SET_STATUS,
                 MessageType.COMMAND, null, payload, operatorUId);
+        return sendAndReceive(request);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Message listPendingUsers(String operatorUId) throws IOException, ClassNotFoundException {
+        Message request = new Message(System.currentTimeMillis(), IConstant.MSG_USER_LIST_PENDING,
+                MessageType.COMMAND, null, operatorUId, operatorUId);
+        return sendAndReceive(request);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Message registerStudent(User newUser, Student profile) throws IOException, ClassNotFoundException {
+        Object[] payload = new Object[] {newUser, profile};
+        Message request = new Message(System.currentTimeMillis(), IConstant.MSG_REGISTER_STUDENT,
+                MessageType.COMMAND, null, payload, newUser == null ? null : newUser.getUId());
         return sendAndReceive(request);
     }
 
