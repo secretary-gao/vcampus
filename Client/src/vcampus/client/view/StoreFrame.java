@@ -47,6 +47,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
@@ -121,42 +122,14 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * JavaFX 启动入口：搭建界面并加载商品列表。
+     * 独立窗口启动入口（{@code launch} 用）：构建内容、加底部退出按钮后显示。
      *
      * @param stage 舞台
      */
     @Override
     public void start(Stage stage) {
-        _categoryBox.getItems().setAll("全部商品", "食品", "饮料", "文具", "生活用品", "数码");
-        _categoryBox.getSelectionModel().selectFirst();
-        buildUi(stage);
-        loadGoods();
-        stage.show();
-    }
-
-    /**
-     * 搭建窗口布局。
-     *
-     * @param stage 舞台
-     */
-    private void buildUi(Stage stage) {
-        BorderPane root = new BorderPane();
+        BorderPane root = new BorderPane(buildContent());
         root.setPrefSize(1080, 720);
-        root.setBackground(new Background(new BackgroundFill(
-                Color.web("#f4f7fb"), CornerRadii.EMPTY, Insets.EMPTY)));
-
-        root.setTop(buildBanner());
-
-        TabPane tabPane = new TabPane();
-        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-        Tab goodsTab = new Tab("商品商城", buildBuyTab());
-        Tab orderTab = new Tab("我的订单", buildRecordsTab());
-        tabPane.getTabs().add(goodsTab);
-        tabPane.getTabs().add(orderTab);
-        if (isAdmin()) {
-            tabPane.getTabs().add(new Tab("商品管理", buildManageTab()));
-        }
-        root.setCenter(tabPane);
 
         Button exitButton = new Button("退出");
         exitButton.setStyle("-fx-background-radius: 20; -fx-background-color: #ecf3fb;"
@@ -171,6 +144,47 @@ public class StoreFrame extends Application {
         stage.setTitle("虚拟商店 - 当前用户：" + safe(_currentUser == null ? "" : _currentUser.getUName()));
         stage.setScene(scene);
         stage.centerOnScreen();
+        loadGoods();
+        stage.show();
+    }
+
+    /**
+     * 构建商店模块的可嵌入内容（顶部横幅 + 商品/订单/管理页签），
+     * 供独立窗口与主界面嵌入共用。
+     *
+     * @return 内容面板
+     */
+    private BorderPane buildContent() {
+        _categoryBox.getItems().setAll("全部商品", "食品", "饮料", "文具", "生活用品", "数码");
+        _categoryBox.getSelectionModel().selectFirst();
+
+        BorderPane root = new BorderPane();
+        root.setPrefSize(1080, 720);
+        root.setBackground(new Background(new BackgroundFill(
+                Color.web("#f4f7fb"), CornerRadii.EMPTY, Insets.EMPTY)));
+        root.setTop(buildBanner());
+
+        TabPane tabPane = new TabPane();
+        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        tabPane.getTabs().add(new Tab("商品商城", buildBuyTab()));
+        tabPane.getTabs().add(new Tab("我的订单", buildRecordsTab()));
+        if (isAdmin()) {
+            tabPane.getTabs().add(new Tab("商品管理", buildManageTab()));
+        }
+        root.setCenter(tabPane);
+        return root;
+    }
+
+    /**
+     * 生成一个可嵌入主界面内容区的商店视图（{@code Node}），并加载商品。
+     *
+     * @return 商店内容节点
+     */
+    public javafx.scene.Node createView() {
+        BorderPane content = buildContent();
+        content.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        loadGoods();
+        return content;
     }
 
     /**
@@ -410,19 +424,26 @@ public class StoreFrame extends Application {
         final StackPane imgHolder = img;
         String url = g.getImageUrl();
         if (url != null && !url.isBlank()) {
+            // 网络地址直接加载；相对路径（相对于项目根目录）转成 file: URI，与 CampusBackground 一致
+            final String imageUri = (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file:"))
+                    ? url
+                    : new java.io.File(url).toURI().toString();
             new Thread(() -> {
                 Image im = null;
                 try {
-                    im = new Image(url, 186, 120, true, true);
+                    im = new Image(imageUri, 186, 186, true, true);
                 } catch (Exception e) {
                     im = null;
                 }
                 if (im != null && !im.isError()) {
                     ImageView iv = new ImageView(im);
                     iv.setFitWidth(186);
-                    iv.setFitHeight(120);
+                    iv.setFitHeight(186);
                     iv.setPreserveRatio(true);
-                    Platform.runLater(() -> imgHolder.getChildren().setAll(iv));
+                    Platform.runLater(() -> {
+                        imgHolder.setStyle(""); // 去掉占位色块，只显示商品图本身
+                        imgHolder.getChildren().setAll(iv);
+                    });
                 }
             }).start();
         }
@@ -484,10 +505,16 @@ public class StoreFrame extends Application {
      */
     private StackPane buildPlaceholderImage(Goods g) {
         StackPane img = new StackPane();
-        img.setPrefSize(186, 120);
+        img.setPrefSize(186, 186);
+        img.setMinSize(186, 186);
+        img.setMaxSize(186, 186);
         img.setStyle("-fx-background-radius: 10; -fx-background-color: " + categoryColor(g.getCategory()) + ";");
+        Rectangle clip = new Rectangle(186, 186);
+        clip.setArcWidth(20);
+        clip.setArcHeight(20);
+        img.setClip(clip);
         Label emoji = new Label(categoryEmoji(g.getCategory()));
-        emoji.setFont(Font.font("System", 40));
+        emoji.setFont(Font.font("System", 48));
         img.getChildren().add(emoji);
         return img;
     }
