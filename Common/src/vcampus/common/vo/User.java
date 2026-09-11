@@ -31,6 +31,9 @@ public class User implements Serializable {
     /** 账号状态：禁用。 */
     public static final String STATUS_DISABLED = "禁用";
 
+    /** 账号状态：待审核（刚注册，还没被管理员审核通过，不能登录）。 */
+    public static final String STATUS_PENDING = "待审核";
+
     /** 登录ID，定长8位（如学号/工号）。 */
     private String _uId;
 

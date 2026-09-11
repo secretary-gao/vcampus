@@ -58,8 +58,8 @@ public class UserDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public boolean insert(User user) throws SQLException, IOException {
-        String sql = "INSERT INTO tblUser (uId, uName, uAge, uSex, uPwd, uRole) "
-                + "VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO tblUser (uId, uName, uAge, uSex, uPwd, uRole, uStatus) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DbHelper.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -74,9 +74,38 @@ public class UserDAO {
             pstmt.setString(4, user.getUSex());
             pstmt.setString(5, user.getUPwd());
             pstmt.setString(6, user.getURole());
+            pstmt.setString(7, user.getUStatus());
 
             return pstmt.executeUpdate() > 0;
         }
+    }
+
+    /**
+     * 按账号状态查询用户列表（用于管理员查看"待审核"账号列表）。
+     *
+     * @param status 账号状态，见 {@link User#STATUS_NORMAL}/
+     *               {@link User#STATUS_DISABLED}/{@link User#STATUS_PENDING}
+     * @return 该状态下的全部用户，按登录ID排序
+     * @throws SQLException 数据库操作异常
+     * @throws IOException  数据库配置文件读取异常
+     */
+    public java.util.List<User> findByStatus(String status) throws SQLException, IOException {
+        String sql = "SELECT uId, uName, uAge, uSex, uPwd, uRole, uStatus FROM tblUser "
+                + "WHERE uStatus = ? ORDER BY uId";
+        java.util.List<User> result = new java.util.ArrayList<>();
+
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, status);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(mapRow(rs));
+                }
+            }
+        }
+        return result;
     }
 
     /**
