@@ -12,13 +12,13 @@ ALTER TABLE tblGoods
     ADD COLUMN imageUrl VARCHAR(255) NULL COMMENT '商品图片地址（可空）' AFTER stock;
 
 UPDATE tblGoods SET imageUrl = CASE goodsId
-    WHEN 'G001' THEN 'Client/src/vcampus/client/view/assets/store/G001.png'
-    WHEN 'G002' THEN 'Client/src/vcampus/client/view/assets/store/G002.png'
-    WHEN 'G003' THEN 'Client/src/vcampus/client/view/assets/store/G003.png'
-    WHEN 'G004' THEN 'Client/src/vcampus/client/view/assets/store/G004.png'
-    WHEN 'G005' THEN 'Client/src/vcampus/client/view/assets/store/G005.png'
-    WHEN 'G006' THEN 'Client/src/vcampus/client/view/assets/store/G006.png'
-    WHEN 'G007' THEN 'Client/src/vcampus/client/view/assets/store/G007.png'
+    WHEN 'G001' THEN 'Client/src/vcampus/client/view/assets/store/G001.jpg'
+    WHEN 'G002' THEN 'Client/src/vcampus/client/view/assets/store/G002.jpg'
+    WHEN 'G003' THEN 'Client/src/vcampus/client/view/assets/store/G003.jpg'
+    WHEN 'G004' THEN 'Client/src/vcampus/client/view/assets/store/G004.jpg'
+    WHEN 'G005' THEN 'Client/src/vcampus/client/view/assets/store/G005.jpg'
+    WHEN 'G006' THEN 'Client/src/vcampus/client/view/assets/store/G006.jpg'
+    WHEN 'G007' THEN 'Client/src/vcampus/client/view/assets/store/G007.jpg'
     ELSE imageUrl END
 WHERE goodsId IN ('G001','G002','G003','G004','G005','G006','G007');
 

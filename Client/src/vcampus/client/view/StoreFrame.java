@@ -47,6 +47,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
@@ -430,16 +431,19 @@ public class StoreFrame extends Application {
             new Thread(() -> {
                 Image im = null;
                 try {
-                    im = new Image(imageUri, 186, 120, true, true);
+                    im = new Image(imageUri, 186, 186, true, true);
                 } catch (Exception e) {
                     im = null;
                 }
                 if (im != null && !im.isError()) {
                     ImageView iv = new ImageView(im);
                     iv.setFitWidth(186);
-                    iv.setFitHeight(120);
+                    iv.setFitHeight(186);
                     iv.setPreserveRatio(true);
-                    Platform.runLater(() -> imgHolder.getChildren().setAll(iv));
+                    Platform.runLater(() -> {
+                        imgHolder.setStyle(""); // 去掉占位色块，只显示商品图本身
+                        imgHolder.getChildren().setAll(iv);
+                    });
                 }
             }).start();
         }
@@ -501,10 +505,16 @@ public class StoreFrame extends Application {
      */
     private StackPane buildPlaceholderImage(Goods g) {
         StackPane img = new StackPane();
-        img.setPrefSize(186, 120);
+        img.setPrefSize(186, 186);
+        img.setMinSize(186, 186);
+        img.setMaxSize(186, 186);
         img.setStyle("-fx-background-radius: 10; -fx-background-color: " + categoryColor(g.getCategory()) + ";");
+        Rectangle clip = new Rectangle(186, 186);
+        clip.setArcWidth(20);
+        clip.setArcHeight(20);
+        img.setClip(clip);
         Label emoji = new Label(categoryEmoji(g.getCategory()));
-        emoji.setFont(Font.font("System", 40));
+        emoji.setFont(Font.font("System", 48));
         img.getChildren().add(emoji);
         return img;
     }
