@@ -72,6 +72,11 @@ public interface IConstant {
     String MSG_ADD_BOOK = "addBook";
     String MSG_UPDATE_BOOK = "updateBook";
     String MSG_DELETE_BOOK = "deleteBook";
+    String MSG_QUERY_PAPERS = "queryPapers";
+    String MSG_GET_PDF_DATA = "getPdfData";
+    String MSG_ADD_PAPER = "addPaper";
+    String MSG_DELETE_PAPER = "deletePaper";
+    String MSG_UPLOAD_PDF = "uploadPdf";
 
     // ========== 选课模块消息类型 ==========
     String MSG_COURSE_QUERY = "courseQuery";
