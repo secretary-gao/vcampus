@@ -25,6 +25,7 @@ import vcampus.common.vo.TeachingClass;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +36,9 @@ import java.util.Map;
  * {@link Message} 并读取一个响应，连接方式与 {@link UserClientSrv} 一致。
  */
 public class CourseClientSrv implements ICourseClientSrv {
+
+    private static final int CONNECT_TIMEOUT_MILLIS = 5_000;
+    private static final int READ_TIMEOUT_MILLIS = 10_000;
 
     @Override
     public CourseDashboardStats queryDashboard() throws IOException, ClassNotFoundException {
@@ -258,13 +262,18 @@ public class CourseClientSrv implements ICourseClientSrv {
 
     /** 建立短连接、发送请求并接收响应。 */
     private Message sendAndReceive(Message request) throws IOException, ClassNotFoundException {
-        try (Socket socket = new Socket(IConstant.SERVER_HOST, IConstant.SERVER_PORT);
-             ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream())) {
-            out.flush();
-            ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
-            out.writeObject(request);
-            out.flush();
-            return (Message) in.readObject();
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(IConstant.SERVER_HOST, IConstant.SERVER_PORT),
+                    CONNECT_TIMEOUT_MILLIS);
+            socket.setSoTimeout(READ_TIMEOUT_MILLIS);
+            try (ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream())) {
+                out.flush();
+                try (ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
+                    out.writeObject(request);
+                    out.flush();
+                    return (Message) in.readObject();
+                }
+            }
         }
     }
 
