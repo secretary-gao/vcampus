@@ -22,13 +22,16 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.Course;
+import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.TeacherCourseEnrollment;
+import vcampus.common.vo.TeachingClass;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /** 教师工作台：按本人授课课程切换查看选课学生名单。 */
@@ -42,6 +45,8 @@ public class TeacherCoursesPane extends VBox {
     private final Label _studentCountValue = new Label("—");
     private final Label _currentCountValue = new Label("—");
     private final Label _rosterTitle = new Label("选课学生");
+    private final Label _detailTitle = new Label("请选择教学班");
+    private final Label _detailMeta = new Label("课程安排与容量将在这里显示");
     private final Label _statusLabel = new Label();
 
     /** 创建教师课程名单页面。 */
@@ -106,8 +111,7 @@ public class TeacherCoursesPane extends VBox {
                 name.getStyleClass().add("course-list-name");
                 Label meta = new Label(item.course().getCourseId() + "  ·  "
                         + item.classNumber() + " 班  ·  "
-                        + item.course().getCredit() + " 学分  ·  "
-                        + item.roster().size() + " 人");
+                        + item.roster().size() + " / " + item.capacity() + " 人");
                 meta.getStyleClass().add("course-list-meta");
                 setGraphic(new VBox(4, name, meta));
             }
@@ -120,6 +124,11 @@ public class TeacherCoursesPane extends VBox {
         VBox.setVgrow(_courseList, Priority.ALWAYS);
 
         _rosterTitle.getStyleClass().add("section-title");
+        _detailTitle.getStyleClass().add("teacher-detail-title");
+        _detailMeta.getStyleClass().add("teacher-detail-meta");
+        _detailMeta.setWrapText(true);
+        VBox detail = new VBox(4, _detailTitle, _detailMeta);
+        detail.getStyleClass().add("teacher-detail-strip");
         _rosterTable.getColumns().addAll(
                 CourseViewSupport.textColumn("学号", 115,
                         TeacherCourseEnrollment::getStudentId),
@@ -133,7 +142,7 @@ public class TeacherCoursesPane extends VBox {
                         row -> CourseViewSupport.dateTime(row.getSelectTime()))
         );
         CourseViewSupport.configureTable(_rosterTable, "暂无学生选修该课程");
-        VBox right = new VBox(10, _rosterTitle, _rosterTable);
+        VBox right = new VBox(10, _rosterTitle, detail, _rosterTable);
         right.getStyleClass().add("course-card");
         VBox.setVgrow(_rosterTable, Priority.ALWAYS);
 
@@ -157,6 +166,12 @@ public class TeacherCoursesPane extends VBox {
         Map<String, Course> courseMap = _client.queryCourse("").stream()
                 .collect(Collectors.toMap(Course::getCourseId, course -> course,
                         (left, right) -> left, LinkedHashMap::new));
+        Map<String, TeachingClass> classMap = _client.queryTeachingClass("").stream()
+                .filter(value -> _teacherName.equals(value.getTeacher()))
+                .collect(Collectors.toMap(TeachingClass::getTeachingClassId,
+                        Function.identity(), (left, right) -> left, LinkedHashMap::new));
+        Map<String, List<CourseSchedule>> schedulesByClass = _client.querySchedule().stream()
+                .collect(Collectors.groupingBy(CourseSchedule::getTeachingClassId));
         Map<String, TeacherCourse> courses = new LinkedHashMap<>();
         for (Map.Entry<String, List<TeacherCourseEnrollment>> entry : byClass.entrySet()) {
             TeacherCourseEnrollment first = entry.getValue().get(0);
@@ -166,8 +181,10 @@ public class TeacherCoursesPane extends VBox {
                         CourseViewSupport.safe(first.getCourseName(), first.getCourseId()),
                         _teacherName, 0, 0, 0);
             }
-            courses.put(entry.getKey(), new TeacherCourse(course,
+            TeachingClass teachingClass = classMap.get(entry.getKey());
+            courses.put(entry.getKey(), new TeacherCourse(course, teachingClass,
                     CourseViewSupport.safe(first.getClassNumber(), "—"),
+                    schedulesByClass.getOrDefault(entry.getKey(), List.of()),
                     realStudents(entry.getValue())));
         }
 
@@ -187,12 +204,18 @@ public class TeacherCoursesPane extends VBox {
     private void showRoster(TeacherCourse selected) {
         if (selected == null) {
             _rosterTitle.setText("选课学生");
+            _detailTitle.setText("请选择教学班");
+            _detailMeta.setText("课程安排与容量将在这里显示");
             _currentCountValue.setText("0");
             _rosterTable.getItems().clear();
             return;
         }
         _rosterTitle.setText(selected.course().getCourseName() + " · "
                 + selected.classNumber() + " 班 · 选课学生");
+        _detailTitle.setText(selected.course().getCourseId() + " · "
+                + selected.course().getCourseName());
+        _detailMeta.setText("教学班 " + selected.classNumber() + "  ·  容量 "
+                + selected.capacity() + " 人  ·  " + scheduleSummary(selected.schedules()));
         _currentCountValue.setText(String.valueOf(selected.roster().size()));
         _rosterTable.setItems(FXCollections.observableArrayList(selected.roster()));
     }
@@ -218,8 +241,27 @@ public class TeacherCoursesPane extends VBox {
         return label;
     }
 
-    private record TeacherCourse(Course course, String classNumber,
+    private String scheduleSummary(List<CourseSchedule> schedules) {
+        if (schedules.isEmpty()) {
+            return "尚未排课";
+        }
+        return schedules.stream()
+                .sorted(Comparator.comparingInt(CourseSchedule::getDayOfWeek)
+                        .thenComparingInt(CourseSchedule::getWeekStart)
+                        .thenComparingInt(CourseSchedule::getStartPeriod))
+                .map(schedule -> schedule.getWeekStart() + "–" + schedule.getWeekEnd()
+                        + " 周 " + CourseViewSupport.dayName(schedule.getDayOfWeek()) + " "
+                        + schedule.getStartPeriod() + "–" + schedule.getEndPeriod() + " 节 · "
+                        + CourseViewSupport.safe(schedule.getClassroom(), "教室待定"))
+                .collect(Collectors.joining("；"));
+    }
+
+    private record TeacherCourse(Course course, TeachingClass teachingClass,
+                                 String classNumber, List<CourseSchedule> schedules,
                                  List<TeacherCourseEnrollment> roster) {
+        int capacity() {
+            return teachingClass == null ? roster.size() : teachingClass.getCapacity();
+        }
     }
 
     private record Snapshot(List<TeacherCourse> courses, int totalStudents) {
