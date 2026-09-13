@@ -124,7 +124,7 @@ DAO 负责参数化 SQL 和对象映射。
 | `tblCourseSchedule` | 教学班复合外键；周次 1–30、星期 1–7、节次 1–13；时段唯一 |
 | `tblSelectCourse` | 学生/教学班外键；学生+教学班、学生+课程均唯一 |
 | `tblCourseRequirementGroup` | 规则组定义，当前支持 `CHOOSE_ONE` |
-| `tblCourseRequirementGroupMember` | 规则组与课程的关联；课程最多属于一个组 |
+| `tblCourseRequirementGroupMember` | 规则组与课程的关联；组合主键避免同一课程在同一组内重复 |
 
 不要在 PowerShell 5.1 中使用 `Get-Content ... | mysql` 导入中文 SQL。该管道会经历文件解码和
 原生程序管道编码转换，可能把 UTF-8 中文写成 `???`。从仓库根目录进入 MySQL：
