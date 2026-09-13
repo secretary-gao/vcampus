@@ -10,6 +10,8 @@
 package vcampus.client.biz;
 
 import vcampus.common.vo.Course;
+import vcampus.common.vo.AutoSchedulePlan;
+import vcampus.common.vo.AutoScheduleRequest;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.CourseRequirementGroup;
 import vcampus.common.vo.SelectCourse;
@@ -29,6 +31,12 @@ public interface ICourseClientSrv {
             throws IOException, ClassNotFoundException;
 
     List<CourseRequirementGroup> queryRequirementGroups()
+            throws IOException, ClassNotFoundException;
+
+    AutoSchedulePlan previewAutoSchedule(AutoScheduleRequest request)
+            throws IOException, ClassNotFoundException;
+
+    int applyAutoSchedule(AutoSchedulePlan plan)
             throws IOException, ClassNotFoundException;
 
     TeachingClass addTeachingClass(TeachingClass teachingClass)

@@ -13,6 +13,8 @@ import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.CourseSchedule;
+import vcampus.common.vo.AutoSchedulePlan;
+import vcampus.common.vo.AutoScheduleRequest;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.TeachingClass;
 
@@ -66,6 +68,8 @@ public class CourseHandler implements ModuleHandler {
                 , IConstant.MSG_TEACHING_CLASS_UPDATE
                 , IConstant.MSG_TEACHING_CLASS_DELETE
                 , IConstant.MSG_COURSE_REQUIREMENT_GROUP_QUERY
+                , IConstant.MSG_COURSE_AUTO_SCHEDULE_PREVIEW
+                , IConstant.MSG_COURSE_AUTO_SCHEDULE_APPLY
         );
     }
 
@@ -91,6 +95,10 @@ public class CourseHandler implements ModuleHandler {
                         _courseServerSrv.deleteTeachingClass((String) request.getData()));
                 case IConstant.MSG_COURSE_REQUIREMENT_GROUP_QUERY -> success(request,
                         _courseServerSrv.queryRequirementGroups());
+                case IConstant.MSG_COURSE_AUTO_SCHEDULE_PREVIEW -> success(request,
+                        _courseServerSrv.previewAutoSchedule((AutoScheduleRequest) request.getData()));
+                case IConstant.MSG_COURSE_AUTO_SCHEDULE_APPLY -> success(request,
+                        _courseServerSrv.applyAutoSchedule((AutoSchedulePlan) request.getData()));
                 case IConstant.MSG_COURSE_ADD -> success(
                         request, _courseServerSrv.addCourse((Course) request.getData()));
                 case IConstant.MSG_COURSE_UPDATE -> success(

@@ -10,6 +10,8 @@
 package vcampus.server.srv;
 
 import vcampus.common.vo.Course;
+import vcampus.common.vo.AutoSchedulePlan;
+import vcampus.common.vo.AutoScheduleRequest;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.CourseRequirementGroup;
 import vcampus.common.vo.SelectCourse;
@@ -33,6 +35,9 @@ import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * {@link ICourseServerSrv} 的实现类。课程查询直接委托 DAO；选课和退课负责业务校验，
@@ -113,6 +118,77 @@ public class CourseServerSrv implements ICourseServerSrv {
     public List<CourseRequirementGroup> queryRequirementGroups()
             throws SQLException, IOException {
         return _requirementGroupDAO.findAll();
+    }
+
+    @Override
+    public AutoSchedulePlan previewAutoSchedule(AutoScheduleRequest request)
+            throws SQLException, IOException, CourseServiceException {
+        if (request == null || request.getWeekStart() < 1
+                || request.getWeekEnd() > 30
+                || request.getWeekStart() > request.getWeekEnd()) {
+            throw new CourseServiceException("自动排课周次范围无效");
+        }
+        List<TeachingClass> allClasses = _teachingClassDAO.findByKeyword("");
+        List<CourseSchedule> existing = _courseScheduleDAO.findAll();
+        Set<String> scheduled = existing.stream().map(CourseSchedule::getTeachingClassId)
+                .collect(java.util.stream.Collectors.toSet());
+        Set<String> requested = request.getTeachingClassIds() == null
+                ? Set.of() : new LinkedHashSet<>(request.getTeachingClassIds());
+        List<TeachingClass> targets = allClasses.stream()
+                .filter(value -> requested.isEmpty()
+                        ? !scheduled.contains(value.getTeachingClassId())
+                        : requested.contains(value.getTeachingClassId()))
+                .toList();
+        if (targets.isEmpty()) {
+            throw new CourseServiceException("没有需要自动排课的教学班");
+        }
+        if (targets.stream().anyMatch(value -> scheduled.contains(value.getTeachingClassId()))) {
+            throw new CourseServiceException("自动排课只支持尚未排课的教学班");
+        }
+        if (!requested.isEmpty() && targets.size() != requested.size()) {
+            throw new CourseServiceException("请求包含不存在的教学班");
+        }
+        return new CourseAutoScheduler().generate(targets, allClasses, existing,
+                request.getWeekStart(), request.getWeekEnd());
+    }
+
+    @Override
+    public int applyAutoSchedule(AutoSchedulePlan plan)
+            throws SQLException, IOException, CourseServiceException {
+        if (plan == null || plan.getAssignments() == null
+                || plan.getAssignments().isEmpty()) {
+            throw new CourseServiceException("自动排课方案为空，无法应用");
+        }
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                Set<String> classIds = new LinkedHashSet<>();
+                for (CourseSchedule schedule : plan.getAssignments()) {
+                    validateSchedule(schedule, true);
+                    if (!classIds.add(schedule.getTeachingClassId())) {
+                        throw new CourseServiceException("方案中教学班重复："
+                                + schedule.getTeachingClassId());
+                    }
+                    TeachingClass teachingClass = resolveScheduleTeachingClass(conn, schedule);
+                    boolean alreadyScheduled = _courseScheduleDAO.findAll(conn).stream()
+                            .anyMatch(value -> value.getTeachingClassId().equals(
+                                    schedule.getTeachingClassId()));
+                    if (alreadyScheduled) {
+                        throw new CourseServiceException("教学班已存在排课，预览已过期："
+                                + schedule.getTeachingClassId());
+                    }
+                    checkScheduleConflicts(conn, schedule, teachingClass.getTeacher(), null);
+                    if (!_courseScheduleDAO.insertSchedule(conn, schedule)) {
+                        throw new SQLException("写入自动排课失败");
+                    }
+                }
+                conn.commit();
+                return plan.getAssignments().size();
+            } catch (SQLException | CourseServiceException | RuntimeException exception) {
+                rollback(conn, exception);
+                throw exception;
+            }
+        }
     }
 
     /** {@inheritDoc} */

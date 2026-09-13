@@ -10,6 +10,8 @@
 package vcampus.server.srv;
 
 import vcampus.common.vo.Course;
+import vcampus.common.vo.AutoSchedulePlan;
+import vcampus.common.vo.AutoScheduleRequest;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.CourseRequirementGroup;
 import vcampus.common.vo.SelectCourse;
@@ -39,6 +41,12 @@ public interface ICourseServerSrv {
     List<TeachingClass> queryTeachingClass(String keyword) throws SQLException, IOException;
 
     List<CourseRequirementGroup> queryRequirementGroups() throws SQLException, IOException;
+
+    AutoSchedulePlan previewAutoSchedule(AutoScheduleRequest request)
+            throws SQLException, IOException, CourseServiceException;
+
+    int applyAutoSchedule(AutoSchedulePlan plan)
+            throws SQLException, IOException, CourseServiceException;
 
     TeachingClass addTeachingClass(TeachingClass teachingClass)
             throws SQLException, IOException, CourseServiceException;

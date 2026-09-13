@@ -102,9 +102,15 @@ public class CourseScheduleDAO {
 
     /** 查询全部排课。 */
     public List<CourseSchedule> findAll() throws SQLException, IOException {
+        try (Connection conn = DbHelper.getConnection()) {
+            return findAll(conn);
+        }
+    }
+
+    /** Queries all schedules using the caller's transaction connection. */
+    public List<CourseSchedule> findAll(Connection conn) throws SQLException {
         String sql = SELECT_FIELDS + "ORDER BY dayOfWeek, startTime, scheduleId";
-        try (Connection conn = DbHelper.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql);
+        try (PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
             return mapList(rs);
         }

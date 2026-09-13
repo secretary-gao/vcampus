@@ -11,6 +11,8 @@ package vcampus.client.biz;
 
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Course;
+import vcampus.common.vo.AutoSchedulePlan;
+import vcampus.common.vo.AutoScheduleRequest;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.CourseRequirementGroup;
 import vcampus.common.vo.Message;
@@ -32,6 +34,28 @@ import java.util.Map;
  * {@link Message} 并读取一个响应，连接方式与 {@link UserClientSrv} 一致。
  */
 public class CourseClientSrv implements ICourseClientSrv {
+
+    @Override
+    public AutoSchedulePlan previewAutoSchedule(AutoScheduleRequest request)
+            throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_AUTO_SCHEDULE_PREVIEW, request, "Admin");
+        ensureSuccess(response);
+        if (!(response.getData() instanceof AutoSchedulePlan plan)) {
+            throw new CourseClientException(IConstant.STATUS_ERROR, "服务器响应格式错误");
+        }
+        return plan;
+    }
+
+    @Override
+    public int applyAutoSchedule(AutoSchedulePlan plan)
+            throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_AUTO_SCHEDULE_APPLY, plan, "Admin");
+        ensureSuccess(response);
+        if (!(response.getData() instanceof Number count)) {
+            throw new CourseClientException(IConstant.STATUS_ERROR, "服务器响应格式错误");
+        }
+        return count.intValue();
+    }
 
     @Override
     public List<CourseRequirementGroup> queryRequirementGroups()

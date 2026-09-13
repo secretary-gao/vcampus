@@ -89,6 +89,7 @@ public class CoursePanel extends BorderPane {
             ScheduleAdminPane schedulePane = new ScheduleAdminPane(_client);
             addTab("课程管理", new CourseAdminPane(_client, schedulePane::refresh));
             addTab("排课管理", schedulePane);
+            addTab("自动排课", new AutoSchedulePane(_client, schedulePane::refresh));
             setCenter(_tabs);
             return;
         }
