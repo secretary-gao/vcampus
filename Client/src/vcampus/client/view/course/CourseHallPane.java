@@ -11,6 +11,7 @@ package vcampus.client.view.course;
 
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
@@ -25,6 +26,7 @@ import javafx.scene.layout.VBox;
 import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
+import vcampus.common.vo.CourseRequirementGroup;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeachingClass;
 
@@ -47,6 +49,7 @@ public class CourseHallPane extends VBox {
     private final String _studentId;
     private final Runnable _onEnrollmentChanged;
     private final TextField _keywordField = new TextField();
+    private final ComboBox<String> _natureFilter = new ComboBox<>();
     private final VBox _courseList = new VBox();
     private final Label _statusLabel = new Label();
     private final ToggleGroup _filterGroup = new ToggleGroup();
@@ -68,11 +71,15 @@ public class CourseHallPane extends VBox {
     /** 一次读取课程、教学班、排课和当前选课，形成一致的只读页面快照。 */
     public void refresh() {
         _statusLabel.setText("正在读取课程与教学班…");
-        CourseViewSupport.runAsync(this, this::loadSnapshot, groups -> {
-            _allCourses = groups;
+        CourseViewSupport.runAsync(this, this::loadSnapshot, snapshot -> {
+            _allCourses = snapshot.groups();
+            String selectedNature = _natureFilter.getValue();
+            _natureFilter.getItems().setAll(snapshot.natures());
+            _natureFilter.setValue(snapshot.natures().contains(selectedNature)
+                    ? selectedNature : "全部性质");
             if (!_initialExpansionApplied) {
-                if (!groups.isEmpty()) {
-                    _expandedCourseIds.add(groups.get(0).course().getCourseId());
+                if (!snapshot.groups().isEmpty()) {
+                    _expandedCourseIds.add(snapshot.groups().get(0).course().getCourseId());
                 }
                 _initialExpansionApplied = true;
             }
@@ -90,6 +97,9 @@ public class CourseHallPane extends VBox {
         _keywordField.setPromptText("课程号 / 课程名称 / 教师 / 开课单位");
         _keywordField.setPrefWidth(380);
         _keywordField.setOnAction(event -> applyFilter());
+        _natureFilter.setPrefWidth(130);
+        _natureFilter.setValue("全部性质");
+        _natureFilter.setOnAction(event -> applyFilter());
         HBox.setHgrow(_keywordField, Priority.ALWAYS);
         Button searchButton = button("搜索", "primary", this::applyFilter);
         Button refreshButton = button("刷新数据", "secondary", this::refresh);
@@ -107,7 +117,8 @@ public class CourseHallPane extends VBox {
             }
         });
 
-        HBox searchRow = new HBox(9, _keywordField, searchButton, refreshButton);
+        HBox searchRow = new HBox(9, new Label("课程性质"), _natureFilter,
+                _keywordField, searchButton, refreshButton);
         searchRow.setAlignment(Pos.CENTER_LEFT);
         HBox filters = new HBox(8, new Label("状态"), all, available, selected, conflict);
         filters.setAlignment(Pos.CENTER_LEFT);
@@ -162,10 +173,11 @@ public class CourseHallPane extends VBox {
         List<TeachingClass> classes = _client.queryTeachingClass("");
         List<CourseSchedule> schedules = _client.querySchedule();
         List<SelectCourse> selections = _client.querySelectedCourse(_studentId);
-        return new SnapshotData(courses, classes, schedules, selections);
+        List<CourseRequirementGroup> requirementGroups = _client.queryRequirementGroups();
+        return new SnapshotData(courses, classes, schedules, selections, requirementGroups);
     }
 
-    private List<CourseGroup> loadSnapshot() throws Exception {
+    private HallSnapshot loadSnapshot() throws Exception {
         SnapshotData data = loadData();
         Map<String, Course> courses = data.courses().stream()
                 .collect(Collectors.toMap(Course::getCourseId, Function.identity(),
@@ -183,6 +195,12 @@ public class CourseHallPane extends VBox {
                 .map(SelectCourse::getCourseId)
                 .filter(id -> id != null && !id.isBlank())
                 .collect(Collectors.toSet());
+        Map<String, CourseRequirementGroup> requirementByCourse = new HashMap<>();
+        for (CourseRequirementGroup requirement : data.requirementGroups()) {
+            for (String courseId : requirement.getCourseIds()) {
+                requirementByCourse.put(courseId, requirement);
+            }
+        }
         List<CourseSchedule> selectedSchedules = selectedClassIds.stream()
                 .flatMap(id -> schedulesByClass.getOrDefault(id, List.of()).stream())
                 .toList();
@@ -210,17 +228,24 @@ public class CourseHallPane extends VBox {
                             .sorted(scheduleOrder()).toList();
                     Availability availability = availability(course, teachingClass,
                             classSchedules, selectedClassIds, selectedCourseIds,
-                            selectedSchedules, selectedCourseNamesByClass);
+                            selectedSchedules, selectedCourseNamesByClass,
+                            requirementByCourse, courses);
                     rowsByCourse.computeIfAbsent(course.getCourseId(), ignored -> new ArrayList<>())
                             .add(new TeachingClassRow(course, teachingClass,
                                     classSchedules, availability));
                 });
 
-        return courses.values().stream()
+        List<CourseGroup> groups = courses.values().stream()
                 .sorted(Comparator.comparing(Course::getCourseId))
                 .map(course -> new CourseGroup(course,
                         rowsByCourse.getOrDefault(course.getCourseId(), List.of())))
                 .toList();
+        List<String> natures = new ArrayList<>();
+        natures.add("全部性质");
+        courses.values().stream().map(Course::getCourseNature)
+                .filter(value -> value != null && !value.isBlank()).distinct().sorted()
+                .forEach(natures::add);
+        return new HallSnapshot(groups, natures);
     }
 
     private Availability availability(Course course, TeachingClass teachingClass,
@@ -228,13 +253,28 @@ public class CourseHallPane extends VBox {
                                       Set<String> selectedClassIds,
                                       Set<String> selectedCourseIds,
                                       List<CourseSchedule> selectedSchedules,
-                                      Map<String, String> selectedCourseNamesByClass) {
+                                      Map<String, String> selectedCourseNamesByClass,
+                                      Map<String, CourseRequirementGroup> requirementByCourse,
+                                      Map<String, Course> courses) {
         if (selectedClassIds.contains(teachingClass.getTeachingClassId())) {
             return new Availability(State.SELECTED, "当前已选教学班");
         }
         if (selectedCourseIds.contains(course.getCourseId())) {
             return new Availability(State.SAME_COURSE,
                     "已选择本课程的其他教学班");
+        }
+        CourseRequirementGroup requirement = requirementByCourse.get(course.getCourseId());
+        if (requirement != null && CourseRequirementGroup.CHOOSE_ONE.equals(requirement.getRule())) {
+            String selectedEquivalent = requirement.getCourseIds().stream()
+                    .filter(selectedCourseIds::contains)
+                    .filter(id -> !id.equals(course.getCourseId()))
+                    .findFirst().orElse(null);
+            if (selectedEquivalent != null) {
+                Course selected = courses.get(selectedEquivalent);
+                return new Availability(State.GROUP,
+                        "已选择同组课程《" + (selected == null ? selectedEquivalent
+                                : selected.getCourseName()) + "》");
+            }
         }
         if (teachingClass.getSelectedCount() >= teachingClass.getCapacity()) {
             return new Availability(State.FULL, "教学班名额已满");
@@ -271,8 +311,11 @@ public class CourseHallPane extends VBox {
                 : _keywordField.getText().trim().toLowerCase(Locale.ROOT);
         String filter = _filterGroup.getSelectedToggle() == null ? "all"
                 : String.valueOf(_filterGroup.getSelectedToggle().getUserData());
+        String nature = _natureFilter.getValue();
         List<CourseGroup> visible = _allCourses.stream()
                 .filter(group -> matchesKeyword(group, keyword))
+                .filter(group -> nature == null || "全部性质".equals(nature)
+                        || nature.equals(group.course().getCourseNature()))
                 .filter(group -> matchesFilter(group, filter))
                 .toList();
         renderCourses(visible);
@@ -482,8 +525,11 @@ public class CourseHallPane extends VBox {
 
     private record SnapshotData(List<Course> courses, List<TeachingClass> classes,
                                 List<CourseSchedule> schedules,
-                                List<SelectCourse> selections) {
+                                List<SelectCourse> selections,
+                                List<CourseRequirementGroup> requirementGroups) {
     }
+
+    private record HallSnapshot(List<CourseGroup> groups, List<String> natures) { }
 
     private record CourseGroup(Course course, List<TeachingClassRow> classes) {
         boolean selected() {
@@ -512,6 +558,10 @@ public class CourseHallPane extends VBox {
                                 row.availability().state() == State.CONFLICT)) {
                             return new Availability(State.CONFLICT, "时间冲突");
                         }
+                        if (classes.stream().anyMatch(row ->
+                                row.availability().state() == State.GROUP)) {
+                            return new Availability(State.GROUP, "已满足二选一要求");
+                        }
                         return new Availability(State.UNAVAILABLE, "当前不可选");
                     });
         }
@@ -530,6 +580,7 @@ public class CourseHallPane extends VBox {
                 case SAME_COURSE -> "同课已选";
                 case FULL -> "已满";
                 case CONFLICT -> "时间冲突";
+                case GROUP -> "同组已选";
                 case UNAVAILABLE -> "不可选";
             };
         }
@@ -541,6 +592,7 @@ public class CourseHallPane extends VBox {
         SAME_COURSE("state-unavailable", "不可重复", "secondary"),
         FULL("state-full", "已满", "warning"),
         CONFLICT("state-conflict", "时间冲突", "danger"),
+        GROUP("state-unavailable", "二选一已满足", "secondary"),
         UNAVAILABLE("state-unavailable", "不可选", "secondary");
 
         private final String _styleClass;

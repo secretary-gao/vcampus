@@ -108,6 +108,7 @@ public interface IConstant {
     String MSG_TEACHING_CLASS_ADD = "teachingClassAdd";
     String MSG_TEACHING_CLASS_UPDATE = "teachingClassUpdate";
     String MSG_TEACHING_CLASS_DELETE = "teachingClassDelete";
+    String MSG_COURSE_REQUIREMENT_GROUP_QUERY = "courseRequirementGroupQuery";
 
     // ---------- 虚拟商店模块（store）消息名与状态码 ----------
 

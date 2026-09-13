@@ -11,6 +11,7 @@ package vcampus.server.srv;
 
 import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
+import vcampus.common.vo.CourseRequirementGroup;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
@@ -36,6 +37,8 @@ public interface ICourseServerSrv {
 
     /** Queries concrete teaching classes by course, name, teacher, or class ID. */
     List<TeachingClass> queryTeachingClass(String keyword) throws SQLException, IOException;
+
+    List<CourseRequirementGroup> queryRequirementGroups() throws SQLException, IOException;
 
     TeachingClass addTeachingClass(TeachingClass teachingClass)
             throws SQLException, IOException, CourseServiceException;

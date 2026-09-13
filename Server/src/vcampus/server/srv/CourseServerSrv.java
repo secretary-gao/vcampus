@@ -11,11 +11,13 @@ package vcampus.server.srv;
 
 import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
+import vcampus.common.vo.CourseRequirementGroup;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
 import vcampus.server.dao.CourseDAO;
 import vcampus.server.dao.CourseScheduleDAO;
+import vcampus.server.dao.CourseRequirementGroupDAO;
 import vcampus.server.dao.CourseStudentDAO;
 import vcampus.server.dao.DbHelper;
 import vcampus.server.dao.SelectCourseDAO;
@@ -46,6 +48,9 @@ public class CourseServerSrv implements ICourseServerSrv {
 
     /** 排课数据访问对象。 */
     private final CourseScheduleDAO _courseScheduleDAO;
+
+    private final CourseRequirementGroupDAO _requirementGroupDAO =
+            new CourseRequirementGroupDAO();
 
     /** Concrete teaching-class persistence. */
     private final TeachingClassDAO _teachingClassDAO = new TeachingClassDAO();
@@ -102,6 +107,12 @@ public class CourseServerSrv implements ICourseServerSrv {
     public List<TeachingClass> queryTeachingClass(String keyword)
             throws SQLException, IOException {
         return _teachingClassDAO.findByKeyword(keyword);
+    }
+
+    @Override
+    public List<CourseRequirementGroup> queryRequirementGroups()
+            throws SQLException, IOException {
+        return _requirementGroupDAO.findAll();
     }
 
     /** {@inheritDoc} */
@@ -341,6 +352,14 @@ public class CourseServerSrv implements ICourseServerSrv {
                 if (_selectCourseDAO.findByStudentAndCourse(
                         conn, normalizedStudentId, normalizedCourseId) != null) {
                     throw new CourseServiceException("请勿重复选择同一门课程");
+                }
+                CourseRequirementGroupDAO.BlockingSelection groupBlock =
+                        _requirementGroupDAO.findBlockingSelection(
+                                conn, normalizedStudentId, normalizedCourseId);
+                if (groupBlock != null) {
+                    throw new CourseServiceException("选课失败：已选择同组课程《"
+                            + groupBlock.selectedCourseName() + "》（"
+                            + groupBlock.groupName() + "）");
                 }
                 CourseScheduleDAO.StudentScheduleConflict conflict =
                         _courseScheduleDAO.findStudentScheduleConflict(

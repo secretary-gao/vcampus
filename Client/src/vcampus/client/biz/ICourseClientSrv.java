@@ -11,6 +11,7 @@ package vcampus.client.biz;
 
 import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
+import vcampus.common.vo.CourseRequirementGroup;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
@@ -25,6 +26,9 @@ public interface ICourseClientSrv {
     List<Course> queryCourse(String keyword) throws IOException, ClassNotFoundException;
 
     List<TeachingClass> queryTeachingClass(String keyword)
+            throws IOException, ClassNotFoundException;
+
+    List<CourseRequirementGroup> queryRequirementGroups()
             throws IOException, ClassNotFoundException;
 
     TeachingClass addTeachingClass(TeachingClass teachingClass)

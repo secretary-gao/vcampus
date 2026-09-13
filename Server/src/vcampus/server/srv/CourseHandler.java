@@ -65,6 +65,7 @@ public class CourseHandler implements ModuleHandler {
                 , IConstant.MSG_TEACHING_CLASS_ADD
                 , IConstant.MSG_TEACHING_CLASS_UPDATE
                 , IConstant.MSG_TEACHING_CLASS_DELETE
+                , IConstant.MSG_COURSE_REQUIREMENT_GROUP_QUERY
         );
     }
 
@@ -88,6 +89,8 @@ public class CourseHandler implements ModuleHandler {
                         _courseServerSrv.updateTeachingClass((TeachingClass) request.getData()));
                 case IConstant.MSG_TEACHING_CLASS_DELETE -> success(request,
                         _courseServerSrv.deleteTeachingClass((String) request.getData()));
+                case IConstant.MSG_COURSE_REQUIREMENT_GROUP_QUERY -> success(request,
+                        _courseServerSrv.queryRequirementGroups());
                 case IConstant.MSG_COURSE_ADD -> success(
                         request, _courseServerSrv.addCourse((Course) request.getData()));
                 case IConstant.MSG_COURSE_UPDATE -> success(
