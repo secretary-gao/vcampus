@@ -9,7 +9,10 @@
  */
 package vcampus.client.biz;
 
+import vcampus.common.vo.AutoSchedulePlan;
+import vcampus.common.vo.AutoScheduleRequest;
 import vcampus.common.vo.Course;
+import vcampus.common.vo.CourseDashboardStats;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
@@ -51,6 +54,20 @@ public class CourseClientSrvTest {
                 "Socket 查询具体教学班");
 
         require(client.selectCourse(STUDENT_A, NORMAL_COURSE_ID), "Socket 正常选课");
+        require(!client.queryRequirementGroups().isEmpty(),
+                "Socket query CourseRequirementGroup");
+        CourseDashboardStats dashboard = client.queryDashboard();
+        require(dashboard.getCourseCount() > 0 && dashboard.getTeachingClassCount() > 0,
+                "Socket query Course dashboard");
+        int scheduleCountBeforePreview = client.querySchedule().size();
+        AutoSchedulePlan preview = client.previewAutoSchedule(new AutoScheduleRequest(
+                List.of(NORMAL_COURSE_ID + "-01"), 1, 16));
+        require(preview.getUnassignedTeachingClassIds().isEmpty()
+                        && preview.getAssignments().size() == 1,
+                "Socket auto-schedule Preview returns a complete plan");
+        require(client.querySchedule().size() == scheduleCountBeforePreview,
+                "Socket auto-schedule Preview does not mutate the database");
+
         List<SelectCourse> selected = client.querySelectedCourse(STUDENT_A);
         require(selected.stream().anyMatch(r -> NORMAL_COURSE_ID.equals(r.getCourseId())),
                 "Socket 查询本人已选课程");
