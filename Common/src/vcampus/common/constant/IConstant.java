@@ -111,6 +111,7 @@ public interface IConstant {
     String MSG_COURSE_REQUIREMENT_GROUP_QUERY = "courseRequirementGroupQuery";
     String MSG_COURSE_AUTO_SCHEDULE_PREVIEW = "courseAutoSchedulePreview";
     String MSG_COURSE_AUTO_SCHEDULE_APPLY = "courseAutoScheduleApply";
+    String MSG_COURSE_DASHBOARD_QUERY = "courseDashboardQuery";
 
     // ---------- 虚拟商店模块（store）消息名与状态码 ----------
 

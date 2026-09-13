@@ -15,6 +15,7 @@ import vcampus.common.vo.AutoSchedulePlan;
 import vcampus.common.vo.AutoScheduleRequest;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.CourseRequirementGroup;
+import vcampus.common.vo.CourseDashboardStats;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.SelectCourse;
@@ -34,6 +35,16 @@ import java.util.Map;
  * {@link Message} 并读取一个响应，连接方式与 {@link UserClientSrv} 一致。
  */
 public class CourseClientSrv implements ICourseClientSrv {
+
+    @Override
+    public CourseDashboardStats queryDashboard() throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_DASHBOARD_QUERY, null, "Admin");
+        ensureSuccess(response);
+        if (!(response.getData() instanceof CourseDashboardStats stats)) {
+            throw new CourseClientException(IConstant.STATUS_ERROR, "服务器响应格式错误");
+        }
+        return stats;
+    }
 
     @Override
     public AutoSchedulePlan previewAutoSchedule(AutoScheduleRequest request)

@@ -12,6 +12,7 @@ package vcampus.client.view.course;
 import javafx.collections.FXCollections;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
@@ -20,6 +21,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
@@ -27,6 +29,7 @@ import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
 
 import java.util.ArrayList;
+import java.io.File;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,6 +51,7 @@ public class TeacherCoursesPane extends VBox {
     private final Label _detailTitle = new Label("请选择教学班");
     private final Label _detailMeta = new Label("课程安排与容量将在这里显示");
     private final Label _statusLabel = new Label();
+    private TeacherCourse _currentCourse;
 
     /** 创建教师课程名单页面。 */
     public TeacherCoursesPane(ICourseClientSrv client, String teacherName) {
@@ -87,7 +91,10 @@ public class TeacherCoursesPane extends VBox {
         Button refreshButton = new Button("刷新");
         refreshButton.getStyleClass().add("secondary");
         refreshButton.setOnAction(event -> refresh());
-        HBox header = new HBox(12, heading, refreshButton);
+        Button exportButton = new Button("导出当前名单 CSV");
+        exportButton.getStyleClass().add("primary");
+        exportButton.setOnAction(event -> exportRoster());
+        HBox header = new HBox(12, heading, exportButton, refreshButton);
         header.setAlignment(Pos.CENTER_LEFT);
 
         HBox metrics = new HBox(12,
@@ -203,6 +210,7 @@ public class TeacherCoursesPane extends VBox {
 
     private void showRoster(TeacherCourse selected) {
         if (selected == null) {
+            _currentCourse = null;
             _rosterTitle.setText("选课学生");
             _detailTitle.setText("请选择教学班");
             _detailMeta.setText("课程安排与容量将在这里显示");
@@ -210,6 +218,7 @@ public class TeacherCoursesPane extends VBox {
             _rosterTable.getItems().clear();
             return;
         }
+        _currentCourse = selected;
         _rosterTitle.setText(selected.course().getCourseName() + " · "
                 + selected.classNumber() + " 班 · 选课学生");
         _detailTitle.setText(selected.course().getCourseId() + " · "
@@ -218,6 +227,26 @@ public class TeacherCoursesPane extends VBox {
                 + selected.capacity() + " 人  ·  " + scheduleSummary(selected.schedules()));
         _currentCountValue.setText(String.valueOf(selected.roster().size()));
         _rosterTable.setItems(FXCollections.observableArrayList(selected.roster()));
+    }
+
+    private void exportRoster() {
+        if (_currentCourse == null) {
+            _statusLabel.setText("请先选择一个教学班");
+            return;
+        }
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("导出教学班学生名单");
+        chooser.setInitialFileName(_currentCourse.course().getCourseId() + "-"
+                + _currentCourse.classNumber() + "-roster.csv");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV 文件", "*.csv"));
+        File file = chooser.showSaveDialog(getScene() == null ? null : getScene().getWindow());
+        if (file == null) return;
+        try {
+            CourseCsvExporter.writeRoster(file.toPath(), _currentCourse.roster());
+            _statusLabel.setText("已导出：" + file.getName());
+        } catch (Exception exception) {
+            new Alert(Alert.AlertType.ERROR, "导出失败：" + exception.getMessage()).showAndWait();
+        }
     }
 
     private VBox metric(String labelText, Label value, String suffix) {

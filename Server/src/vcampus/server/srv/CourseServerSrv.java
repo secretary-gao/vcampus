@@ -14,12 +14,14 @@ import vcampus.common.vo.AutoSchedulePlan;
 import vcampus.common.vo.AutoScheduleRequest;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.CourseRequirementGroup;
+import vcampus.common.vo.CourseDashboardStats;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
 import vcampus.server.dao.CourseDAO;
 import vcampus.server.dao.CourseScheduleDAO;
 import vcampus.server.dao.CourseRequirementGroupDAO;
+import vcampus.server.dao.CourseDashboardDAO;
 import vcampus.server.dao.CourseStudentDAO;
 import vcampus.server.dao.DbHelper;
 import vcampus.server.dao.SelectCourseDAO;
@@ -56,6 +58,8 @@ public class CourseServerSrv implements ICourseServerSrv {
 
     private final CourseRequirementGroupDAO _requirementGroupDAO =
             new CourseRequirementGroupDAO();
+
+    private final CourseDashboardDAO _dashboardDAO = new CourseDashboardDAO();
 
     /** Concrete teaching-class persistence. */
     private final TeachingClassDAO _teachingClassDAO = new TeachingClassDAO();
@@ -118,6 +122,11 @@ public class CourseServerSrv implements ICourseServerSrv {
     public List<CourseRequirementGroup> queryRequirementGroups()
             throws SQLException, IOException {
         return _requirementGroupDAO.findAll();
+    }
+
+    @Override
+    public CourseDashboardStats queryDashboard() throws SQLException, IOException {
+        return _dashboardDAO.load();
     }
 
     @Override

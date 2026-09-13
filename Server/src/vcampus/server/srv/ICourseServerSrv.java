@@ -14,6 +14,7 @@ import vcampus.common.vo.AutoSchedulePlan;
 import vcampus.common.vo.AutoScheduleRequest;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.CourseRequirementGroup;
+import vcampus.common.vo.CourseDashboardStats;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
@@ -47,6 +48,8 @@ public interface ICourseServerSrv {
 
     int applyAutoSchedule(AutoSchedulePlan plan)
             throws SQLException, IOException, CourseServiceException;
+
+    CourseDashboardStats queryDashboard() throws SQLException, IOException;
 
     TeachingClass addTeachingClass(TeachingClass teachingClass)
             throws SQLException, IOException, CourseServiceException;

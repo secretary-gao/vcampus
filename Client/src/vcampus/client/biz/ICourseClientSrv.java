@@ -14,6 +14,7 @@ import vcampus.common.vo.AutoSchedulePlan;
 import vcampus.common.vo.AutoScheduleRequest;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.CourseRequirementGroup;
+import vcampus.common.vo.CourseDashboardStats;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
@@ -38,6 +39,8 @@ public interface ICourseClientSrv {
 
     int applyAutoSchedule(AutoSchedulePlan plan)
             throws IOException, ClassNotFoundException;
+
+    CourseDashboardStats queryDashboard() throws IOException, ClassNotFoundException;
 
     TeachingClass addTeachingClass(TeachingClass teachingClass)
             throws IOException, ClassNotFoundException;
