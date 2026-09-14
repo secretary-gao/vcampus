@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.net.InetSocketAddress;
 import java.util.List;
 
 /** 通过 Socket 向服务器发送学籍请求。 */
@@ -113,13 +114,16 @@ public class StudentClientSrv implements IStudentClientSrv {
 
     private Message sendAndReceive(Message request)
             throws IOException, ClassNotFoundException {
-        try (Socket socket = new Socket(_host, _port);
-             ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream())) {
-            output.flush();
-            try (ObjectInputStream input = new ObjectInputStream(socket.getInputStream())) {
-                output.writeObject(request);
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(_host, _port), 5000);
+            socket.setSoTimeout(10000);
+            try (ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream())) {
                 output.flush();
-                return (Message) input.readObject();
+                try (ObjectInputStream input = new ObjectInputStream(socket.getInputStream())) {
+                    output.writeObject(request);
+                    output.flush();
+                    return (Message) input.readObject();
+                }
             }
         }
     }

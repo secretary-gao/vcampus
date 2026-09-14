@@ -10,9 +10,14 @@
 package vcampus.server.srv;
 
 import vcampus.common.vo.Course;
+import vcampus.common.vo.AutoSchedulePlan;
+import vcampus.common.vo.AutoScheduleRequest;
 import vcampus.common.vo.CourseSchedule;
+import vcampus.common.vo.CourseRequirementGroup;
+import vcampus.common.vo.CourseDashboardStats;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
+import vcampus.common.vo.TeachingClass;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -32,6 +37,28 @@ public interface ICourseServerSrv {
      * @throws IOException  数据库配置文件读取异常
      */
     List<Course> queryCourse(String keyword) throws SQLException, IOException;
+
+    /** Queries concrete teaching classes by course, name, teacher, or class ID. */
+    List<TeachingClass> queryTeachingClass(String keyword) throws SQLException, IOException;
+
+    List<CourseRequirementGroup> queryRequirementGroups() throws SQLException, IOException;
+
+    AutoSchedulePlan previewAutoSchedule(AutoScheduleRequest request)
+            throws SQLException, IOException, CourseServiceException;
+
+    int applyAutoSchedule(AutoSchedulePlan plan)
+            throws SQLException, IOException, CourseServiceException;
+
+    CourseDashboardStats queryDashboard() throws SQLException, IOException;
+
+    TeachingClass addTeachingClass(TeachingClass teachingClass)
+            throws SQLException, IOException, CourseServiceException;
+
+    boolean updateTeachingClass(TeachingClass teachingClass)
+            throws SQLException, IOException, CourseServiceException;
+
+    boolean deleteTeachingClass(String teachingClassId)
+            throws SQLException, IOException, CourseServiceException;
 
     /** 新增课程主数据。 */
     Course addCourse(Course course)

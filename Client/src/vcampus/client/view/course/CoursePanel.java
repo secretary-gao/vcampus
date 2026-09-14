@@ -19,6 +19,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import vcampus.client.biz.CourseClientSrv;
 import vcampus.client.biz.ICourseClientSrv;
+import vcampus.client.view.SeuEmblem;
 import vcampus.common.vo.User;
 
 /**
@@ -66,7 +67,7 @@ public class CoursePanel extends BorderPane {
         Label identity = new Label(role + (name.isBlank() ? "" : " · " + name));
         identity.getStyleClass().addAll("role-badge", roleClass(role));
 
-        HBox headline = new HBox(16, titles, identity);
+        HBox headline = new HBox(12, SeuEmblem.build(36), titles, identity);
         headline.getStyleClass().add("course-headline");
         Label subtitle = new Label("课程检索、学习安排与教务管理");
         subtitle.getStyleClass().add("course-subtitle");
@@ -86,8 +87,10 @@ public class CoursePanel extends BorderPane {
         }
         if ("管理员".equals(_currentUser.getURole())) {
             ScheduleAdminPane schedulePane = new ScheduleAdminPane(_client);
+            addTab("教务概览", new CourseDashboardPane(_client));
             addTab("课程管理", new CourseAdminPane(_client, schedulePane::refresh));
             addTab("排课管理", schedulePane);
+            addTab("自动排课", new AutoSchedulePane(_client, schedulePane::refresh));
             setCenter(_tabs);
             return;
         }
@@ -96,7 +99,7 @@ public class CoursePanel extends BorderPane {
                 setCenter(message("当前教师账号尚未设置姓名，无法匹配授课课程。"));
                 return;
             }
-            addTab("教师工作台", new TeacherCoursesPane(_client, _currentUser.getUName()));
+            addTab("教师工作台", new TeacherCoursesPane(_client, _currentUser));
             setCenter(_tabs);
             return;
         }
@@ -129,7 +132,8 @@ public class CoursePanel extends BorderPane {
             }
         };
         _hallPane = new CourseHallPane(_client, studentId, enrollmentChanged);
-        _selectedPane = new SelectedCoursesPane(_client, studentId, enrollmentChanged);
+        _selectedPane = new SelectedCoursesPane(_client, studentId, enrollmentChanged,
+                () -> _tabs.getSelectionModel().select(0));
         _timetablePane = new TimetablePane(_client, studentId);
         addTab("课程大厅", _hallPane);
         addTab("我的课程", _selectedPane);

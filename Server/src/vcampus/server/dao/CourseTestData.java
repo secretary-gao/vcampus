@@ -9,6 +9,9 @@
  */
 package vcampus.server.dao;
 
+import vcampus.common.vo.Course;
+import vcampus.common.vo.TeachingClass;
+
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -22,6 +25,36 @@ import java.sql.SQLException;
 public final class CourseTestData {
 
     private CourseTestData() {
+    }
+
+    /** Creates a Course 1.0-shaped fixture plus its normalized class 01. */
+    public static boolean prepareCourse(Course course) throws SQLException, IOException {
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                boolean inserted = new CourseDAO().insertCourse(conn, course);
+                TeachingClass teachingClass = new TeachingClass(course.getCourseId() + "-01",
+                        course.getCourseId(), "01", course.getTeacher(), course.getCapacity(),
+                        course.getSelectedCount(), null, "test fixture");
+                new TeachingClassDAO().insert(conn, teachingClass);
+                conn.commit();
+                return inserted;
+            } catch (SQLException | RuntimeException e) {
+                conn.rollback();
+                throw e;
+            }
+        }
+    }
+
+    /** Deletes normalized teaching classes before deleting the fixture Course. */
+    public static void cleanupCourse(String courseId) throws SQLException, IOException {
+        try (Connection conn = DbHelper.getConnection()) {
+            for (TeachingClass teachingClass : new TeachingClassDAO()
+                    .findByCourseId(conn, courseId)) {
+                new TeachingClassDAO().delete(conn, teachingClass.getTeachingClassId());
+            }
+            new CourseDAO().deleteCourse(conn, courseId);
+        }
     }
 
     /**

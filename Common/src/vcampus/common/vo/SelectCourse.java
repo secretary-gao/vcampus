@@ -34,6 +34,9 @@ public class SelectCourse implements Serializable {
     /** 课程号（外键关联 tblCourse.courseId）。 */
     private String _courseId;
 
+    /** 学生实际选择的教学班 ID。 */
+    private String _teachingClassId;
+
     /** 选课时间。 */
     private LocalDateTime _selectTime;
 
@@ -111,6 +114,14 @@ public class SelectCourse implements Serializable {
      */
     public void setCourseId(String courseId) {
         this._courseId = courseId;
+    }
+
+    public String getTeachingClassId() {
+        return _teachingClassId;
+    }
+
+    public void setTeachingClassId(String teachingClassId) {
+        _teachingClassId = teachingClassId;
     }
 
     /**

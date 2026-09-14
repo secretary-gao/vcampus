@@ -31,6 +31,7 @@ import javafx.util.StringConverter;
 import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
+import vcampus.common.vo.TeachingClass;
 
 import java.time.LocalTime;
 import java.util.List;
@@ -45,7 +46,7 @@ public class ScheduleAdminPane extends VBox {
     private final ICourseClientSrv _client;
     private final TableView<ScheduleRow> _table = new TableView<>();
     private final Label _statusLabel = new Label();
-    private List<Course> _courses = List.of();
+    private List<TeachingClassChoice> _teachingClasses = List.of();
 
     /** 创建管理员排课页面。 */
     public ScheduleAdminPane(ICourseClientSrv client) {
@@ -59,7 +60,7 @@ public class ScheduleAdminPane extends VBox {
     public void refresh() {
         _statusLabel.setText("正在读取排课…");
         CourseViewSupport.runAsync(this, this::loadSnapshot, snapshot -> {
-            _courses = snapshot.courses();
+            _teachingClasses = snapshot.teachingClasses();
             _table.setItems(FXCollections.observableArrayList(snapshot.rows()));
             _statusLabel.setText("共 " + snapshot.rows().size() + " 条排课");
         });
@@ -79,12 +80,18 @@ public class ScheduleAdminPane extends VBox {
         header.setAlignment(Pos.CENTER_LEFT);
 
         _table.getColumns().addAll(
-                CourseViewSupport.textColumn("课程", 210, ScheduleRow::displayCourse),
+                CourseViewSupport.textColumn("课程 / 教学班", 230, ScheduleRow::displayCourse),
                 CourseViewSupport.textColumn("教师", 110, ScheduleRow::teacher),
                 CourseViewSupport.textColumn("教室", 105,
                         row -> row.schedule().getClassroom()),
                 CourseViewSupport.textColumn("星期", 75,
                         row -> CourseViewSupport.dayName(row.schedule().getDayOfWeek())),
+                CourseViewSupport.textColumn("周次", 80,
+                        row -> row.schedule().getWeekStart() + "-"
+                                + row.schedule().getWeekEnd() + " 周"),
+                CourseViewSupport.textColumn("节次", 80,
+                        row -> row.schedule().getStartPeriod() + "-"
+                                + row.schedule().getEndPeriod() + " 节"),
                 CourseViewSupport.textColumn("时间", 120,
                         row -> CourseViewSupport.timeRange(
                                 row.schedule().getStartTime(), row.schedule().getEndTime())),
@@ -134,10 +141,17 @@ public class ScheduleAdminPane extends VBox {
         List<Course> courses = _client.queryCourse("");
         Map<String, Course> courseMap = courses.stream()
                 .collect(Collectors.toMap(Course::getCourseId, Function.identity(), (a, b) -> a));
-        List<ScheduleRow> rows = _client.querySchedule().stream()
-                .map(schedule -> new ScheduleRow(schedule, courseMap.get(schedule.getCourseId())))
+        Map<String, TeachingClass> classMap = _client.queryTeachingClass("").stream()
+                .collect(Collectors.toMap(TeachingClass::getTeachingClassId,
+                        Function.identity(), (a, b) -> a));
+        List<TeachingClassChoice> choices = classMap.values().stream()
+                .map(value -> new TeachingClassChoice(value, courseMap.get(value.getCourseId())))
                 .toList();
-        return new Snapshot(courses, rows);
+        List<ScheduleRow> rows = _client.querySchedule().stream()
+                .map(schedule -> new ScheduleRow(schedule, courseMap.get(schedule.getCourseId()),
+                        classMap.get(schedule.getTeachingClassId())))
+                .toList();
+        return new Snapshot(choices, rows);
     }
 
     private void openEditor(ScheduleRow original) {
@@ -150,8 +164,8 @@ public class ScheduleAdminPane extends VBox {
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, saveType);
         CourseViewSupport.styleDialog(dialog.getDialogPane());
 
-        ComboBox<Course> courseBox = new ComboBox<>(
-                FXCollections.observableArrayList(_courses));
+        ComboBox<TeachingClassChoice> courseBox = new ComboBox<>(
+                FXCollections.observableArrayList(_teachingClasses));
         courseBox.setMaxWidth(Double.MAX_VALUE);
         courseBox.setPromptText("选择课程");
         courseBox.setConverter(courseConverter());
@@ -161,33 +175,48 @@ public class ScheduleAdminPane extends VBox {
         dayBox.setPromptText("选择星期");
         dayBox.setConverter(dayConverter());
         TextField classroom = field("例如：教一-101");
+        TextField weekStart = field("1");
+        TextField weekEnd = field("16");
+        TextField startPeriod = field("1");
+        TextField endPeriod = field("2");
         TextField start = field("HH:mm");
         TextField end = field("HH:mm");
         start.setText("08:00");
         end.setText("09:40");
+        weekStart.setText("1");
+        weekEnd.setText("16");
+        startPeriod.setText("1");
+        endPeriod.setText("2");
 
         if (editing) {
             CourseSchedule schedule = original.schedule();
-            _courses.stream()
-                    .filter(course -> course.getCourseId().equals(schedule.getCourseId()))
+            _teachingClasses.stream()
+                    .filter(choice -> choice.teachingClass().getTeachingClassId()
+                            .equals(schedule.getTeachingClassId()))
                     .findFirst()
                     .ifPresent(courseBox::setValue);
             dayBox.setValue(schedule.getDayOfWeek());
             classroom.setText(schedule.getClassroom());
             start.setText(schedule.getStartTime().toString());
             end.setText(schedule.getEndTime().toString());
+            weekStart.setText(String.valueOf(schedule.getWeekStart()));
+            weekEnd.setText(String.valueOf(schedule.getWeekEnd()));
+            startPeriod.setText(String.valueOf(schedule.getStartPeriod()));
+            endPeriod.setText(String.valueOf(schedule.getEndPeriod()));
         }
 
         GridPane form = new GridPane();
         form.getStyleClass().add("form-grid");
-        addField(form, 0, "课程", courseBox);
+        addField(form, 0, "教学班", courseBox);
         addField(form, 1, "教室", classroom);
-        addField(form, 2, "星期", dayBox);
+        addField(form, 2, "教学周", new HBox(8, weekStart, new Label("至"), weekEnd));
+        addField(form, 3, "星期", dayBox);
+        addField(form, 4, "节次", new HBox(8, startPeriod, new Label("至"), endPeriod));
         HBox times = new HBox(8, start, new Label("至"), end);
         times.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(start, Priority.ALWAYS);
         HBox.setHgrow(end, Priority.ALWAYS);
-        addField(form, 3, "时间", times);
+        addField(form, 5, "时间", times);
         dialog.getDialogPane().setContent(form);
         dialog.getDialogPane().setPrefWidth(480);
 
@@ -196,11 +225,11 @@ public class ScheduleAdminPane extends VBox {
         saveButton.getStyleClass().add("primary");
         saveButton.addEventFilter(ActionEvent.ACTION, event -> {
             try {
-                Course course = courseBox.getValue();
+                TeachingClassChoice choice = courseBox.getValue();
                 Integer day = dayBox.getValue();
                 String room = required(classroom.getText(), "教室");
-                if (course == null || day == null) {
-                    throw new IllegalArgumentException("课程和星期均不能为空");
+                if (choice == null || day == null) {
+                    throw new IllegalArgumentException("教学班和星期均不能为空");
                 }
                 LocalTime startTime = CourseViewSupport.parseTime(start.getText());
                 LocalTime endTime = CourseViewSupport.parseTime(end.getText());
@@ -208,8 +237,15 @@ public class ScheduleAdminPane extends VBox {
                     throw new IllegalArgumentException("结束时间必须晚于开始时间");
                 }
                 String scheduleId = editing ? original.schedule().getScheduleId() : null;
-                result.set(new CourseSchedule(scheduleId, course.getCourseId(),
-                        room, day, startTime, endTime));
+                CourseSchedule value = new CourseSchedule(scheduleId,
+                        choice.course().getCourseId(),
+                        room, day, startTime, endTime);
+                value.setTeachingClassId(choice.teachingClass().getTeachingClassId());
+                value.setWeekStart(parseNumber(weekStart.getText(), "起始周"));
+                value.setWeekEnd(parseNumber(weekEnd.getText(), "结束周"));
+                value.setStartPeriod(parseNumber(startPeriod.getText(), "起始节次"));
+                value.setEndPeriod(parseNumber(endPeriod.getText(), "结束节次"));
+                result.set(value);
             } catch (RuntimeException exception) {
                 CourseViewSupport.showError(exception);
                 event.consume();
@@ -257,16 +293,18 @@ public class ScheduleAdminPane extends VBox {
                 });
     }
 
-    private StringConverter<Course> courseConverter() {
+    private StringConverter<TeachingClassChoice> courseConverter() {
         return new StringConverter<>() {
             @Override
-            public String toString(Course course) {
-                return course == null ? "" : course.getCourseId() + " · "
-                        + course.getCourseName() + " · " + course.getTeacher();
+            public String toString(TeachingClassChoice choice) {
+                return choice == null ? "" : choice.course().getCourseId() + " · "
+                        + choice.course().getCourseName() + " · "
+                        + choice.teachingClass().getClassNumber() + " 班 · "
+                        + choice.teachingClass().getTeacher();
             }
 
             @Override
-            public Course fromString(String value) {
+            public TeachingClassChoice fromString(String value) {
                 return null;
             }
         };
@@ -308,6 +346,14 @@ public class ScheduleAdminPane extends VBox {
         return value.trim();
     }
 
+    private int parseNumber(String value, String fieldName) {
+        try {
+            return Integer.parseInt(required(value, fieldName));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(fieldName + "必须是整数");
+        }
+    }
+
     private Button button(String text, String styleClass, Runnable action) {
         Button button = new Button(text);
         button.getStyleClass().add(styleClass);
@@ -316,18 +362,24 @@ public class ScheduleAdminPane extends VBox {
     }
 
     /** 页面一次刷新所需的课程与排课快照。 */
-    private record Snapshot(List<Course> courses, List<ScheduleRow> rows) {
+    private record Snapshot(List<TeachingClassChoice> teachingClasses,
+                            List<ScheduleRow> rows) {
+    }
+
+    private record TeachingClassChoice(TeachingClass teachingClass, Course course) {
     }
 
     /** 管理表格展示行。 */
-    private record ScheduleRow(CourseSchedule schedule, Course course) {
+    private record ScheduleRow(CourseSchedule schedule, Course course,
+                               TeachingClass teachingClass) {
         String displayCourse() {
             return course == null ? schedule.getCourseId()
-                    : course.getCourseId() + " · " + course.getCourseName();
+                    : course.getCourseId() + " · " + course.getCourseName() + " · "
+                    + (teachingClass == null ? "—" : teachingClass.getClassNumber() + " 班");
         }
 
         String teacher() {
-            return course == null ? "—" : course.getTeacher();
+            return teachingClass == null ? "—" : teachingClass.getTeacher();
         }
     }
 }
