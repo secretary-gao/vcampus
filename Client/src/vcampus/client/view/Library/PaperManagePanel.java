@@ -176,14 +176,17 @@ public class PaperManagePanel extends VBox {
         TableColumn<Paper, String> titleCol = new TableColumn<>("标题");
         titleCol.setCellValueFactory(new PropertyValueFactory<>("title"));
         titleCol.setPrefWidth(350);
+        titleCol.setStyle("-fx-alignment: center;");
 
         TableColumn<Paper, String> authorCol = new TableColumn<>("作者");
         authorCol.setCellValueFactory(new PropertyValueFactory<>("author"));
         authorCol.setPrefWidth(150);
+        authorCol.setStyle("-fx-alignment: center;");
 
         TableColumn<Paper, String> pdfNameCol = new TableColumn<>("PDF文件名");
         pdfNameCol.setCellValueFactory(new PropertyValueFactory<>("pdfName"));
         pdfNameCol.setPrefWidth(150);
+        pdfNameCol.setStyle("-fx-alignment: center;");
 
         table.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             deleteBtn.setDisable(n == null);
