@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS tblUser (
     uSex    ENUM('男', '女')      COMMENT '性别',
     uPwd    CHAR(32)     NOT NULL COMMENT 'MD5密码摘要（32位十六进制）',
     uRole   ENUM('学生', '教师', '管理员') NOT NULL DEFAULT '学生' COMMENT '用户角色',
-    uStatus ENUM('正常', '禁用') NOT NULL DEFAULT '正常' COMMENT '账号状态，管理员可禁用/启用（对应说明书"管理员可注销/禁用账号"）',
+    uStatus ENUM('正常', '禁用', '待审核') NOT NULL DEFAULT '正常' COMMENT '账号状态：正常/管理员禁用/注册后待审核（对应说明书"管理员可注销/禁用账号"，以及新注册账号需管理员审核）',
     PRIMARY KEY (uId),
     CONSTRAINT chk_tblUser_uAge CHECK (uAge IS NULL OR uAge BETWEEN 0 AND 100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户信息表';

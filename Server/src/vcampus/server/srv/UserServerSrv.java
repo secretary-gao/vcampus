@@ -28,7 +28,8 @@ public class UserServerSrv implements IUserServerSrv {
      * {@inheritDoc}
      */
     @Override
-    public User login(User loginUser) throws SQLException, IOException, UserDisabledException {
+    public User login(User loginUser)
+            throws SQLException, IOException, UserDisabledException, UserPendingApprovalException {
         if (loginUser == null) {
             throw new IllegalArgumentException("用户信息不能为空");
         }
@@ -42,6 +43,9 @@ public class UserServerSrv implements IUserServerSrv {
         }
         if (User.STATUS_DISABLED.equals(found.getUStatus())) {
             throw new UserDisabledException("账号已被管理员禁用：" + found.getUId());
+        }
+        if (User.STATUS_PENDING.equals(found.getUStatus())) {
+            throw new UserPendingApprovalException("账号还在等待管理员审核，暂时无法登录：" + found.getUId());
         }
         return found;
     }
@@ -59,6 +63,9 @@ public class UserServerSrv implements IUserServerSrv {
         if (existing != null) {
             throw new UserExistsException("登录ID已被注册：" + newUser.getUId());
         }
+        // 不管客户端传来的 uStatus 是什么，注册一律强制设为"待审核"，
+        // 必须管理员在账号管理里手动审核通过才能登录。
+        newUser.setUStatus(User.STATUS_PENDING);
         return _userDAO.insert(newUser);
     }
 
@@ -108,5 +115,23 @@ public class UserServerSrv implements IUserServerSrv {
         }
 
         return _userDAO.updateStatus(targetUId, newStatus);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public java.util.List<User> listPendingUsers(String operatorUId)
+            throws SQLException, IOException, PermissionDeniedException {
+        if (operatorUId == null) {
+            throw new IllegalArgumentException("操作者ID不能为空");
+        }
+
+        User operator = _userDAO.findByUId(operatorUId);
+        if (operator == null || !"管理员".equals(operator.getURole())) {
+            throw new PermissionDeniedException("无权限执行该操作，仅管理员可查看待审核账号");
+        }
+
+        return _userDAO.findByStatus(User.STATUS_PENDING);
     }
 }

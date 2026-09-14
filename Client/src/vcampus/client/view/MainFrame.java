@@ -104,8 +104,10 @@ public class MainFrame extends Application {
         _stage.setMinWidth(1200);
         _stage.setMinHeight(780);
         _stage.setScene(scene);
-        _stage.centerOnScreen();
         _stage.setOnCloseRequest(e -> Platform.exit());
+        // 登录页已经是全屏状态，主界面也直接全屏打开，不用登录进来再手动点一次
+        // 最大化；centerOnScreen() 会把最大化状态又拉回小窗口，所以不能再调用。
+        _stage.setMaximized(true);
     }
     /**
      * 构建顶部导航条：左侧校徽与标题，右侧当前用户身份。
@@ -439,13 +441,151 @@ public class MainFrame extends Application {
      * 就能生效，对应说明书"管理员可注销/禁用账号"的要求。</p>
      */
     private void showUserManagementPage() {
-        VBox page = new VBox(16);
+        VBox page = new VBox(20);
         page.setPadding(new Insets(24));
-        page.setMaxWidth(480);
+        page.setMaxWidth(640);
         page.setStyle(CARD_STYLE);
         Label title = new Label("账号管理");
         title.setTextFill(Color.web("#1d2b39"));
         title.setFont(Font.font("System", FontWeight.BOLD, 22));
+
+        page.getChildren().addAll(title, buildPendingUsersSection(), buildStatusFormSection());
+        _contentStack.getChildren().setAll(page);
+    }
+
+    /**
+     * "账号管理"页面的待审核账号区块：列出所有还没被批准的注册账号，
+     * 每行一个"通过"按钮，点了直接调用现有的 {@link #_userClientSrv}
+     * 的 {@code setUserStatus}把状态改成正常——审核通过本质上就是把
+     * 状态从"待审核"改成"正常"，复用现成的方法，不用额外的服务端接口。
+     *
+     * @return 待审核账号区块
+     */
+    private VBox buildPendingUsersSection() {
+        Label sectionTitle = new Label("待审核账号");
+        sectionTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
+        sectionTitle.setTextFill(Color.web("#1d2b39"));
+
+        Label sectionTip = new Label("新注册的账号需要在这里审核通过后才能登录。");
+        sectionTip.setTextFill(Color.web("#8b96a4"));
+        sectionTip.setFont(Font.font("System", 12));
+
+        VBox listBox = new VBox(10);
+        Label loadingLabel = new Label("正在加载…");
+        loadingLabel.setTextFill(Color.web("#8b96a4"));
+        listBox.getChildren().add(loadingLabel);
+
+        VBox section = new VBox(8, sectionTitle, sectionTip, listBox);
+        refreshPendingUsers(listBox);
+        return section;
+    }
+
+    /**
+     * 拉取一遍待审核账号列表并重绘到 {@code listBox} 里。
+     *
+     * @param listBox 承载列表行的容器
+     */
+    @SuppressWarnings("unchecked")
+    private void refreshPendingUsers(VBox listBox) {
+        new Thread(() -> {
+            java.util.List<User> pendingUsers = null;
+            String errorText = null;
+            try {
+                Message response = _userClientSrv.listPendingUsers(_currentUser.getUId());
+                if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
+                    pendingUsers = (java.util.List<User>) response.getData();
+                } else {
+                    errorText = String.valueOf(response.getData());
+                }
+            } catch (IOException | ClassNotFoundException e) {
+                errorText = "网络异常：" + e.getMessage();
+            }
+            final java.util.List<User> finalUsers = pendingUsers;
+            final String finalError = errorText;
+            Platform.runLater(() -> {
+                listBox.getChildren().clear();
+                if (finalError != null) {
+                    Label errLabel = new Label(finalError);
+                    errLabel.setTextFill(Color.web("#e6604f"));
+                    listBox.getChildren().add(errLabel);
+                    return;
+                }
+                if (finalUsers == null || finalUsers.isEmpty()) {
+                    Label emptyLabel = new Label("暂无待审核账号");
+                    emptyLabel.setTextFill(Color.web("#8b96a4"));
+                    listBox.getChildren().add(emptyLabel);
+                    return;
+                }
+                for (User pending : finalUsers) {
+                    listBox.getChildren().add(buildPendingUserRow(pending, listBox));
+                }
+            });
+        }).start();
+    }
+
+    /**
+     * 构建待审核列表里的一行：登录ID/姓名/角色 + 一个"通过"按钮。
+     *
+     * @param pending 待审核用户
+     * @param listBox 所在的列表容器，审核通过后要刷新它
+     * @return 一行内容
+     */
+    private HBox buildPendingUserRow(User pending, VBox listBox) {
+        String name = pending.getUName() == null || pending.getUName().trim().isEmpty()
+                ? "（未填写姓名）" : pending.getUName();
+        Label infoLabel = new Label(pending.getUId() + " · " + name + " · " + pending.getURole());
+        infoLabel.setTextFill(Color.web("#1d2b39"));
+        infoLabel.setFont(Font.font("System", 13));
+        HBox.setHgrow(infoLabel, javafx.scene.layout.Priority.ALWAYS);
+
+        Button approveButton = new Button("通过");
+        approveButton.setStyle("-fx-background-color: #3fa34d; -fx-text-fill: white;"
+                + " -fx-background-radius: 14; -fx-font-weight: bold; -fx-cursor: hand;"
+                + " -fx-padding: 4 16 4 16;");
+        approveButton.setOnAction(event -> {
+            approveButton.setDisable(true);
+            new Thread(() -> {
+                boolean success;
+                String message;
+                try {
+                    Message response = _userClientSrv.setUserStatus(
+                            _currentUser.getUId(), pending.getUId(), User.STATUS_NORMAL);
+                    success = IConstant.STATUS_SUCCESS.equals(response.getStatusCode());
+                    message = String.valueOf(response.getData());
+                } catch (IOException | ClassNotFoundException e) {
+                    success = false;
+                    message = "网络异常：" + e.getMessage();
+                }
+                final boolean finalSuccess = success;
+                final String finalMessage = message;
+                Platform.runLater(() -> {
+                    if (finalSuccess) {
+                        refreshPendingUsers(listBox);
+                    } else {
+                        approveButton.setDisable(false);
+                        Alert alert = new Alert(Alert.AlertType.ERROR);
+                        alert.setTitle("审核失败");
+                        alert.setHeaderText(null);
+                        alert.setContentText(finalMessage);
+                        alert.showAndWait();
+                    }
+                });
+            }).start();
+        });
+
+        HBox row = new HBox(12, infoLabel, approveButton);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(8, 12, 8, 12));
+        row.setStyle("-fx-background-color: #f8fafc; -fx-background-radius: 10;");
+        return row;
+    }
+
+    /**
+     * "账号管理"页面里原有的手动禁用/启用表单区块。
+     *
+     * @return 表单区块
+     */
+    private VBox buildStatusFormSection() {
         Label subtitle = new Label("禁用或启用指定用户的登录账号");
         subtitle.setTextFill(Color.web("#697687"));
         subtitle.setFont(Font.font("System", 13));
@@ -505,9 +645,13 @@ public class MainFrame extends Application {
                 });
             }).start();
         });
-        page.getChildren().addAll(title, subtitle, idHint, targetIdField, statusHint,
+        Label formTitle = new Label("手动禁用/启用");
+        formTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
+        formTitle.setTextFill(Color.web("#1d2b39"));
+
+        VBox form = new VBox(10, formTitle, subtitle, idHint, targetIdField, statusHint,
                 new HBox(16, disableOption, enableOption), submitButton, resultLabel);
-        _contentStack.getChildren().setAll(page);
+        return form;
     }
     /**
      * 打开图书馆模块的真实业务界面（{@link LibraryPanel}），而不是通用占位页。
