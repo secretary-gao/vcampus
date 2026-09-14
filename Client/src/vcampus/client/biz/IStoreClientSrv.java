@@ -13,6 +13,7 @@ import vcampus.common.vo.Goods;
 import vcampus.common.vo.Message;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 
 /**
  * 客户端商店业务服务接口，对应共享说明书中"虚拟商店模块"的 IStoreClientSrv。
@@ -83,4 +84,25 @@ public interface IStoreClientSrv {
      * @throws ClassNotFoundException 反序列化响应对象失败
      */
     Message deleteGoods(String goodsId) throws IOException, ClassNotFoundException;
+
+    /**
+     * 发起"查询校园卡余额"请求。
+     *
+     * @param userId 用户ID
+     * @return 服务器返回的响应消息（成功时 data 为余额 BigDecimal）
+     * @throws IOException            网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message queryBalance(String userId) throws IOException, ClassNotFoundException;
+
+    /**
+     * 发起"校园卡充值"请求。
+     *
+     * @param userId 用户ID
+     * @param amount 充值金额（正数）
+     * @return 服务器返回的响应消息（成功时 data 为充值后的余额）
+     * @throws IOException            网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message recharge(String userId, BigDecimal amount) throws IOException, ClassNotFoundException;
 }

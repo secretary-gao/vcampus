@@ -80,6 +80,9 @@ public class StoreFrame extends Application {
     /** 商店客户端业务服务。 */
     private final IStoreClientSrv _storeClientSrv = new StoreClientSrv();
 
+    // ---- 校园卡余额 ----
+    private final Label _balanceLabel = new Label("余额：--");
+
     // ---- 商品商城 ----
     private FlowPane _goodsCards = new FlowPane(16, 16);
     private final TextField _searchField = new TextField();
@@ -145,6 +148,7 @@ public class StoreFrame extends Application {
         stage.setScene(scene);
         stage.centerOnScreen();
         loadGoods();
+        loadBalance();
         stage.show();
     }
 
@@ -184,6 +188,7 @@ public class StoreFrame extends Application {
         BorderPane content = buildContent();
         content.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         loadGoods();
+        loadBalance();
         return content;
     }
 
@@ -208,12 +213,23 @@ public class StoreFrame extends Application {
         titleBlock.getChildren().addAll(title, crumb);
         banner.setLeft(titleBlock);
 
+        _balanceLabel.setTextFill(Color.WHITE);
+        _balanceLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+
+        Button rechargeButton = new Button("充值");
+        rechargeButton.setStyle("-fx-background-color: #f4e2ab; -fx-text-fill: #0f6f6f;"
+                + " -fx-background-radius: 16; -fx-font-weight: bold; -fx-cursor: hand;");
+        rechargeButton.setOnAction(e -> onRecharge());
+
         Label userInfo = new Label("用户：" + safe(_currentUser == null ? "" : _currentUser.getUId())
                 + "（" + safe(_currentUser == null ? "" : _currentUser.getURole()) + "）");
         userInfo.setTextFill(Color.WHITE);
         userInfo.setFont(Font.font("System", 14));
-        banner.setRight(userInfo);
-        BorderPane.setAlignment(userInfo, Pos.CENTER_RIGHT);
+
+        HBox right = new HBox(14, _balanceLabel, rechargeButton, userInfo);
+        right.setAlignment(Pos.CENTER_RIGHT);
+        banner.setRight(right);
+        BorderPane.setAlignment(right, Pos.CENTER_RIGHT);
         return banner;
     }
 
@@ -589,8 +605,72 @@ public class StoreFrame extends Application {
                                 + "\n数量：" + rec.getQuantity()
                                 + "\n总价：" + rec.getTotalPrice().toPlainString() + " 元");
                 loadGoods();
+                loadBalance();
             } else {
                 showAlert(Alert.AlertType.ERROR, "购买失败", String.valueOf(response.getData()));
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 查询并刷新校园卡余额显示。
+     */
+    private void loadBalance() {
+        String userId = _currentUser == null ? null : _currentUser.getUId();
+        if (userId == null || userId.isBlank()) {
+            _balanceLabel.setText("余额：--");
+            return;
+        }
+        try {
+            Message response = _storeClientSrv.queryBalance(userId);
+            if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode()) && response.getData() != null) {
+                _balanceLabel.setText("余额：¥" + response.getData());
+            } else {
+                _balanceLabel.setText("余额：--");
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            _balanceLabel.setText("余额：--");
+        }
+    }
+
+    /**
+     * 校园卡充值（演示用：输入金额后直接加到余额上）。
+     */
+    private void onRecharge() {
+        String userId = _currentUser == null ? null : _currentUser.getUId();
+        if (userId == null || userId.isBlank()) {
+            showAlert(Alert.AlertType.WARNING, "提示", "未登录，无法充值");
+            return;
+        }
+        TextInputDialog dialog = new TextInputDialog("100");
+        dialog.setTitle("校园卡充值");
+        dialog.setHeaderText("为账号 " + userId + " 充值");
+        dialog.setContentText("充值金额（元）：");
+        Optional<String> result = dialog.showAndWait();
+        if (result.isEmpty()) {
+            return;
+        }
+        BigDecimal amount;
+        try {
+            amount = new BigDecimal(result.get().trim());
+        } catch (NumberFormatException e) {
+            showAlert(Alert.AlertType.ERROR, "输入错误", "充值金额必须为数字");
+            return;
+        }
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            showAlert(Alert.AlertType.ERROR, "输入错误", "充值金额必须为正数");
+            return;
+        }
+        try {
+            Message response = _storeClientSrv.recharge(userId, amount);
+            if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
+                showAlert(Alert.AlertType.INFORMATION, "充值成功",
+                        "充值 " + amount.toPlainString() + " 元成功，当前余额：" + response.getData() + " 元");
+                loadBalance();
+            } else {
+                showAlert(Alert.AlertType.ERROR, "充值失败", String.valueOf(response.getData()));
             }
         } catch (IOException | ClassNotFoundException e) {
             showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器：" + e.getMessage());
