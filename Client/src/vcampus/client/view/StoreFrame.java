@@ -98,6 +98,7 @@ public class StoreFrame extends Application {
     private final TextField _categoryField = new TextField();
     private final TextField _priceField = new TextField();
     private final TextField _stockField = new TextField();
+    private final TextField _imageUrlField = new TextField();
 
     /**
      * 无参构造方法（供 {@code launch()} 使用），默认使用一个演示学生用户。
@@ -295,6 +296,8 @@ public class StoreFrame extends Application {
         _categoryField.setPromptText("类别");
         _priceField.setPromptText("单价");
         _stockField.setPromptText("库存");
+        _imageUrlField.setPromptText("图片路径（可留空，留空则用类别图标）");
+        _imageUrlField.setPrefWidth(360);
 
         GridPane form = new GridPane();
         form.setHgap(10);
@@ -309,6 +312,8 @@ public class StoreFrame extends Application {
         form.add(_priceField, 1, 3);
         form.add(new Label("库存"), 0, 4);
         form.add(_stockField, 1, 4);
+        form.add(new Label("图片路径"), 0, 5);
+        form.add(_imageUrlField, 1, 5);
 
         Button addButton = new Button("新增");
         addButton.setOnAction(e -> onAddGoods());
@@ -788,6 +793,7 @@ public class StoreFrame extends Application {
         String category = _categoryField.getText().trim();
         String priceText = _priceField.getText().trim();
         String stockText = _stockField.getText().trim();
+        String imageUrl = _imageUrlField.getText().trim();
 
         if (goodsId.isEmpty() || goodsName.isEmpty()) {
             showAlert(Alert.AlertType.ERROR, "输入错误", "商品编号和名称不能为空");
@@ -821,6 +827,7 @@ public class StoreFrame extends Application {
         goods.setCategory(category);
         goods.setPrice(price);
         goods.setStock(stock);
+        goods.setImageUrl(imageUrl.isEmpty() ? null : imageUrl);
         return goods;
     }
 
@@ -835,6 +842,7 @@ public class StoreFrame extends Application {
         _categoryField.setText(safe(goods.getCategory()));
         _priceField.setText(goods.getPrice() == null ? "" : goods.getPrice().toPlainString());
         _stockField.setText(String.valueOf(goods.getStock()));
+        _imageUrlField.setText(safe(goods.getImageUrl()));
     }
 
     /**
@@ -846,6 +854,7 @@ public class StoreFrame extends Application {
         _categoryField.clear();
         _priceField.clear();
         _stockField.clear();
+        _imageUrlField.clear();
         _manageTable.getSelectionModel().clearSelection();
     }
 
