@@ -154,8 +154,13 @@ public class StoreServerSrv implements IStoreServerSrv {
      */
     @Override
     public Goods updateGoods(Goods goods) throws ShopException, SQLException, IOException {
-        if (_goodsDAO.findByGoodsId(goods.getGoodsId()) == null) {
+        Goods existing = _goodsDAO.findByGoodsId(goods.getGoodsId());
+        if (existing == null) {
             throw new ShopException(IConstant.STATUS_GOODS_NOT_FOUND, "商品不存在：" + goods.getGoodsId());
+        }
+        // 管理表单没有图片字段：本次没带图片地址时保留原有图片，避免把商品图改没了
+        if (goods.getImageUrl() == null || goods.getImageUrl().isBlank()) {
+            goods.setImageUrl(existing.getImageUrl());
         }
         _goodsDAO.update(goods);
         return _goodsDAO.findByGoodsId(goods.getGoodsId());
