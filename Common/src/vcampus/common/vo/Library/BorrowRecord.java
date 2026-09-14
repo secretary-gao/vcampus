@@ -9,6 +9,7 @@ public class BorrowRecord implements Serializable {
     private String recordId;
     private String userId;
     private String bookId;
+    private String bookName;
     private Date borrowDate;
     private Date dueDate;
     private Date returnDate;
@@ -30,6 +31,10 @@ public class BorrowRecord implements Serializable {
     }
 
     // ------ getter / setter ------
+    public String getBookName() {
+        return bookName;
+    }
+
     public String getRecordId() {
         return recordId;
     }
@@ -40,6 +45,10 @@ public class BorrowRecord implements Serializable {
 
     public String getUserId() {
         return userId;
+    }
+
+    public void setBookName(String bookName) {
+        this.bookName = bookName;
     }
 
     public void setUserId(String userId) {

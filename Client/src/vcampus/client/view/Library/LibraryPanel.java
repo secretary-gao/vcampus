@@ -47,6 +47,10 @@ public class LibraryPanel extends VBox {
     private Button borrowBtn;
     private StackPane contentArea;
     private HBox searchBox;
+    private Button paperTab;
+    private Button paperManageTab;
+    private PaperPanel paperPanel;
+    private PaperManagePanel paperManagePanel;
 
     // 数据
     private ObservableList<Book> bookData = FXCollections.observableArrayList();
@@ -86,11 +90,15 @@ public class LibraryPanel extends VBox {
         libraryTab = createTabButton("📖 图书馆", true);
         borrowTab = createTabButton("📋 我的借阅", false);
         manageTab = createTabButton("⚙️ 图书管理", false);
-
+        paperManageTab = createTabButton("📁 文献管理", false);
+        paperTab = createTabButton("📄 文献库", false);
         HBox tabBox = new HBox(0, libraryTab, borrowTab);
+       
+        tabBox.getChildren().add(paperTab);
         if (isAdmin()) {
             tabBox.getChildren().add(manageTab);
-        }        
+            tabBox.getChildren().add(paperManageTab);
+        }
         tabBox.setPadding(new Insets(0, 30, 0, 30));
         tabBox.setStyle("-fx-background-color: white;");
 
@@ -112,11 +120,14 @@ public class LibraryPanel extends VBox {
         );
 
         searchBox = new HBox(12, searchField, searchBtn);
-        searchBox.setPadding(new Insets(20, 30, 15, 30));
+        searchBox.setPadding(new Insets(15, 30, 15, 30));
         searchBox.setStyle("-fx-background-color: white;");
 
         // ========== 4. 内容区域（堆叠两个表格） ==========
         // 4a. 图书表格（默认显示）
+
+        paperPanel = new PaperPanel();
+        paperManagePanel = new PaperManagePanel();
         bookTable = new TableView<>();
         bookTable.setPlaceholder(new Label("没有匹配的图书，建议调整关键词试试"));
         setupBookTable(bookTable);
@@ -183,6 +194,9 @@ public class LibraryPanel extends VBox {
         libraryTab.setOnAction(e -> switchTab("library"));
         borrowTab.setOnAction(e -> switchTab("borrow"));
         manageTab.setOnAction(e -> switchTab("manage"));
+
+        paperTab.setOnAction(e -> switchTab("paper"));
+        paperManageTab.setOnAction(e -> switchTab("paperManage"));
     }
 
     // ========== 核心业务方法 ==========
@@ -266,6 +280,21 @@ public class LibraryPanel extends VBox {
         new Thread(() -> {
             try {
                 List<BorrowRecord> records = bookClient.getBorrowRecords(currentUserId);
+                
+                // 为每条记录补充书名
+                for (BorrowRecord record : records) {
+                    try {
+                        List<Book> books = bookClient.queryBooks(record.getBookId());
+                        if (!books.isEmpty()) {
+                            record.setBookName(books.get(0).getBookName());
+                        } else {
+                            record.setBookName("未知图书");
+                        }
+                    } catch (Exception e) {
+                        record.setBookName("加载失败");
+                    }
+                }
+                
                 Platform.runLater(() -> {
                     recordData.setAll(records);
                     if (records.isEmpty()) {
@@ -280,6 +309,7 @@ public class LibraryPanel extends VBox {
             }
         }).start();
     }
+
     private void handleReturnBook(BorrowRecord record) {
         // 弹出确认对话框
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
@@ -322,6 +352,8 @@ public class LibraryPanel extends VBox {
         borrowTab.setStyle(createTabStyle("borrow".equals(tab)));
         manageTab.setStyle(createTabStyle("manage".equals(tab)));
         contentArea.getChildren().clear();
+        paperTab.setStyle(createTabStyle("paper".equals(tab)));
+        paperManageTab.setStyle(createTabStyle("paperManage".equals(tab)));
 
         // 切换内容
         switch (tab) {
@@ -364,7 +396,29 @@ public class LibraryPanel extends VBox {
                 searchBox.setVisible(false);
                 searchBox.setManaged(false);
                 break;
-        }
+            case "paper":
+                contentArea.getChildren().setAll(paperPanel);
+                searchField.setVisible(false);
+                searchField.setManaged(false);
+                searchBtn.setVisible(false);
+                searchBtn.setManaged(false);
+                borrowBtn.setVisible(false);
+                searchBox.setVisible(false);
+                searchBox.setManaged(false);
+                paperPanel.refresh();        
+                break;
+
+            case "paperManage":
+                contentArea.getChildren().setAll(paperManagePanel);
+                searchField.setVisible(false);
+                searchField.setManaged(false);
+                searchBtn.setVisible(false);
+                searchBtn.setManaged(false);
+                borrowBtn.setVisible(false);
+                searchBox.setVisible(false);
+                searchBox.setManaged(false);                
+                break;
+            }
     }
 
     private String createTabStyle(boolean active) {
@@ -434,10 +488,15 @@ public class LibraryPanel extends VBox {
     private void setupRecordTable(TableView<BorrowRecord> table) {
         table.setItems(recordData);
 
-        TableColumn<BorrowRecord, String> idCol = new TableColumn<>("记录号");
-        idCol.setCellFactory(col -> createCenterCell());
-        idCol.setCellValueFactory(new PropertyValueFactory<>("recordId"));
-        idCol.setPrefWidth(150);
+    TableColumn<BorrowRecord, String> bookNameCol = new TableColumn<>("书名");
+    bookNameCol.setCellFactory(col -> createCenterCell());
+    bookNameCol.setCellValueFactory(new PropertyValueFactory<>("bookName"));
+    bookNameCol.setPrefWidth(150);
+
+        // TableColumn<BorrowRecord, String> idCol = new TableColumn<>("记录号");
+        // idCol.setCellFactory(col -> createCenterCell());
+        // idCol.setCellValueFactory(new PropertyValueFactory<>("recordId"));
+        // idCol.setPrefWidth(150);
 
         TableColumn<BorrowRecord, String> bookIdCol = new TableColumn<>("图书编号");
         bookIdCol.setCellFactory(col -> createCenterCell());
@@ -555,7 +614,7 @@ public class LibraryPanel extends VBox {
         });
 
         // 将新创建的操作列添加到表格中
-        table.getColumns().addAll(idCol, bookIdCol, statusCol, borrowDateCol, dueDateCol);
+        table.getColumns().addAll(bookNameCol, bookIdCol, statusCol, borrowDateCol, dueDateCol);
         table.getColumns().add(actionCol);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.getColumns().forEach(col -> col.setReorderable(false));

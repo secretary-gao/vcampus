@@ -53,7 +53,7 @@ public class CourseServerSrvTest {
         try {
             CourseTestData.prepareStudent(USER_A, STUDENT_A);
             CourseTestData.prepareStudent(USER_B, STUDENT_B);
-            require(courseDAO.insertCourse(new Course(
+            require(CourseTestData.prepareCourse(new Course(
                     TEST_COURSE_ID, "事务测试课程", "测试教师", 2, 1, 0)),
                     "准备容量为 1 的课程");
             require(service.queryCourse("事务测试").stream()
@@ -76,12 +76,13 @@ public class CourseServerSrvTest {
             require(service.querySelectedCourse(STUDENT_A).isEmpty(),
                     "退课后已选列表为空");
 
-            require(courseDAO.insertCourse(new Course(
+            require(CourseTestData.prepareCourse(new Course(
                     ROLLBACK_COURSE_ID, "回滚测试课程", "测试教师", 1, 2, 0)),
                     "准备回滚测试课程");
             CourseDAO failingCourseDAO = new CourseDAO() {
                 @Override
-                public boolean updateCourse(Connection conn, Course course) throws SQLException {
+                public void refreshCompatibilityProjection(Connection conn, String courseId)
+                        throws SQLException {
                     throw new SQLException("人为制造第二步更新失败");
                 }
             };
@@ -114,10 +115,10 @@ public class CourseServerSrvTest {
         selectDAO.deleteSelectCourse(STUDENT_B, TEST_COURSE_ID);
         selectDAO.deleteSelectCourse(STUDENT_B, ROLLBACK_COURSE_ID);
         if (courseDAO.findById(TEST_COURSE_ID) != null) {
-            courseDAO.deleteCourse(TEST_COURSE_ID);
+            CourseTestData.cleanupCourse(TEST_COURSE_ID);
         }
         if (courseDAO.findById(ROLLBACK_COURSE_ID) != null) {
-            courseDAO.deleteCourse(ROLLBACK_COURSE_ID);
+            CourseTestData.cleanupCourse(ROLLBACK_COURSE_ID);
         }
         CourseTestData.cleanupStudent(USER_A, STUDENT_A);
         CourseTestData.cleanupStudent(USER_B, STUDENT_B);

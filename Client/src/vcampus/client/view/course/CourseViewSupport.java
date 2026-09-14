@@ -69,6 +69,33 @@ final class CourseViewSupport {
         return column;
     }
 
+    /** 创建支持多行展示的字符串表格列，用于排课等复合信息。 */
+    static <T> TableColumn<T, String> wrappingTextColumn(
+            String title, double width, Function<T, String> mapper) {
+        TableColumn<T, String> column = textColumn(title, width, mapper);
+        column.setCellFactory(ignored -> new javafx.scene.control.TableCell<>() {
+            private final Label _label = new Label();
+
+            {
+                _label.setWrapText(true);
+                _label.getStyleClass().add("wrapping-table-text");
+                _label.prefWidthProperty().bind(column.widthProperty().subtract(18));
+            }
+
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                } else {
+                    _label.setText(item);
+                    setGraphic(_label);
+                }
+            }
+        });
+        return column;
+    }
+
     /** 应用 Course 表格的统一行为与空状态。 */
     static <T> void configureTable(TableView<T> table, String emptyText) {
         table.getStyleClass().add("course-table");

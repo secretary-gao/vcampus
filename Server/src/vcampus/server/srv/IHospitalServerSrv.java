@@ -44,6 +44,7 @@ public interface IHospitalServerSrv {
  */
 boolean deleteCancelAppointment(String appointId) throws SQLException, IOException;
 
+List<java.sql.Timestamp> getDoctorOccupiedTime(String doctorId) throws SQLException, IOException;
 
 
     // 管理员维护医生
