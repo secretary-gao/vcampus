@@ -72,9 +72,24 @@ public final class StudentCourseEnrollmentTest {
                 courseClient.selectCourse(student, firstClass);
                 assertOnlyStudent(teacherClient, student);
                 assertOnlyStudent(otherTeacherClient, otherStudent);
-                require(courseClient.queryTeacherCourseEnrollments(teacherName).stream()
+                require(courseClient.queryTeacherCourseEnrollments(credentials(teacher, "教师")).stream()
                                 .anyMatch(row -> student.equals(row.getStudentId())),
                         "选课学生未进入教师课程名单");
+                require(courseClient.queryTeacherCourseEnrollments(credentials(otherTeacher, "教师")).stream()
+                                .anyMatch(row -> otherStudent.equals(row.getStudentId())),
+                        "另一教师未读取到自己的教学班名单");
+                expectCourseForbidden(() -> courseClient.queryTeacherCourseEnrollments(
+                                credentials(studentUser, "教师")),
+                        "学生伪造教师角色后不应读取教学班名单");
+                User forgedIdentity = credentials(teacher, "学生");
+                forgedIdentity.setUName(otherTeacherName);
+                require(courseClient.queryTeacherCourseEnrollments(forgedIdentity).stream()
+                                .noneMatch(row -> otherStudent.equals(row.getStudentId())),
+                        "教学班名单不能信任客户端伪造的教师姓名和角色");
+                User wrongPassword = credentials(teacher, "教师");
+                wrongPassword.setUPwd("wrong-password");
+                expectCourseForbidden(() -> courseClient.queryTeacherCourseEnrollments(wrongPassword),
+                        "密码错误时不应读取教学班名单");
                 Student visible = teacherClient.findByStudentId(student);
                 require(visible != null && "联调学生".equals(visible.getName())
                                 && "2024".equals(visible.getGrade())
@@ -98,6 +113,9 @@ public final class StudentCourseEnrollmentTest {
                     expectForbidden(teacherClient::findAll, "非正常账号不能继续读取学籍列表");
                     expectForbidden(() -> teacherClient.findByStudentId(student), "非正常账号不能打开学籍详情");
                     expectForbidden(() -> teacherClient.findByName("联调学生"), "非正常账号不能按姓名查询");
+                    expectCourseForbidden(() -> courseClient.queryTeacherCourseEnrollments(
+                                    credentials(teacher, "教师")),
+                            "非正常账号不能读取教学班名单");
                 }
                 try (Connection connection = DbHelper.getConnection()) {
                     execute(connection, "UPDATE tblUser SET uStatus = ? WHERE uId = ?", User.STATUS_NORMAL, teacher);
@@ -107,6 +125,9 @@ public final class StudentCourseEnrollmentTest {
                                 && teacherClient.findByStudentId(student) == null
                                 && teacherClient.findByName("联调学生").isEmpty(),
                         "存在同名教师时，列表与精确查询均不能授予学籍权限");
+                expectCourseForbidden(() -> courseClient.queryTeacherCourseEnrollments(
+                                credentials(teacher, "教师")),
+                        "存在同名教师时不能读取教学班名单");
                 require(otherTeacherClient.findByStudentId(student) == null,
                         "同名教师不能获得另一账号的授课权限");
                 try (Connection connection = DbHelper.getConnection()) {
@@ -255,6 +276,15 @@ public final class StudentCourseEnrollmentTest {
             operation.run();
             throw new AssertionError(message);
         } catch (StudentClientException expected) {
+            require(StudentProtocol.STATUS_FORBIDDEN.equals(expected.getStatusCode()), message);
+        }
+    }
+
+    private static void expectCourseForbidden(CheckedOperation operation, String message) throws Exception {
+        try {
+            operation.run();
+            throw new AssertionError(message);
+        } catch (CourseClientException expected) {
             require(StudentProtocol.STATUS_FORBIDDEN.equals(expected.getStatusCode()), message);
         }
     }

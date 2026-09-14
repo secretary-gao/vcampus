@@ -18,6 +18,7 @@ import vcampus.common.vo.CourseDashboardStats;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
+import vcampus.common.vo.User;
 
 import java.io.IOException;
 import java.util.List;
@@ -95,6 +96,6 @@ public interface ICourseClientSrv {
             throws IOException, ClassNotFoundException;
 
     /** 查询教师本人课程及选课学生名单。 */
-    List<TeacherCourseEnrollment> queryTeacherCourseEnrollments(String teacherName)
+    List<TeacherCourseEnrollment> queryTeacherCourseEnrollments(User currentUser)
             throws IOException, ClassNotFoundException;
 }

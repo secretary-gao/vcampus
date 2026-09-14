@@ -21,6 +21,7 @@ import vcampus.common.vo.MessageType;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
+import vcampus.common.vo.User;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -249,10 +250,10 @@ public class CourseClientSrv implements ICourseClientSrv {
 
     /** {@inheritDoc} */
     @Override
-    public List<TeacherCourseEnrollment> queryTeacherCourseEnrollments(String teacherName)
+    public List<TeacherCourseEnrollment> queryTeacherCourseEnrollments(User currentUser)
             throws IOException, ClassNotFoundException {
         Message response = send(IConstant.MSG_TEACHER_COURSE_ENROLLMENTS_QUERY,
-                teacherName, teacherName);
+                currentUser, currentUser);
         ensureSuccess(response);
         return castList(response.getData());
     }

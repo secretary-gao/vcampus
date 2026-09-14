@@ -49,6 +49,21 @@ public class UserDAO {
         return null;
     }
 
+    /** 检查是否存在另一名使用相同姓名的教师账号。 */
+    public boolean hasOtherTeacherWithName(String userId, String name)
+            throws SQLException, IOException {
+        String sql = "SELECT 1 FROM tblUser WHERE uRole = '教师'"
+                + " AND BINARY uName = BINARY ? AND uId <> ? LIMIT 1";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setString(2, userId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     /**
      * 插入一个新用户（用于注册）。
      *

@@ -80,11 +80,8 @@ public class CourseClientSrvTest {
         require(normalAfterDuplicate != null && normalAfterDuplicate.getSelectedCount() == 1,
                 "重复选课后 selectedCount 仍为 1");
 
-        List<TeacherCourseEnrollment> roster =
-                client.queryTeacherCourseEnrollments("共同教师");
-        require(roster.stream().anyMatch(row -> NORMAL_COURSE_ID.equals(row.getCourseId())
-                        && STUDENT_A.equals(row.getStudentId())),
-                "Socket 教师查询本人课程学生名单");
+        expectFailure(() -> client.queryTeacherCourseEnrollments(new vcampus.common.vo.User()),
+                "403", "未登录账号不能查询教师课程学生名单");
 
         expectFailure(() -> client.selectCourse(STUDENT_B, FULL_COURSE_ID), "400",
                 "Socket 满员课程选课失败");
