@@ -15,15 +15,16 @@ public class BookDAO {
      */
     public List<Book> queryBooks(String keyword) throws SQLException, IOException {
         List<Book> books = new ArrayList<>();
-        String sql = "SELECT * FROM tblBook WHERE bookName LIKE ? OR author LIKE ? OR category LIKE ?";
+        String sql = "SELECT * FROM tblBook WHERE bookId LIKE ? OR bookName LIKE ? OR author LIKE ? OR category LIKE ?";
         String likeKeyword = "%" + keyword + "%";
 
         try (Connection conn = DbHelper.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, likeKeyword);
-            pstmt.setString(2, likeKeyword);
-            pstmt.setString(3, likeKeyword);
+        pstmt.setString(1, likeKeyword);  // bookId
+        pstmt.setString(2, likeKeyword);  // bookName
+        pstmt.setString(3, likeKeyword);  // author
+        pstmt.setString(4, likeKeyword);  // category
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
