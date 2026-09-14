@@ -60,6 +60,32 @@ ALTER TABLE tblPurchase
     MODIFY COLUMN totalPrice DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '本行小计（单价×数量，>=0）';
 
 -- ------------------------------------------------------------
+-- 3.5 恢复"重复执行不重复插数据"的能力：加 UNIQUE(orderId, goodsId)
+--     改造前 orderId 是主键，种子脚本里的 INSERT IGNORE 天然去重；换成自增 itemId 后
+--     失去了去重依据，每跑一次 sql/seed_demo_data.sql 就会重复插一遍购买记录。
+--     业务上"一个订单里同一商品只有一行"始终成立（结算时按 goodsId 合并数量），
+--     所以这里把它固化成唯一约束，种子脚本的 INSERT IGNORE 也就重新幂等了。
+--     先清掉历史重复行（同一订单同一商品只保留最早一行），再加约束。
+-- ------------------------------------------------------------
+DELETE p1 FROM tblPurchase p1
+    JOIN tblPurchase p2
+      ON p1.orderId = p2.orderId
+     AND p1.goodsId = p2.goodsId
+     AND p1.itemId > p2.itemId;
+
+SET @has_uk := (SELECT COUNT(*) FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'tblPurchase'
+                  AND INDEX_NAME = 'uk_tblPurchase_order_goods');
+
+SET @ddl_uk := IF(@has_uk = 0,
+    'ALTER TABLE tblPurchase ADD UNIQUE KEY uk_tblPurchase_order_goods (orderId, goodsId)',
+    'DO 0');
+PREPARE stmt_uk FROM @ddl_uk;
+EXECUTE stmt_uk;
+DEALLOCATE PREPARE stmt_uk;
+
+-- ------------------------------------------------------------
 -- 4. 结果核对
 -- ------------------------------------------------------------
 SELECT COUNT(*) AS '订单数(tblOrder)'   FROM tblOrder;

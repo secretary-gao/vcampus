@@ -55,6 +55,9 @@ CREATE TABLE IF NOT EXISTS tblOrder (
 --   quantity int >0 / totalPrice decimal(10,2) >=0（本行小计 = 单价×数量）/
 --   orderTime datetime；订单号 orderId 在说明书中是主键，购物车需要"一单多商品"，
 --   故改为自增 itemId 主键 + orderId 外键（指向 tblOrder）并建索引。
+--   UNIQUE(orderId, goodsId)：保证"一个订单里同一商品只有一行"（结算时按商品编号合并数量），
+--   同时让种子脚本里的 INSERT IGNORE 保持幂等（改造前靠 orderId 主键去重，换成自增主键后
+--   若不加这个唯一键，重复执行 sql/seed_demo_data.sql 会重复插入购买记录）。
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tblPurchase (
     itemId     BIGINT        NOT NULL AUTO_INCREMENT COMMENT '明细行号（PK）',
@@ -67,6 +70,7 @@ CREATE TABLE IF NOT EXISTS tblPurchase (
     PRIMARY KEY (itemId),
     KEY idx_tblPurchase_order (orderId),
     KEY idx_tblPurchase_user_time (userId, orderTime),
+    UNIQUE KEY uk_tblPurchase_order_goods (orderId, goodsId),
     CONSTRAINT fk_purchase_order FOREIGN KEY (orderId) REFERENCES tblOrder(orderId),
     CONSTRAINT fk_purchase_user  FOREIGN KEY (userId)  REFERENCES tblUser(uId),
     CONSTRAINT fk_purchase_goods FOREIGN KEY (goodsId) REFERENCES tblGoods(goodsId),
