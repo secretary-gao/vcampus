@@ -30,7 +30,12 @@ if not "%BUILD_RESULT%"=="0" (
 echo [3/3] Copying UI resources...
 copy /y "Client\src\vcampus\client\view\seu_logo.jpeg" "bin\vcampus\client\view\seu_logo.jpeg" >nul
 if errorlevel 1 (
-  echo Resource copy FAILED.
+    echo Resource copy FAILED.
+    exit /b 1
+)
+copy /y "Client\src\vcampus\client\view\student-management.css" "bin\vcampus\client\view\student-management.css" >nul
+if errorlevel 1 (
+  echo Student stylesheet copy FAILED.
   exit /b 1
 )
 if not exist "bin\vcampus\client\view\course" mkdir "bin\vcampus\client\view\course"

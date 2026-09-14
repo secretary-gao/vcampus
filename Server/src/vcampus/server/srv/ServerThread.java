@@ -16,7 +16,6 @@ import vcampus.common.vo.Doctor;
 import vcampus.common.vo.HospitalAdminReq;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
-import vcampus.common.vo.Student;
 import vcampus.common.vo.User;
 import vcampus.server.srv.Library.LibraryHandler;
 import vcampus.server.srv.Library.PaperHandler;
@@ -64,9 +63,7 @@ public class ServerThread implements Runnable {
 
     /**
      * 学籍模块业务服务，单独再持有一份（不经过 {@link StudentRequestHandler}），
-     * 专门给"学生自助注册顺带写学籍记录"这个场景用——{@code StudentRequestHandler}
-     * 那层的新增/修改学籍是管理员专属操作，会做权限校验，但注册时创建自己的
-     * 学籍记录不应该被这个校验拦住，所以直接调业务层，绕开权限检查这一层。
+     * 学籍新增/修改统一经过 {@code StudentRequestHandler} 的管理员权限校验。
      */
     private final StudentServerSrv _studentServerSrv = new StudentServerSrv();
 
@@ -253,6 +250,10 @@ public class ServerThread implements Runnable {
     private Message handleRegister(Message request) {
         try {
             User newUser = (User) request.getData();
+            if (newUser != null && "学生".equals(newUser.getURole())) {
+                return new Message(request.getUid(), IConstant.MSG_REGISTER, MessageType.DATA,
+                        IConstant.STATUS_BAD_REQUEST, "学生账号只能由管理员新增学籍时创建", "Server");
+            }
             boolean ok = _userServerSrv.register(newUser);
             String statusCode = ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
             String data = ok ? "注册成功" : "注册失败，请稍后重试";
@@ -270,56 +271,10 @@ public class ServerThread implements Runnable {
         }
     }
 
-    /**
-     * 处理"学生"角色自助注册请求：先按普通流程创建登录账号（状态强制为
-     * 待审核），成功后紧接着直接调用学籍模块的业务层 {@link StudentServerSrv}
-     * 插入一条对应的学籍记录——学号、一卡通号由服务器根据登录ID自动生成，
-     * 不用学生自己填，也不会跟已有数据冲突。
-     *
-     * <p>注意这里是直接调 {@code StudentServerSrv}，不经过
-     * {@link StudentRequestHandler}（那一层的新增学籍是管理员专属操作，
-     * 会做权限校验），因为这是注册流程内部触发的，不是学生自己调用了
-     * 管理员接口。</p>
-     *
-     * @param request 请求消息，{@code data} 约定为
-     *                {@code Object[]{User newUser, Student profile}}
-     * @return 处理结果消息
-     */
+    /** 拒绝已经废弃的学生自助注册协议，学生账号只能由管理员建档时创建。 */
     private Message handleRegisterStudent(Message request) {
-        try {
-            Object[] args = (Object[]) request.getData();
-            User newUser = (User) args[0];
-            Student profile = (Student) args[1];
-
-            boolean userOk = _userServerSrv.register(newUser);
-            if (!userOk) {
-                return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
-                        IConstant.STATUS_ERROR, "注册失败，请稍后重试", "Server");
-            }
-
-            profile.setUserId(newUser.getUId());
-            profile.setEnrollmentDate(java.time.LocalDate.now());
-            if (profile.getStatus() == null) {
-                profile.setStatus(vcampus.common.vo.StudentStatus.ENROLLED);
-            }
-            _studentServerSrv.addStudent(profile);
-
-            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
-                    IConstant.STATUS_SUCCESS, "注册成功，账号和学籍信息都已提交，请等待管理员审核", "Server");
-        } catch (IllegalArgumentException | ClassCastException e) {
-            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
-                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
-        } catch (UserExistsException e) {
-            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
-                    IConstant.STATUS_USER_EXISTS, e.getMessage(), "Server");
-        } catch (StudentServiceException e) {
-            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
-                    IConstant.STATUS_ERROR,
-                    "账号已创建，但学籍信息保存失败（" + e.getMessage() + "），请联系管理员补录", "Server");
-        } catch (SQLException | IOException e) {
-            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
-                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
-        }
+        return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
+                IConstant.STATUS_BAD_REQUEST, "学生账号只能由管理员新增学籍时创建", "Server");
     }
 
     /**

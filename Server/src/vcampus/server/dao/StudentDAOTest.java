@@ -14,6 +14,7 @@ public class StudentDAOTest {
         long suffix = System.currentTimeMillis() % 10_000_000L;
         String userId = "T" + String.format("%07d", suffix);
         String studentId = "S" + String.format("%09d", System.currentTimeMillis() % 1_000_000_000L);
+        String changedStudentId = "R" + studentId.substring(1);
         String campusCardNo = "CARD-" + System.currentTimeMillis();
 
         StudentDAO studentDAO = new StudentDAO();
@@ -40,17 +41,19 @@ public class StudentDAOTest {
 
             saved.setClassName("测试班（已修改）");
             saved.setStatus(StudentStatus.SUSPENDED);
-            require(studentDAO.update(saved), "修改失败");
-            Student updated = studentDAO.findByStudentId(studentId);
+            saved.setStudentId(changedStudentId);
+            require(studentDAO.update(studentId, saved), "修改失败");
+            require(studentDAO.findByStudentId(studentId) == null, "原学号仍能查到记录");
+            Student updated = studentDAO.findByStudentId(changedStudentId);
             require(updated != null && "测试班（已修改）".equals(updated.getClassName()),
                     "修改后的数据不正确");
             require(updated.getVersion() == 1, "版本号没有递增");
 
-            require(studentDAO.deleteByStudentId(studentId), "删除失败");
-            require(studentDAO.findByStudentId(studentId) == null, "删除后仍能查到记录");
-            System.out.println("StudentDAO 自测通过：新增、查询、修改、删除均正常");
+            require(studentDAO.deleteByStudentId(changedStudentId), "删除失败");
+            require(studentDAO.findByStudentId(changedStudentId) == null, "删除后仍能查到记录");
+            System.out.println("StudentDAO 自测通过：新增、查询、修改学号、删除均正常");
         } finally {
-            cleanup(studentId, userId);
+            cleanup(studentId, changedStudentId, userId);
         }
     }
 
@@ -65,11 +68,12 @@ public class StudentDAOTest {
         }
     }
 
-    private static void cleanup(String studentId, String userId) {
+    private static void cleanup(String studentId, String changedStudentId, String userId) {
         try (Connection connection = DbHelper.getConnection()) {
             try (PreparedStatement statement = connection.prepareStatement(
-                    "DELETE FROM tblStudent WHERE studentId = ?")) {
+                    "DELETE FROM tblStudent WHERE studentId IN (?, ?)")) {
                 statement.setString(1, studentId);
+                statement.setString(2, changedStudentId);
                 statement.executeUpdate();
             }
             try (PreparedStatement statement = connection.prepareStatement(

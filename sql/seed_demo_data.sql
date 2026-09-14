@@ -45,6 +45,14 @@ INSERT IGNORE INTO tblStudent
     ('22301004', '2023010104', '20230011', '孙悦', '土木2301', '土木工程', '2023', '2023-09-01', '在读'),
     ('22301005', '2023010105', '20230012', '周天成', '自动化2301', '自动化', '2023', '2023-09-01', '在读');
 
+-- 4a. 修复早期演示数据中与学籍绑定但角色错误的账号。
+-- 12345678 曾被旧演示数据误配置为教师；现在学籍账号必须是学生，
+-- 因此恢复为学生账号并使用管理员建档约定的初始密码 123456。
+UPDATE tblUser u
+JOIN tblStudent s ON s.userId = u.uId
+SET u.uRole = '学生', u.uPwd = MD5('123456'), u.uStatus = '正常', u.uName = s.name
+WHERE u.uId = '12345678' AND s.studentId = '22301002';
+
 -- 5. 医院模块：多加几条不同状态的挂号预约记录
 INSERT IGNORE INTO tblAppointment (appointmentId, userId, doctorId, appointmentTime, status) VALUES
     ('AP2609042439', '12345678', 'D0000002', '2026-09-08 10:00:00', '待就诊'),

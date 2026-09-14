@@ -20,7 +20,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SelectionMode;
-import javafx.scene.control.Separator;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -85,6 +84,7 @@ public class StudentManagementFrame extends Application {
     private final Label _statusLabel = new Label("就绪");
     private final Label _formErrorLabel = new Label();
     private final ProgressIndicator _progressIndicator = new ProgressIndicator();
+    private final Button _addButton = new Button("新增档案");
     private final Button _updateButton = new Button("保存修改");
     private final Button _deleteButton = new Button("删除记录");
     private final List<Button> _operationButtons = new ArrayList<>();
@@ -180,7 +180,9 @@ public class StudentManagementFrame extends Application {
         _queryTypeBox.setPrefWidth(120);
         _queryTypeBox.getStyleClass().add("query-type");
 
-        _queryField.setPromptText("输入精确查询内容");
+        updateQueryPrompt();
+        _queryTypeBox.valueProperty().addListener(
+                (observable, oldValue, newValue) -> updateQueryPrompt());
         _queryField.setPrefWidth(300);
         _queryField.setAccessibleHelp(isAdmin()
                 ? "可按学号、一卡通号或姓名精确查询"
@@ -189,7 +191,6 @@ public class StudentManagementFrame extends Application {
 
         Button queryButton = new Button("查询");
         queryButton.getStyleClass().addAll("button", "primary-button");
-        queryButton.setDefaultButton(true);
         queryButton.setOnAction(event ->
                 queryStudents(_queryTypeBox.getValue(), _queryField.getText()));
 
@@ -238,7 +239,7 @@ public class StudentManagementFrame extends Application {
 
         SplitPane workspace = new SplitPane(tableSection, editor);
         workspace.getStyleClass().add("workspace");
-        workspace.setDividerPositions(0.71);
+        workspace.setDividerPositions(0.66);
         SplitPane.setResizableWithParent(editor, false);
         return workspace;
     }
@@ -282,7 +283,7 @@ public class StudentManagementFrame extends Application {
         Label sectionTitle = new Label("学生列表");
         sectionTitle.getStyleClass().add("section-title");
         Label sectionHint = new Label(isAdmin()
-                ? "选中记录后可在右侧修改或审核学籍状态"
+                ? "列表展示关键信息，选中学生后可在右侧查看并修改完整档案"
                 : "仅显示自己任教课程的学生及其公开学籍字段");
         sectionHint.getStyleClass().add("section-hint");
         VBox heading = new VBox(2, sectionTitle, sectionHint);
@@ -296,8 +297,10 @@ public class StudentManagementFrame extends Application {
 
     private VBox createEditor() {
         _editorModeLabel.getStyleClass().add("editor-title");
-        Label editorHint = new Label("带 * 的项目为必填项");
-        editorHint.getStyleClass().add("section-hint");
+        Label editorHint = new Label(
+                "带 * 的项目为必填项；学号和一卡通号不可重复。新增学籍会自动创建学生账号，初始密码为 123456；修改学号会同步选课记录。");
+        editorHint.getStyleClass().add("field-hint");
+        editorHint.setWrapText(true);
 
         GridPane form = new GridPane();
         form.getStyleClass().add("student-form");
@@ -319,21 +322,22 @@ public class StudentManagementFrame extends Application {
         addFormRow(form, row++, "专业 *", _majorField);
         addFormRow(form, row++, "年级 *", _gradeField);
         addFormRow(form, row++, "入学日期", _enrollmentDatePicker);
-        addFormRow(form, row, "学籍状态（审核）", _statusBox);
+        addFormRow(form, row, "学籍状态", _statusBox);
 
         _formErrorLabel.getStyleClass().add("form-error");
         _formErrorLabel.setWrapText(true);
         _formErrorLabel.setVisible(false);
         _formErrorLabel.setManaged(false);
 
-        Button addButton = new Button("新增档案");
-        addButton.setMaxWidth(Double.MAX_VALUE);
-        addButton.getStyleClass().addAll("button", "primary-button");
-        addButton.setOnAction(event -> addStudent());
+        _addButton.setMaxWidth(Double.MAX_VALUE);
+        _addButton.getStyleClass().addAll("button", "primary-button");
+        _addButton.setTooltip(new Tooltip("使用当前表单内容创建新的学生档案"));
+        _addButton.setOnAction(event -> addStudent());
 
-        _updateButton.setText("保存并审核");
+        _updateButton.setText("保存修改");
         _updateButton.setMaxWidth(Double.MAX_VALUE);
         _updateButton.getStyleClass().addAll("button", "secondary-button");
+        _updateButton.setTooltip(new Tooltip("保存所选学生的档案修改"));
         _updateButton.setDisable(true);
         _updateButton.setOnAction(event -> updateStudent());
 
@@ -343,14 +347,15 @@ public class StudentManagementFrame extends Application {
         _deleteButton.setDisable(true);
         _deleteButton.setOnAction(event -> deleteStudent());
 
-        Button clearButton = new Button("清空表单");
+        Button clearButton = new Button("新建档案");
         clearButton.setMaxWidth(Double.MAX_VALUE);
         clearButton.getStyleClass().addAll("button", "quiet-button");
+        clearButton.setTooltip(new Tooltip("清空表单并进入新建模式"));
         clearButton.setOnAction(event -> {
             _table.getSelectionModel().clearSelection();
             clearForm();
         });
-        _operationButtons.addAll(List.of(addButton, _updateButton, _deleteButton, clearButton));
+        _operationButtons.addAll(List.of(_addButton, _updateButton, _deleteButton, clearButton));
 
         GridPane actions = new GridPane();
         actions.setHgap(8);
@@ -360,13 +365,12 @@ public class StudentManagementFrame extends Application {
         ColumnConstraints right = new ColumnConstraints();
         right.setPercentWidth(50);
         actions.getColumnConstraints().addAll(left, right);
-        actions.add(addButton, 0, 0);
+        actions.add(_addButton, 0, 0);
         actions.add(_updateButton, 1, 0);
         actions.add(clearButton, 0, 1);
         actions.add(_deleteButton, 1, 1);
 
-        VBox editor = new VBox(5, _editorModeLabel, editorHint, _formErrorLabel,
-                new Separator(), form, new Separator(), actions);
+        VBox editor = new VBox(7, _editorModeLabel, editorHint, _formErrorLabel, form, actions);
         editor.getStyleClass().add("editor-panel");
         return editor;
     }
@@ -421,18 +425,10 @@ public class StudentManagementFrame extends Application {
 
     private void configureTable() {
         addTextColumn("学号", 112, Student::getStudentId);
-        if (isAdmin()) {
-            addTextColumn("一卡通号", 130, Student::getCampusCardNo);
-            addTextColumn("用户账号", 105, Student::getUserId);
-        }
         addTextColumn("姓名", 88, Student::getName);
-        addTextColumn("班级", 116, Student::getClassName);
-        addTextColumn("专业", 150, Student::getMajor);
+        addTextColumn("班级", 155, Student::getClassName);
+        addTextColumn("专业", 175, Student::getMajor);
         addTextColumn("年级", 74, Student::getGrade);
-        if (isAdmin()) {
-            addTextColumn("入学日期", 105, student -> student.getEnrollmentDate() == null
-                    ? "-" : DATE_FORMAT.format(student.getEnrollmentDate()));
-        }
         addStatusColumn();
 
         _table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
@@ -603,8 +599,13 @@ public class StudentManagementFrame extends Application {
             return;
         }
         Student formStudent = readForm(selected);
-        runOperation("正在保存...", "学生信息已更新",
-                () -> _studentClientSrv.updateStudent(formStudent), updated -> {
+        boolean studentIdChanged = !selected.getStudentId().equals(formStudent.getStudentId());
+        if (studentIdChanged && !confirmStudentIdChange(
+                selected.getStudentId(), formStudent.getStudentId())) {
+            return;
+        }
+        runOperation("正在保存...", studentIdChanged ? "学号及学生信息已更新" : "学生信息已更新",
+                () -> _studentClientSrv.updateStudent(selected.getStudentId(), formStudent), updated -> {
             int index = _students.indexOf(selected);
             _students.set(index, updated);
             _table.getSelectionModel().select(index);
@@ -642,8 +643,7 @@ public class StudentManagementFrame extends Application {
 
     private Student readForm(Student selected) {
         Student student = new Student();
-        student.setStudentId(selected == null
-                ? trimmed(_studentIdField) : selected.getStudentId());
+        student.setStudentId(trimmed(_studentIdField));
         student.setCampusCardNo(trimmed(_campusCardField));
         student.setUserId(trimmed(_userIdField));
         student.setName(trimmed(_nameField));
@@ -665,6 +665,7 @@ public class StudentManagementFrame extends Application {
         }
         boolean editing = student != null;
         clearValidation();
+        _addButton.setDisable(editing);
         _updateButton.setDisable(!editing);
         _deleteButton.setDisable(!editing);
         _editorModeLabel.setText(editing
@@ -675,7 +676,7 @@ public class StudentManagementFrame extends Application {
             return;
         }
         _studentIdField.setText(student.getStudentId());
-        _studentIdField.setEditable(false);
+        _studentIdField.setEditable(true);
         _campusCardField.setText(student.getCampusCardNo());
         _userIdField.setText(student.getUserId());
         _nameField.setText(student.getName());
@@ -772,11 +773,13 @@ public class StudentManagementFrame extends Application {
 
     private void updateEditingButtons() {
         if (!isAdmin()) {
+            _addButton.setDisable(true);
             _updateButton.setDisable(true);
             _deleteButton.setDisable(true);
             return;
         }
         boolean editing = _table.getSelectionModel().getSelectedItem() != null;
+        _addButton.setDisable(_operationRunning || editing);
         _updateButton.setDisable(_operationRunning || !editing);
         _deleteButton.setDisable(_operationRunning || !editing);
     }
@@ -816,6 +819,24 @@ public class StudentManagementFrame extends Application {
             return "管理员视图";
         }
         return "未登录";
+    }
+
+    private void updateQueryPrompt() {
+        String type = _queryTypeBox.getValue();
+        _queryField.setPromptText(switch (type == null ? "" : type) {
+            case "一卡通号" -> "输入完整一卡通号";
+            case "姓名" -> "输入学生姓名";
+            default -> "输入完整学号";
+        });
+    }
+
+    private boolean confirmStudentIdChange(String originalStudentId, String newStudentId) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "原学号：" + originalStudentId + "\n新学号：" + newStudentId,
+                ButtonType.OK, ButtonType.CANCEL);
+        confirm.setTitle("确认修改学号");
+        confirm.setHeaderText("学号将同时更新到该学生已有的选课记录");
+        return confirm.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
     }
 
     /**

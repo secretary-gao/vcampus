@@ -16,5 +16,5 @@ dashscope.api-host=https://dashscope.aliyuncs.com/api/v1
 # API Key，格式类似 sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 dashscope.api-key=
 
-# 模型名称，qwen-turbo 速度快、免费额度内足够用；也可以换成 qwen-plus 效果更好但更贵
-dashscope.model=qwen-turbo
+# 校园 AI 使用的模型（阿里云 DashScope）
+dashscope.model=qwen3-coder-plus

@@ -4,6 +4,7 @@ import vcampus.common.constant.StudentProtocol;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.Student;
+import vcampus.common.vo.StudentUpdateRequest;
 import vcampus.common.vo.User;
 import vcampus.server.dao.UserDAO;
 
@@ -55,7 +56,7 @@ public class StudentRequestHandler {
                 case StudentProtocol.ADD ->
                         addStudent(currentUser, (Student) request.getData());
                 case StudentProtocol.UPDATE ->
-                        updateStudent(currentUser, (Student) request.getData());
+                        updateStudent(currentUser, request.getData());
                 case StudentProtocol.DELETE -> {
                     requireAdmin(currentUser);
                     _studentServerSrv.deleteStudent((String) request.getData());
@@ -153,10 +154,18 @@ public class StudentRequestHandler {
         return _studentServerSrv.addStudent(student);
     }
 
-    private Student updateStudent(User currentUser, Student student)
+    private Student updateStudent(User currentUser, Object requestData)
             throws SQLException, IOException, StudentServiceException {
         requireAdmin(currentUser);
-        return _studentServerSrv.updateStudent(student);
+        if (requestData instanceof StudentUpdateRequest updateRequest) {
+            return _studentServerSrv.updateStudent(updateRequest.getOriginalStudentId(),
+                    updateRequest.getStudent());
+        }
+        if (requestData instanceof Student student) {
+            return _studentServerSrv.updateStudent(student);
+        }
+        throw new StudentServiceException(StudentProtocol.STATUS_BAD_REQUEST,
+                "学籍修改请求格式不正确");
     }
 
     private static void requireTeacherOrAdmin(User user) throws StudentServiceException {

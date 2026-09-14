@@ -95,6 +95,16 @@ public class UserDAO {
         }
     }
 
+    /** 删除指定登录账号，供管理员新增学籍失败时回滚自动创建的账号。 */
+    public boolean deleteByUId(String uId) throws SQLException, IOException {
+        String sql = "DELETE FROM tblUser WHERE uId = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, uId);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
     /**
      * 按账号状态查询用户列表（用于管理员查看"待审核"账号列表）。
      *

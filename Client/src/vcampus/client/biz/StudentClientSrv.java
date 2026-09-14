@@ -4,6 +4,7 @@ import vcampus.common.constant.StudentProtocol;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.Student;
+import vcampus.common.vo.StudentUpdateRequest;
 import vcampus.common.vo.User;
 
 import java.io.IOException;
@@ -80,7 +81,15 @@ public class StudentClientSrv implements IStudentClientSrv {
     @Override
     public Student updateStudent(Student student)
             throws IOException, ClassNotFoundException, StudentClientException {
-        return (Student) request(StudentProtocol.UPDATE, student).getData();
+        String originalStudentId = student == null ? null : student.getStudentId();
+        return updateStudent(originalStudentId, student);
+    }
+
+    @Override
+    public Student updateStudent(String originalStudentId, Student student)
+            throws IOException, ClassNotFoundException, StudentClientException {
+        return (Student) request(StudentProtocol.UPDATE,
+                new StudentUpdateRequest(originalStudentId, student)).getData();
     }
 
     @Override

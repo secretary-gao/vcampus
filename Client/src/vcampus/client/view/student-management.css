@@ -1,5 +1,5 @@
-.root {
-    -vc-background: #f3f5f4;
+.app-root {
+    -vc-background: #f4f7f5;
     -vc-surface: #ffffff;
     -vc-surface-subtle: #f6f8f7;
     -vc-surface-muted: #edf1ef;
@@ -24,39 +24,36 @@
     -fx-font-family: "Segoe UI Variable", "Microsoft YaHei UI", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-text-fill: -vc-text;
-}
-
-.app-root {
     -fx-background-color: -vc-background;
 }
 
-.title-row {
-    -fx-padding: 18px 22px 14px 22px;
+.app-root .title-row {
+    -fx-padding: 20px 24px 15px 24px;
     -fx-background-color: -vc-surface;
 }
 
-.page-title {
-    -fx-font-size: 20px;
+.app-root .page-title {
+    -fx-font-size: 22px;
     -fx-font-weight: 700;
     -fx-text-fill: -vc-text;
 }
 
-.count-label {
+.app-root .count-label {
     -fx-padding: 3px 0 0 0;
     -fx-text-fill: -vc-text-secondary;
     -fx-font-weight: 600;
 }
 
-.role-label {
-    -fx-padding: 3px 9px;
+.app-root .role-label {
+    -fx-padding: 4px 10px;
     -fx-background-color: -vc-primary-soft;
-    -fx-background-radius: 3px;
+    -fx-background-radius: 999px;
     -fx-text-fill: -vc-primary;
     -fx-font-size: 11px;
     -fx-font-weight: 700;
 }
 
-.student-self-hint {
+.app-root .student-self-hint {
     -fx-padding: 10px 22px 12px 22px;
     -fx-background-color: -vc-surface;
     -fx-border-color: transparent transparent -vc-border transparent;
@@ -64,177 +61,177 @@
     -fx-text-fill: -vc-text-secondary;
 }
 
-.search-bar {
-    -fx-padding: 10px 22px 11px 22px;
+.app-root .search-bar {
+    -fx-padding: 11px 24px 13px 24px;
     -fx-background-color: -vc-surface;
     -fx-border-color: -vc-border transparent -vc-border transparent;
     -fx-border-width: 1px 0 1px 0;
 }
 
-.text-field,
-.combo-box,
-.date-picker {
-    -fx-min-height: 36px;
-    -fx-pref-height: 36px;
+.app-root .text-field,
+.app-root .combo-box,
+.app-root .date-picker {
+    -fx-min-height: 38px;
+    -fx-pref-height: 38px;
     -fx-background-color: -vc-surface;
     -fx-border-color: -vc-border-strong;
-    -fx-border-radius: 3px;
-    -fx-background-radius: 3px;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
     -fx-padding: 0 9px;
 }
 
-.text-field:hover,
-.combo-box:hover,
-.date-picker:hover {
+.app-root .text-field:hover,
+.app-root .combo-box:hover,
+.app-root .date-picker:hover {
     -fx-border-color: #879a92;
 }
 
-.text-field:focused,
-.combo-box:focused,
-.date-picker:focused {
+.app-root .text-field:focused,
+.app-root .combo-box:focused,
+.app-root .date-picker:focused {
     -fx-border-color: -vc-focus;
     -fx-border-width: 1.5px;
     -fx-effect: dropshadow(three-pass-box, -vc-focus-shadow, 4, 0, 0, 0);
 }
 
-.text-field:disabled,
-.text-field:readonly,
-.combo-box:disabled,
-.date-picker:disabled {
+.app-root .text-field:disabled,
+.app-root .text-field:readonly,
+.app-root .combo-box:disabled,
+.app-root .date-picker:disabled {
     -fx-background-color: -vc-surface-muted;
     -fx-opacity: 0.70;
 }
 
-.text-field.field-error,
-.text-field.field-error:focused {
+.app-root .text-field.field-error,
+.app-root .text-field.field-error:focused {
     -fx-border-color: -vc-danger;
     -fx-border-width: 1.5px;
     -fx-effect: dropshadow(three-pass-box, -vc-danger-shadow, 5, 0, 0, 0);
 }
 
-.button {
-    -fx-min-height: 36px;
+.app-root .button {
+    -fx-min-height: 38px;
     -fx-padding: 0 14px;
-    -fx-background-radius: 3px;
-    -fx-border-radius: 3px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
     -fx-cursor: hand;
     -fx-font-weight: 600;
 }
 
-.button:focused {
+.app-root .button:focused {
     -fx-border-color: -vc-focus;
     -fx-border-width: 2px;
     -fx-border-insets: -1px;
     -fx-effect: dropshadow(three-pass-box, -vc-focus-shadow, 4, 0, 0, 0);
 }
 
-.primary-button {
+.app-root .primary-button {
     -fx-background-color: -vc-primary;
     -fx-border-color: -vc-primary;
     -fx-text-fill: white;
 }
 
-.primary-button:hover {
+.app-root .primary-button:hover {
     -fx-background-color: -vc-primary-hover;
     -fx-border-color: -vc-primary-hover;
 }
 
-.primary-button:pressed {
+.app-root .primary-button:pressed {
     -fx-background-color: -vc-primary-pressed;
     -fx-border-color: -vc-primary-pressed;
 }
 
-.secondary-button {
+.app-root .secondary-button {
     -fx-background-color: -vc-surface;
     -fx-border-color: -vc-border-strong;
     -fx-text-fill: #293832;
 }
 
-.secondary-button:hover {
+.app-root .secondary-button:hover {
     -fx-background-color: #edf3f0;
     -fx-border-color: -vc-primary;
     -fx-text-fill: -vc-primary;
 }
 
-.secondary-button:pressed {
+.app-root .secondary-button:pressed {
     -fx-background-color: #dce8e2;
     -fx-border-color: -vc-primary-pressed;
 }
 
-.quiet-button {
+.app-root .quiet-button {
     -fx-background-color: -vc-surface-muted;
     -fx-border-color: transparent;
     -fx-text-fill: #3f4c56;
 }
 
-.quiet-button:hover {
+.app-root .quiet-button:hover {
     -fx-background-color: #e1e5e9;
 }
 
-.quiet-button:pressed {
+.app-root .quiet-button:pressed {
     -fx-background-color: #d4dae0;
 }
 
-.danger-button {
+.app-root .danger-button {
     -fx-background-color: -vc-danger-soft;
     -fx-border-color: #dfa29f;
     -fx-text-fill: -vc-danger;
 }
 
-.danger-button:hover {
+.app-root .danger-button:hover {
     -fx-background-color: #f7e1e1;
     -fx-border-color: #c86c67;
     -fx-text-fill: -vc-danger-hover;
 }
 
-.danger-button:pressed {
+.app-root .danger-button:pressed {
     -fx-background-color: #f0d5d5;
     -fx-border-color: -vc-danger-hover;
 }
 
-.button:disabled {
+.app-root .button:disabled {
     -fx-opacity: 0.45;
     -fx-cursor: default;
 }
 
-.workspace {
-    -fx-padding: 14px 20px 16px 20px;
+.app-root .workspace {
+    -fx-padding: 16px 20px 18px 20px;
     -fx-background-color: transparent;
 }
 
-.workspace > .split-pane-divider {
+.app-root .workspace > .split-pane-divider {
     -fx-padding: 0 1px;
     -fx-background-color: transparent;
 }
 
-.table-section {
+.app-root .table-section {
     -fx-background-color: -vc-surface;
     -fx-border-color: -vc-border;
     -fx-border-width: 1px;
-    -fx-border-radius: 3px;
-    -fx-background-radius: 3px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
 }
 
-.student-detail {
+.app-root .student-detail {
     -fx-padding: 24px;
     -fx-background-color: -vc-surface;
     -fx-border-color: -vc-border;
     -fx-border-width: 1px;
-    -fx-border-radius: 3px;
-    -fx-background-radius: 3px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
 }
 
-.detail-grid {
+.app-root .detail-grid {
     -fx-padding: 6px 0 0 0;
 }
 
-.detail-label {
+.app-root .detail-label {
     -fx-min-width: 100px;
     -fx-text-fill: -vc-text-muted;
     -fx-font-weight: 600;
 }
 
-.detail-value {
+.app-root .detail-value {
     -fx-min-width: 260px;
     -fx-padding: 9px 12px;
     -fx-background-color: -vc-surface-subtle;
@@ -245,148 +242,158 @@
     -fx-font-weight: 600;
 }
 
-.section-heading {
+.app-root .section-heading {
     -fx-padding: 14px 15px 12px 15px;
     -fx-border-color: transparent transparent -vc-border transparent;
     -fx-border-width: 0 0 1px 0;
 }
 
-.section-title,
-.editor-title {
+.app-root .section-title,
+.app-root .editor-title {
     -fx-font-size: 16px;
     -fx-font-weight: 700;
     -fx-text-fill: -vc-text;
 }
 
-.section-hint {
+.app-root .section-hint {
     -fx-text-fill: -vc-text-muted;
     -fx-font-size: 11px;
 }
 
-.student-table {
+.app-root .field-hint {
+    -fx-padding: 8px 10px;
+    -fx-background-color: -vc-primary-soft;
+    -fx-border-color: #c8d9d1;
+    -fx-border-radius: 3px;
+    -fx-background-radius: 3px;
+    -fx-text-fill: -vc-text-secondary;
+    -fx-font-size: 11px;
+}
+
+.app-root .student-table {
     -fx-background-color: -vc-surface;
     -fx-border-width: 0;
 }
 
-.student-table:focused {
+.app-root .student-table:focused {
     -fx-background-insets: 0;
 }
 
-.student-table .column-header-background {
+.app-root .student-table .column-header-background {
     -fx-background-color: -vc-surface-subtle;
 }
 
-.student-table .column-header,
-.student-table .filler {
+.app-root .student-table .column-header,
+.app-root .student-table .filler {
     -fx-background-color: transparent;
     -fx-border-color: transparent transparent -vc-border transparent;
     -fx-border-width: 0 0 1px 0;
-    -fx-size: 38px;
+    -fx-size: 42px;
 }
 
-.student-table .column-header .label {
+.app-root .student-table .column-header .label {
     -fx-alignment: center-left;
     -fx-text-fill: -vc-text-secondary;
     -fx-font-weight: 700;
     -fx-padding: 0 9px;
 }
 
-.student-table .table-row-cell {
+.app-root .student-table .table-row-cell {
     -fx-background-color: -vc-surface;
     -fx-border-color: transparent transparent #e9eeec transparent;
     -fx-border-width: 0 0 1px 0;
-    -fx-cell-size: 43px;
+    -fx-cell-size: 46px;
 }
 
-.student-table .table-row-cell:hover {
+.app-root .student-table .table-row-cell:hover {
     -fx-background-color: #f1f5f3;
 }
 
-.student-table .table-row-cell:selected {
+.app-root .student-table .table-row-cell:selected {
     -fx-background-color: -vc-primary-soft;
 }
 
-.student-table .table-row-cell:selected .table-cell {
+.app-root .student-table .table-row-cell:selected .table-cell {
     -fx-text-fill: #20352e;
 }
 
-.student-table .table-cell {
+.app-root .student-table .table-cell {
     -fx-border-width: 0;
     -fx-padding: 0 9px;
     -fx-alignment: center-left;
 }
 
-.empty-state-title {
+.app-root .empty-state-title {
     -fx-font-size: 14px;
     -fx-font-weight: 700;
     -fx-text-fill: -vc-text-secondary;
 }
 
-.empty-state-hint {
+.app-root .empty-state-hint {
     -fx-font-size: 11px;
     -fx-text-fill: -vc-text-muted;
 }
 
-.status-badge {
-    -fx-padding: 0;
-    -fx-background-color: transparent;
-    -fx-background-radius: 0;
+.app-root .status-badge {
+    -fx-padding: 3px 9px;
+    -fx-background-radius: 999px;
     -fx-font-size: 12px;
     -fx-font-weight: 600;
 }
 
-.status-enrolled {
-    -fx-background-color: transparent;
+.app-root .status-enrolled {
+    -fx-background-color: -vc-primary-soft;
     -fx-text-fill: -vc-primary;
 }
 
-.status-suspended {
-    -fx-background-color: transparent;
+.app-root .status-suspended {
+    -fx-background-color: -vc-warning-soft;
     -fx-text-fill: -vc-warning;
 }
 
-.status-muted {
-    -fx-background-color: transparent;
+.app-root .status-muted {
+    -fx-background-color: -vc-surface-muted;
     -fx-text-fill: -vc-text-secondary;
 }
 
-.editor-scroll {
+.app-root .editor-scroll {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
     -fx-padding: 0 0 0 16px;
 }
 
-.editor-scroll > .viewport {
+.app-root .editor-scroll > .viewport {
     -fx-background-color: transparent;
 }
 
-.editor-panel {
-    -fx-padding: 14px 16px 16px 16px;
-    -fx-spacing: 8px;
+.app-root .editor-panel {
+    -fx-padding: 14px 16px;
+    -fx-spacing: 7px;
     -fx-background-color: -vc-surface;
     -fx-border-color: -vc-border;
     -fx-border-width: 1px;
-    -fx-border-radius: 3px;
-    -fx-background-radius: 3px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
 }
 
-.student-form {
+.app-root .student-form {
     -fx-padding: 2px 0;
+    -fx-vgap: 5px;
 }
 
-.student-form .text-field,
-.student-form .combo-box,
-.student-form .date-picker {
+.app-root .student-form .text-field,
+.app-root .student-form .combo-box,
+.app-root .student-form .date-picker {
     -fx-min-height: 34px;
     -fx-pref-height: 34px;
 }
 
-.field-label {
+.app-root .field-label {
     -fx-text-fill: -vc-text-secondary;
     -fx-font-weight: 600;
 }
 
-.form-error {
+.app-root .form-error {
     -fx-padding: 8px 10px;
     -fx-background-color: -vc-danger-soft;
     -fx-background-radius: 4px;
@@ -396,12 +403,12 @@
     -fx-font-size: 11px;
 }
 
-.separator .line {
+.app-root .separator .line {
     -fx-border-color: -vc-border transparent transparent transparent;
     -fx-border-width: 1px 0 0 0;
 }
 
-.status-bar {
+.app-root .status-bar {
     -fx-min-height: 33px;
     -fx-padding: 7px 20px;
     -fx-background-color: -vc-surface-subtle;
@@ -409,31 +416,31 @@
     -fx-border-width: 1px 0 0 0;
 }
 
-.connection-label {
+.app-root .connection-label {
     -fx-text-fill: -vc-text-secondary;
     -fx-font-size: 11px;
 }
 
-.status-message {
+.app-root .status-message {
     -fx-text-fill: -vc-text-secondary;
     -fx-font-size: 11px;
 }
 
-.status-success {
+.app-root .status-success {
     -fx-text-fill: -vc-primary;
     -fx-font-weight: 600;
 }
 
-.status-error {
+.app-root .status-error {
     -fx-text-fill: -vc-danger;
     -fx-font-weight: 600;
 }
 
-.progress-indicator {
+.app-root .progress-indicator {
     -fx-progress-color: -vc-primary;
 }
 
-.tooltip {
+.app-root .tooltip {
     -fx-font-size: 12px;
     -fx-background-color: #2e3740;
     -fx-text-fill: white;
