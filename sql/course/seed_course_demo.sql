@@ -37,8 +37,19 @@ INSERT IGNORE INTO tblCourseSchedule
      dayOfWeek, startPeriod, endPeriod, startTime, endTime)
 VALUES
     ('DEMO-SCH-001', 'CSE1001-01', 'CSE1001', 1, 16, '教一-101', 1, 1, 2,
-     '08:00:00', '09:40:00'),
+     '08:00:00', '09:35:00'),
     ('DEMO-SCH-002', 'CSE1002-01', 'CSE1002', 1, 16, '教二-202', 3, 3, 4,
-     '10:00:00', '11:40:00'),
+     '09:50:00', '11:25:00'),
     ('DEMO-SCH-003', 'MATH1001-01', 'MATH1001', 1, 16, '教三-303', 5, 6, 7,
-     '14:00:00', '15:40:00');
+     '14:00:00', '15:35:00');
+
+UPDATE tblCourseSchedule
+SET startTime=CASE scheduleId
+        WHEN 'DEMO-SCH-001' THEN '08:00:00'
+        WHEN 'DEMO-SCH-002' THEN '09:50:00'
+        WHEN 'DEMO-SCH-003' THEN '14:00:00' END,
+    endTime=CASE scheduleId
+        WHEN 'DEMO-SCH-001' THEN '09:35:00'
+        WHEN 'DEMO-SCH-002' THEN '11:25:00'
+        WHEN 'DEMO-SCH-003' THEN '15:35:00' END
+WHERE scheduleId IN ('DEMO-SCH-001','DEMO-SCH-002','DEMO-SCH-003');
