@@ -121,20 +121,20 @@ public class HospitalFrame extends VBox {
         // 根据角色分配主题色，和MainFrame保持一致
         switch (_loginUserRole) {
             case "管理员":
-                themePrimaryColor = "#c9860a";
-                themeHoverColor = "#b07709";
-                themeActiveColor = "#946407";
+                themePrimaryColor = "#94b55a";   // 主色：参考图浅绿黄
+                themeHoverColor = "#7f9f4d";     // 悬浮：深一点
+                themeActiveColor = "#6b8a40";    // 选中高亮：再深一点
                 break;
             case "教师":
-                themePrimaryColor = "#2d6a9f";
-                themeHoverColor = "#245785";
-                themeActiveColor = "#1c486e";
+                themePrimaryColor = "#94b55a";   // 主色：参考图浅绿黄
+                themeHoverColor = "#7f9f4d";     // 悬浮：深一点
+                themeActiveColor = "#6b8a40";    // 选中高亮：再深一点
                 break;
             case "学生":
             default:
-                themePrimaryColor = "#77b55a";
-                themeHoverColor = "#7f9f4d";
-                themeActiveColor = "#6b8a40";
+                themePrimaryColor = "#94b55a";   // 主色：参考图浅绿黄
+                themeHoverColor = "#7f9f4d";     // 悬浮：深一点
+                themeActiveColor = "#6b8a40";    // 选中高亮：再深一点
                 break;
         }
         setSpacing(0);
