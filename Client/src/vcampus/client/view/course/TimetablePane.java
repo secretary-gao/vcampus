@@ -21,6 +21,7 @@ import javafx.scene.layout.VBox;
 import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
+import vcampus.common.vo.TeachingClass;
 
 import java.time.LocalTime;
 import java.util.Comparator;
@@ -64,7 +65,7 @@ public class TimetablePane extends VBox {
     private void buildView() {
         Label title = new Label("我的课表");
         title.getStyleClass().add("page-title");
-        Label description = new Label("按星期与实际上课时间排列，周末有课时会自动显示");
+        Label description = new Label("按节次与星期排列；多段周次课程会分别显示，周末有课时自动扩展");
         description.getStyleClass().add("page-description");
         VBox heading = new VBox(3, title, description);
         HBox.setHgrow(heading, Priority.ALWAYS);
@@ -90,8 +91,12 @@ public class TimetablePane extends VBox {
         List<CourseSchedule> schedules = _client.queryStudentSchedule(_studentId);
         Map<String, Course> courses = _client.queryCourse("").stream()
                 .collect(Collectors.toMap(Course::getCourseId, Function.identity(), (a, b) -> a));
+        Map<String, TeachingClass> classes = _client.queryTeachingClass("").stream()
+                .collect(Collectors.toMap(TeachingClass::getTeachingClassId,
+                        Function.identity(), (a, b) -> a));
         return schedules.stream()
-                .map(schedule -> new TimetableRow(schedule, courses.get(schedule.getCourseId())))
+                .map(schedule -> new TimetableRow(schedule, courses.get(schedule.getCourseId()),
+                        classes.get(schedule.getTeachingClassId())))
                 .sorted(Comparator.comparing((TimetableRow row) -> row.schedule().getStartTime())
                         .thenComparing(row -> row.schedule().getDayOfWeek()))
                 .toList();
@@ -121,10 +126,12 @@ public class TimetablePane extends VBox {
         _scheduleHost.setMinWidth(_minimumGridWidth);
         updateHorizontalPolicy();
         List<TimeSlot> slots = rows.stream()
-                .map(row -> new TimeSlot(
-                        row.schedule().getStartTime(), row.schedule().getEndTime()))
+                .map(row -> new TimeSlot(row.schedule().getStartPeriod(),
+                        row.schedule().getEndPeriod(), row.schedule().getStartTime(),
+                        row.schedule().getEndTime()))
                 .distinct()
-                .sorted(Comparator.comparing(TimeSlot::start).thenComparing(TimeSlot::end))
+                .sorted(Comparator.comparingInt(TimeSlot::startPeriod)
+                        .thenComparing(TimeSlot::start).thenComparing(TimeSlot::end))
                 .toList();
 
         GridPane grid = new GridPane();
@@ -148,7 +155,11 @@ public class TimetablePane extends VBox {
 
         for (int rowIndex = 0; rowIndex < slots.size(); rowIndex++) {
             TimeSlot slot = slots.get(rowIndex);
-            Label time = new Label(CourseViewSupport.timeRange(slot.start(), slot.end()));
+            Label period = new Label(slot.startPeriod() + "–" + slot.endPeriod() + " 节");
+            period.getStyleClass().add("timetable-period");
+            Label clock = new Label(CourseViewSupport.timeRange(slot.start(), slot.end()));
+            clock.getStyleClass().add("timetable-clock");
+            VBox time = new VBox(3, period, clock);
             time.getStyleClass().add("timetable-time");
             time.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
             grid.add(time, 0, rowIndex + 1);
@@ -160,6 +171,8 @@ public class TimetablePane extends VBox {
                 final int currentDay = day;
                 rows.stream()
                         .filter(row -> row.schedule().getDayOfWeek() == currentDay
+                                && row.schedule().getStartPeriod() == slot.startPeriod()
+                                && row.schedule().getEndPeriod() == slot.endPeriod()
                                 && row.schedule().getStartTime().equals(slot.start())
                                 && row.schedule().getEndTime().equals(slot.end()))
                         .forEach(row -> cell.getChildren().add(courseCard(row)));
@@ -188,26 +201,34 @@ public class TimetablePane extends VBox {
     private VBox courseCard(TimetableRow row) {
         Course course = row.course();
         String courseName = course == null ? row.schedule().getCourseId() : course.getCourseName();
-        String teacher = course == null ? "教师待定" : CourseViewSupport.safe(
-                course.getTeacher(), "教师待定");
+        String teacher = row.teachingClass() == null ? "教师待定" : CourseViewSupport.safe(
+                row.teachingClass().getTeacher(), "教师待定");
         Label name = new Label(courseName);
         name.setWrapText(true);
         name.getStyleClass().add("timetable-course-name");
         Label teacherLabel = new Label(teacher);
         teacherLabel.getStyleClass().add("timetable-course-meta");
+        Label weeks = new Label(row.schedule().getWeekStart() + "–"
+                + row.schedule().getWeekEnd() + " 周 · "
+                + (row.teachingClass() == null ? "—"
+                : row.teachingClass().getClassNumber() + " 班"));
+        weeks.setWrapText(true);
+        weeks.getStyleClass().add("timetable-course-meta");
         Label room = new Label(CourseViewSupport.safe(
                 row.schedule().getClassroom(), "教室待定"));
         room.getStyleClass().add("timetable-course-meta");
-        VBox card = new VBox(3, name, teacherLabel, room);
+        VBox card = new VBox(3, name, weeks, teacherLabel, room);
         int variant = Math.floorMod(row.schedule().getCourseId().hashCode(), 4);
         card.getStyleClass().addAll("timetable-course", "variant-" + variant);
         return card;
     }
 
-    private record TimeSlot(LocalTime start, LocalTime end) {
+    private record TimeSlot(int startPeriod, int endPeriod,
+                            LocalTime start, LocalTime end) {
     }
 
     /** 课程表展示行，将排课与课程主数据在客户端只读组合。 */
-    private record TimetableRow(CourseSchedule schedule, Course course) {
+    private record TimetableRow(CourseSchedule schedule, Course course,
+                                TeachingClass teachingClass) {
     }
 }

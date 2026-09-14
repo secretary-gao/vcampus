@@ -60,20 +60,44 @@ public class CourseScheduleServerSrvTest {
             prepareCourse(courseDAO, COURSE_B, TEACHER_A);
             prepareCourse(courseDAO, COURSE_C, TEACHER_B);
 
-            CourseSchedule first = service.addSchedule(new CourseSchedule(
-                    null, COURSE_A, ROOM_A, 1,
-                    LocalTime.of(9, 0), LocalTime.of(10, 0)));
+            CourseSchedule first = new CourseSchedule(null, COURSE_A, ROOM_A, 1,
+                    LocalTime.of(9, 0), LocalTime.of(10, 0));
+            first.setStartPeriod(2);
+            first.setEndPeriod(3);
+            first = service.addSchedule(first);
             require(first.getScheduleId() != null, "新增排课并生成记录号");
 
-            expectFailure(() -> service.addSchedule(new CourseSchedule(
-                    null, COURSE_C, ROOM_A, 1,
-                    LocalTime.of(9, 30), LocalTime.of(10, 30))), "教室重叠冲突");
-            expectFailure(() -> service.addSchedule(new CourseSchedule(
-                    null, COURSE_B, ROOM_B, 1,
-                    LocalTime.of(9, 30), LocalTime.of(10, 30))), "教师重叠冲突");
+            CourseSchedule classroomConflict = new CourseSchedule(null, COURSE_C, ROOM_A, 1,
+                    LocalTime.of(9, 30), LocalTime.of(10, 30));
+            classroomConflict.setStartPeriod(3);
+            classroomConflict.setEndPeriod(4);
+            expectFailure(() -> service.addSchedule(classroomConflict), "教室重叠冲突");
+            CourseSchedule teacherConflict = new CourseSchedule(null, COURSE_B, ROOM_B, 1,
+                    LocalTime.of(9, 30), LocalTime.of(10, 30));
+            teacherConflict.setStartPeriod(3);
+            teacherConflict.setEndPeriod(4);
+            expectFailure(() -> service.addSchedule(teacherConflict), "教师重叠冲突");
             expectFailure(() -> service.addSchedule(new CourseSchedule(
                     null, COURSE_C, ROOM_C, 2,
                     LocalTime.of(11, 0), LocalTime.of(10, 0))), "开始时间必须早于结束时间");
+
+            CourseSchedule adjacent = new CourseSchedule(null, COURSE_C, ROOM_A, 1,
+                    LocalTime.of(10, 0), LocalTime.of(11, 0));
+            adjacent.setStartPeriod(4);
+            adjacent.setEndPeriod(5);
+            adjacent = service.addSchedule(adjacent);
+            require(adjacent != null, "相邻节次边界不视为冲突");
+            service.deleteSchedule(adjacent.getScheduleId());
+
+            CourseSchedule laterWeeks = new CourseSchedule(
+                    null, COURSE_C, ROOM_A, 1,
+                    LocalTime.of(9, 0), LocalTime.of(10, 0));
+            laterWeeks.setWeekStart(17);
+            laterWeeks.setWeekEnd(18);
+            laterWeeks.setStartPeriod(2);
+            laterWeeks.setEndPeriod(3);
+            require(service.addSchedule(laterWeeks) != null,
+                    "相同教室时段但周次不重叠时允许排课");
 
             CourseSchedule second = service.addSchedule(new CourseSchedule(
                     null, COURSE_C, ROOM_B, 1,
@@ -133,7 +157,8 @@ public class CourseScheduleServerSrvTest {
     }
 
     private void prepareCourse(CourseDAO dao, String id, String teacher) throws Exception {
-        require(dao.insertCourse(new Course(id, "排课测试课程", teacher, 2, 20, 0)), "准备测试课程");
+        require(CourseTestData.prepareCourse(
+                new Course(id, "排课测试课程", teacher, 2, 20, 0)), "准备测试课程和教学班");
         _createdCourses.add(id);
     }
 
@@ -169,7 +194,7 @@ public class CourseScheduleServerSrvTest {
     /** 删除存在的测试课程。 */
     private static void deleteCourse(CourseDAO courseDAO, String courseId) throws Exception {
         if (courseDAO.findById(courseId) != null) {
-            courseDAO.deleteCourse(courseId);
+            CourseTestData.cleanupCourse(courseId);
         }
     }
 

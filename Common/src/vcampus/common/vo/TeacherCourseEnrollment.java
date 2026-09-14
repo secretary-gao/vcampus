@@ -19,6 +19,8 @@ public class TeacherCourseEnrollment implements Serializable {
 
     private String _courseId;
     private String _courseName;
+    private String _teachingClassId;
+    private String _classNumber;
     private String _studentId;
     private String _studentName;
     private String _className;
@@ -56,6 +58,22 @@ public class TeacherCourseEnrollment implements Serializable {
 
     public void setCourseName(String courseName) {
         this._courseName = courseName;
+    }
+
+    public String getTeachingClassId() {
+        return _teachingClassId;
+    }
+
+    public void setTeachingClassId(String teachingClassId) {
+        _teachingClassId = teachingClassId;
+    }
+
+    public String getClassNumber() {
+        return _classNumber;
+    }
+
+    public void setClassNumber(String classNumber) {
+        _classNumber = classNumber;
     }
 
     public String getStudentId() {

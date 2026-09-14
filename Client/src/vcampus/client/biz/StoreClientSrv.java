@@ -18,6 +18,7 @@ import vcampus.common.vo.ShopRequest;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.math.BigDecimal;
 import java.net.Socket;
 
 /**
@@ -97,6 +98,29 @@ public class StoreClientSrv implements IStoreClientSrv {
         req.setGoodsId(goodsId);
         return sendAndReceive(new Message(System.currentTimeMillis(),
                 IConstant.MSG_SHOP_DELETE_GOODS, MessageType.COMMAND, null, req, "store-admin"));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Message queryBalance(String userId) throws IOException, ClassNotFoundException {
+        ShopRequest req = new ShopRequest();
+        req.setUserId(userId);
+        return sendAndReceive(new Message(System.currentTimeMillis(),
+                IConstant.MSG_SHOP_QUERY_BALANCE, MessageType.COMMAND, null, req, userId));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Message recharge(String userId, BigDecimal amount) throws IOException, ClassNotFoundException {
+        ShopRequest req = new ShopRequest();
+        req.setUserId(userId);
+        req.setAmount(amount);
+        return sendAndReceive(new Message(System.currentTimeMillis(),
+                IConstant.MSG_SHOP_RECHARGE, MessageType.COMMAND, null, req, userId));
     }
 
     /**

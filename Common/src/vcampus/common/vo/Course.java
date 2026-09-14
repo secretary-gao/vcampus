@@ -30,17 +30,25 @@ public class Course implements Serializable {
     /** 课程名称。 */
     private String _courseName;
 
-    /** 授课教师。 */
+    /**
+     * 兼容 Course 1.0 客户端的教学班教师投影；权威值在 TeachingClass。
+     */
     private String _teacher;
 
     /** 学分（大于 0）。 */
     private int _credit;
 
-    /** 课程容量（大于 0）。 */
+    /** 兼容 Course 1.0 客户端的教学班容量投影；权威值在 TeachingClass。 */
     private int _capacity;
 
-    /** 已选人数（不小于 0，且不超过课程容量）。 */
+    /** 兼容 Course 1.0 客户端的教学班人数投影；权威值在 TeachingClass。 */
     private int _selectedCount;
+
+    /** 课程性质，例如必修、任选。 */
+    private String _courseNature;
+
+    /** 开课单位。 */
+    private String _openingUnit;
 
     /**
      * 无参构造方法。
@@ -174,6 +182,22 @@ public class Course implements Serializable {
      */
     public void setSelectedCount(int selectedCount) {
         this._selectedCount = selectedCount;
+    }
+
+    public String getCourseNature() {
+        return _courseNature;
+    }
+
+    public void setCourseNature(String courseNature) {
+        _courseNature = courseNature;
+    }
+
+    public String getOpeningUnit() {
+        return _openingUnit;
+    }
+
+    public void setOpeningUnit(String openingUnit) {
+        _openingUnit = openingUnit;
     }
 
     /**

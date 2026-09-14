@@ -1,300 +1,337 @@
-# Course 模块最终交付说明
-## 交付者：刘酝潇
-本说明面向项目组长、验收教师和接手维护者。交付对象为 PR #4：`dev/course -> main`，
-原学生端最终人工 UAT 基线为 `4e1d9c2`（2026-09-05）；三角色功能于 2026-09-07 完成工程回归。
+# Course Reality Track 最终交付说明
 
-## 1. Course 模块最终功能
+本文面向项目组长、验收教师和后续维护者。Course 1.0 已进入 `main`；
+`feat/course-realistic-model` 在其基础上完成真实教学班模型、高保真三角色界面、选课规则、
+自动排课、教务统计与工程验证。本 Sprint 完成后，Course 功能冻结，只接受缺陷和集成修复。
 
-- 学生：按课程号、名称或教师查询课程；查看容量和已选人数；选课、退课、查看我的课程和每周课程表。
-- 教师：按登录用户姓名匹配 `tblCourse.teacher`，只读查看本人所授课程及每门课程的选课学生名单。
-- 管理员：查询、新增、修改和删除课程及排课；维护课程时保留真实已选人数，排课时校验教师及教室时间冲突。
-- 学籍接入：将登录用户 ID 映射到正式学号；未关联学籍的账号显示提示。
-- 数据一致性：选退课在同一事务中同步修改选课记录和 `selectedCount`，处理重复选课、满员及失败回滚。
-- 界面集成：从 MainFrame 的“教务”入口进入；选退课成功后大厅、我的课程、课程表各刷新一次。
+## 1. 最终功能
 
-管理员界面可见性不等于服务端授权，当前权限边界见第 11 节。
+### 学生
 
-## 2. 模块架构与调用链
+- 按关键字和课程性质筛选课程，展开一门课程下的多个教学班。
+- 查看教师、容量、已选人数、教室、周次、星期和节次。
+- 选择具体教学班，查看“我的课程”和响应式周课表，并执行退课。
+- 页面提前说明已选、同课程其他班、满员、时间冲突和培养方案组互斥原因。
+- 服务端再次执行全部规则，绕过 JavaFX 直接调用 Socket 也无法违反约束。
+
+### 教师
+
+- 按登录用户姓名查看本人负责的教学班，不混入同一课程的其他教师班级。
+- 查看每班容量、已选人数、利用率、排课和学生名单。
+- 按学号或姓名搜索当前教学班学生，显示匹配人数；筛选保留表头排序，刷新保留教学班与搜索条件。
+- 在名单中选中学生后点击“查看学籍”（也支持双击或 Enter），只读查看该学生的最新学籍；选退课后刷新名单。关联规则和验证方法见 [教师查看学生学籍](../student/README.md)。
+- 导出当前教学班名单 CSV，包含学号、姓名、班级、专业和选课时间。
+
+### 管理员
+
+- 查看教务 Dashboard、课程、教学班和排课。
+- 维护 Course、TeachingClass 和多段 CourseSchedule。
+- 手工排课时检查教师、教室及教学班自身时间冲突。
+- 使用 CSP 自动排课生成 Preview；确认后才以单事务写入，取消 Preview 不修改数据库。
+- 导出全部教学班选课统计 CSV。
+
+## 2. 领域模型
 
 ```text
-MainFrame -> CoursePanel / 各业务页面
-    -> ICourseClientSrv / CourseClientSrv
-    -> Message + 短连接 Socket
-    -> ServerThread -> CourseHandler (ModuleHandler)
-    -> ICourseServerSrv / CourseServerSrv
-    -> CourseDAO / SelectCourseDAO / CourseScheduleDAO / CourseStudentDAO
-       / TeacherCourseEnrollmentDAO
-    -> MySQL vCampus
+Course 1 ───── N TeachingClass 1 ───── N CourseSchedule
+   │                    │
+   N                    N
+   │                    │
+CourseRequirement       SelectCourse
+GroupMember             │
+   │                    1
+   1                 Student
+CourseRequirementGroup
+       rule = CHOOSE_ONE
 ```
 
-JavaFX 页面通过后台 Task 发起网络请求，并在 FX 线程更新控件，不直接访问数据库。
-Service 负责业务校验和事务；DAO 负责参数化 SQL 与对象映射。选退课先锁定课程行，
-各 DAO 共用调用方的 JDBC Connection，失败时回滚。
+- `Course` 表达课程本体：课程号、名称、学分、课程性质、开课单位。
+- `TeachingClass` 表达一次具体开班：班号、教师、容量、已选人数、教学语言。
+- `CourseSchedule` 表达教学班的一段上课安排；一个教学班可以有多段周次/节次。
+- `SelectCourse` 指向教学班，同时保留 `courseId`，由唯一约束保证同一学生对同一 Course 只能选择一个班。
+- `CourseRequirementGroup` 将明确等价的中文/全英文课程组成 `CHOOSE_ONE` 组。
 
-Course 复用统一 Server：`ServerThread` 仅追加一行注册，`IConstant` 追加消息常量。
-本 PR 同时接通 MainFrame 的 Course、Hospital 入口，保留 User / Library / Student / Shop / Hospital 路由。
+`tblCourse.teacher/capacity/selectedCount` 只作为 Course 1.0 兼容投影；运行时容量与人数以
+`tblTeachingClass` 为准。截图未提供的教室保留为“待补充”，未猜测课程事实。
 
-## 3. 主要文件与职责
+## 3. 架构与调用链
+
+```text
+JavaFX CoursePanel
+  ├─ 学生：CourseHall / SelectedCourses / Timetable
+  ├─ 教师：TeacherCourses
+  └─ 管理员：Dashboard / CourseAdmin / ScheduleAdmin / AutoSchedule
+             │
+             ▼
+ICourseClientSrv / CourseClientSrv
+             │  Message + short-lived Socket
+             ▼
+ServerThread ──► CourseHandler ──► CourseServerSrv
+                                      │
+                                      ▼
+ CourseDAO / TeachingClassDAO / CourseScheduleDAO / SelectCourseDAO
+ CourseRequirementGroupDAO / CourseDashboardDAO / CourseStudentDAO
+ TeacherCourseEnrollmentDAO
+                                      │
+                                      ▼
+                                MySQL vCampus
+```
+
+JavaFX 使用后台 `Task` 发起网络请求，在 FX 线程更新控件。Client 每次请求建立短连接，
+连接超时为 5 秒，读取超时为 10 秒。Handler 只做协议解析和响应封装；Service 负责业务规则与事务；
+DAO 负责参数化 SQL 和对象映射。
+
+选课数据流：
+
+```text
+点击“选择”
+  -> CourseClientSrv.selectCourse(studentId, teachingClassId)
+  -> CourseHandler
+  -> CourseServerSrv.selectCourse
+  -> 锁学生与教学班
+  -> 检查同 Course、CHOOSE_ONE、时间冲突、容量
+  -> INSERT SelectCourse
+  -> TeachingClass.selectedCount + 1
+  -> 刷新 Course 兼容投影
+  -> COMMIT
+  -> 大厅 / 我的课程 / 课表各刷新一次
+```
+
+任一步失败均 `ROLLBACK`，因此记录与人数不会出现半成功。
+
+## 4. 主要文件
 
 | 位置 | 职责 |
 |---|---|
-| `Common/src/vcampus/common/vo/` | 课程、选课、排课及教师课程名单序列化对象 |
-| `Common/src/vcampus/common/constant/IConstant.java` | Course 消息名及共享通信常量 |
-| `Server/src/vcampus/server/dao/*Course*.java` | 课程、选课、排课持久化及相关自测 |
-| `Server/src/vcampus/server/dao/CourseStudentDAO.java` | 登录用户到正式学号的只读映射 |
-| `Server/src/vcampus/server/srv/CourseServerSrv.java` | 课程管理、选退课事务、排课冲突检查、课表及教师名单查询 |
-| `Server/src/vcampus/server/srv/CourseHandler.java` | 请求解析、Service 调用和响应封装 |
-| `Client/src/vcampus/client/biz/CourseClientSrv.java` | Course Socket 客户端 |
-| `Client/src/vcampus/client/view/course/` | 学生选课页、教师名单页、课程/排课管理页及独立演示入口 |
-| `Client/src/vcampus/client/view/{MainFrame,HospitalFrame}.java` | 主界面接入及医院图片加载 |
-| `sql/course/` | Course schema 和可选 demo 数据 |
-| `build.bat`、`run-*.bat`、`start-all.bat`、`.vscode/launch.json` | 构建、资源复制和启动入口 |
+| `Common/src/vcampus/common/vo/` | Course、TeachingClass、Schedule、规则组、自动排课方案和统计 DTO |
+| `Common/src/vcampus/common/constant/IConstant.java` | Course Socket 消息常量 |
+| `Server/src/vcampus/server/srv/CourseServerSrv.java` | 选退课事务、管理业务、排课冲突、Preview 与 Apply |
+| `Server/src/vcampus/server/srv/CourseAutoScheduler.java` | 独立、可测试的 CSP 回溯求解器 |
+| `Server/src/vcampus/server/srv/CourseHandler.java` | Course 请求分发与错误码转换 |
+| `Server/src/vcampus/server/dao/` | Course 各实体、规则组、名单和统计查询 |
+| `Client/src/vcampus/client/biz/CourseClientSrv.java` | 带 connect/read timeout 的短连接客户端 |
+| `Client/src/vcampus/client/view/course/` | 三角色页面、Dashboard、自动排课和 CSV 导出 |
+| `sql/course/` | schema、兼容 migration、Reality seed 和规则组 seed |
+| `build.bat`、`run-*.bat`、`.vscode/launch.json` | JDK 21 / JavaFX 构建和正式启动入口 |
 
-## 4. 数据库设计与初始化
+## 5. 数据库设计与初始化
 
-使用 MySQL 8.0、InnoDB 和 UTF-8。先按 `Server/db.properties.example` 创建本地
-`Server/db.properties` 并填写连接配置；该文件不提交。
+使用 MySQL 8.0、InnoDB、`utf8mb4`。先按 `Server/db.properties.example` 创建未纳入 Git 的
+`Server/db.properties`。
 
-| 表 | 关键约束 |
+| 表 | 关键规则 |
 |---|---|
-| `tblCourse` | 课程主键；学分、容量大于零；`0 <= selectedCount <= capacity` |
-| `tblSelectCourse` | `UNIQUE(studentId, courseId)`；外键关联正式 `tblStudent` 和 `tblCourse` |
-| `tblCourseSchedule` | 外键关联课程；星期 1–7；开始早于结束；同课程同星期同起止时间唯一 |
+| `tblCourse` | 课程主键；学分、课程性质和开课单位 |
+| `tblTeachingClass` | 课程外键；同课程班号唯一；`0 <= selectedCount <= capacity` |
+| `tblCourseSchedule` | 教学班复合外键；周次 1–30、星期 1–7、节次 1–13；时段唯一 |
+| `tblSelectCourse` | 学生/教学班外键；学生+教学班、学生+课程均唯一 |
+| `tblCourseRequirementGroup` | 规则组定义，当前支持 `CHOOSE_ONE` |
+| `tblCourseRequirementGroupMember` | 规则组与课程的关联；组合主键避免同一课程在同一组内重复 |
 
-教师取自 `tblCourse.teacher`。教师和教室的区间重叠由 Service 在事务中检查，相邻时段允许。
-跨表人数一致性由选退课 Service 事务维护，直接修改表数据不能替代业务操作。
-
-在仓库根目录的 PowerShell 中启动 MySQL（需将客户端加入 PATH）：
+不要在 PowerShell 5.1 中使用 `Get-Content ... | mysql` 导入中文 SQL。该管道会经历文件解码和
+原生程序管道编码转换，可能把 UTF-8 中文写成 `???`。从仓库根目录进入 MySQL：
 
 ```powershell
 mysql -u root -p --default-character-set=utf8mb4
 ```
 
-输入密码后，在 **MySQL 提示符内**逐条执行。确认每一步没有 `ERROR` 后再继续：
+在 **MySQL 提示符内**按顺序执行：
 
 ```sql
 SOURCE sql/vcampus_schema.sql;
 SOURCE sql/Student/BuildTbl.sql;
+SOURCE sql/hospital/vcampus_hospital.sql;
+SOURCE sql/shop/vcampus_shop.sql;
 SOURCE sql/course/vcampus_course.sql;
+SOURCE sql/course/migration_course_teaching_class.sql;
+SOURCE sql/course/migration_course_requirement_group.sql;
 SOURCE sql/seed_demo_data.sql;
 SOURCE sql/course/seed_course_demo.sql;
+SOURCE sql/course/seed_cs2024_fall_realistic.sql;
+SOURCE sql/course/seed_course_requirement_groups.sql;
 
 USE vCampus;
-SELECT courseId, courseName, teacher, HEX(courseName) FROM tblCourse ORDER BY courseId;
-SELECT scheduleId, classroom, dayOfWeek, startTime, endTime FROM tblCourseSchedule;
+SELECT courseId, courseName, HEX(courseName) FROM tblCourse ORDER BY courseId;
 EXIT;
 ```
 
-前三步依次建用户、学籍和 Course 表；后两步创建共享 demo 用户及 Course 演示数据。
-`CREATE TABLE IF NOT EXISTS` 和 `INSERT IGNORE` 不会重置已有业务数据，也不替代旧 schema 的迁移。
-其他模块的表和示例数据仍按各模块说明初始化；此流程不创建 Shop 商品或 Hospital 医生。
+这些 migration/seed 可重复执行，不会重置数据库。Reality seed 只重建明确标识的模拟学生选课组合，
+用于保证其课程无冲突；不清空其他模块或普通业务数据。
 
-`SOURCE` 让 MySQL 直接读取 UTF-8 文件。不要使用 `Get-Content ... | mysql`：
-PowerShell 5.1 的默认文件解码和原生程序管道编码可能损坏中文，单独设置
-`-Encoding UTF8` 或 MySQL 字符集参数不足以解决两次转换。可用 `HEX(...)` 区分终端显示与存储字节问题。
+Reality Track 数据为 27 门课程、40 个教学班、62 条排课、150 名模拟学生、1050 条选课。
+150 名学生每人 7 门课，共 15 种不同组合；全量扫描结果为：
 
-## 5. Socket API
+```text
+students_with_schedule_conflict = 0
+conflicting_selection_pairs      = 0
+oversold                         = 0
+selectedCount_drift              = 0
+duplicate_student_course         = 0
+orphan                           = 0
+requirement_group_violations     = 0
+```
 
-请求与响应使用共享 `Message`，每次调用建立一条短连接。下表列出 `Message.data`：
+## 6. 选课与排课规则
 
-| 消息名 | 请求 data | 成功响应 data |
+学生选课事务按以下顺序执行：锁定学生、锁定教学班、检查同 Course 重复、检查 `CHOOSE_ONE`、
+检查课表冲突、检查容量、插入选课、递增人数、刷新兼容投影、提交。
+
+两个 Schedule 冲突，当且仅当星期相同，且周次区间和节次区间都相交：
+
+```text
+max(a.weekStart, b.weekStart) <= min(a.weekEnd, b.weekEnd)
+max(a.startPeriod, b.startPeriod) <= min(a.endPeriod, b.endPeriod)
+```
+
+候选教学班的所有 Schedule 都会与学生已选教学班的所有 Schedule 比较。相邻但不重叠的节次、
+相同节次但不重叠的周次均允许。管理员排课用同一重叠定义检查教师、教室和教学班自身冲突。
+
+## 7. 自动排课
+
+自动排课将每个未排课 `TeachingClass` 视为变量，候选域来自 Reality 数据中已有的
+`时间模式 × 教室`。硬约束包括教师冲突、教室冲突、教学班自身冲突，并同时考虑周次和节次。
+
+```text
+读取目标教学班与已有 Schedule
+  -> 构造候选域
+  -> MRV：优先选择剩余候选最少的教学班
+  -> 尝试候选并做增量冲突检查
+  -> 失败则回溯
+  -> 生成 Preview + 搜索统计
+  -> 管理员确认
+  -> 单事务重新校验并批量写入
+```
+
+最坏复杂度为 `O(D^N)`（N 个教学班，每班 D 个候选），MRV 和增量约束检查会显著缩小实际搜索。
+Preview 不写数据库；Apply 中任意一条失败会回滚全部 Schedule，并拒绝已过期的 Preview。
+
+## 8. Dashboard 与导出
+
+Dashboard 的全部指标实时来自 SQL：课程数、教学班数、选课学生数、选课记录数、平均容量、
+平均已选人数、满员班级数、总容量利用率，以及热门教学班 Top 5、剩余名额 Top 5。
+
+CSV 使用 UTF-8 BOM，便于中文 Windows Excel 直接打开。教师导出当前班名单；管理员导出全部教学班
+的课程、教师、容量、人数、余量和利用率。字段会按 CSV 规则转义，测试后不保留临时文件。
+
+## 9. Socket API
+
+| 消息 | 请求 data | 成功响应 data |
 |---|---|---|
-| `courseQuery` | 关键字字符串；空值查询全部 | `List<Course>` |
-| `courseAdd` | `Course` | 已新增的 `Course`；`selectedCount` 由服务端置零 |
-| `courseUpdate` | `Course` | `true` |
-| `courseDelete` | 课程号字符串 | `true` |
-| `courseSelect` / `courseDrop` | 包含 `studentId`、`courseId` 的 Map | 成功提示字符串 |
-| `courseSelectedQuery` | 学号字符串 | `List<SelectCourse>` |
-| `courseStudentIdQuery` | 用户 ID 字符串 | 学号或 `null` |
-| `courseScheduleQuery` | 无 | `List<CourseSchedule>` |
-| `courseScheduleAdd` | `CourseSchedule` | 带记录号的 `CourseSchedule` |
-| `courseScheduleUpdate` | `CourseSchedule` | `true` |
-| `courseScheduleDelete` | 排课记录号字符串 | `true` |
-| `studentTimetableQuery` | 学号字符串 | 已选课程的 `List<CourseSchedule>` |
-| `teacherCourseEnrollmentsQuery` | 教师姓名字符串 | `List<TeacherCourseEnrollment>` |
+| `courseQuery` | 关键字 | `List<Course>` |
+| `teachingClassQuery` | 关键字 | `List<TeachingClass>` |
+| `courseSelect` / `courseDrop` | `{studentId, teachingClassId}` | 成功提示 |
+| `courseSelectedQuery` | studentId | `List<SelectCourse>` |
+| `studentTimetableQuery` | studentId | `List<CourseSchedule>` |
+| `teacherCourseEnrollmentsQuery` | 教师姓名 | `List<TeacherCourseEnrollment>` |
+| `courseRequirementGroupQuery` | 无 | `List<CourseRequirementGroup>` |
+| `courseDashboardQuery` | 无 | `CourseDashboardStats` |
+| `courseAutoSchedulePreview` | `AutoScheduleRequest` | `AutoSchedulePlan` |
+| `courseAutoScheduleApply` | `AutoSchedulePlan` | 写入条数 |
+| `course*` / `teachingClass*` / `courseSchedule*` | 对应 DTO 或 ID | 对象、列表或 `true` |
 
-成功返回 `200`；业务校验或请求参数类型错误返回 `400`；JDBC / IO 异常返回 `500`。
+成功为 `200`，业务规则和参数错误为 `400`，JDBC/IO 故障为 `500`。
 
-## 6. Java 21 / JavaFX 构建与启动
+## 10. Java 21 / JavaFX 构建与启动
 
-环境：JDK 21、JavaFX 21.0.12 Windows SDK、MySQL Connector/J 9.7.0；仓库不使用 Maven。
-所有命令从仓库根目录执行。JDK 应加入 PATH，先用 `java -version` 和 `javac -version` 确认版本。
-
-团队统一采用 JavaFX SDK 嵌套布局：
+要求 JDK 21、JavaFX 21.0.12 Windows SDK、MySQL Connector/J 9.7.0。团队统一使用嵌套布局：
 
 ```text
 lib/
   mysql-connector-j-9.7.0.jar
   javafx/
-    lib/
-      javafx.base.jar
-      javafx.controls.jar
-      javafx.fxml.jar
-      javafx.graphics.jar
-      ...
-    bin/
-      glass.dll
-      prism_d3d.dll
-      prism_sw.dll
-      ...
+    lib/   # JavaFX JAR
+    bin/   # 与 JAR 同版本的 Windows native DLL
 ```
 
-首次准备依赖时，将下列占位路径替换为本机解压后的 SDK 目录：
-
-```powershell
-$fx = 'C:\path\to\javafx-sdk-21.0.12'
-New-Item -ItemType Directory -Force lib\javafx\lib,lib\javafx\bin | Out-Null
-Copy-Item "$fx\lib\*" lib\javafx\lib\ -Recurse -Force
-Copy-Item "$fx\bin\*" lib\javafx\bin\ -Recurse -Force
-```
-
-Windows native DLL 必须与 JAR 版本匹配，并保留在同一 SDK 的 `lib/javafx/bin`。
-仅有 JAR 可以编译，但运行可能报 `no suitable pipeline found`。
-`lib/javafx` 被 gitignore 忽略，不提交本地 SDK 二进制。
-
-正式构建与启动：
+`lib/javafx` 被 Git 忽略，本地二进制不提交。正式入口均使用 `lib\javafx\lib`：
 
 ```powershell
 .\build.bat
-# 终端一：
 .\run-server.bat
-# 终端二：
 .\run-client.bat
+# 或单独使用 .\start-all.bat
 ```
 
-也可单独使用 `start-all.bat` 一次启动 Server 和 Client，不要与上面的已运行实例重复启动。
-Server 使用端口 `8888`；VS Code 的 LoginFrame 启动配置使用相同 module-path。
-所有 JavaFX 启动入口统一使用 `lib\javafx\lib`。
+`build.bat` 编译 Common、Server、Client，并复制 Hospital 的 `seu_logo.jpeg` 到
+`bin/vcampus/client/view/`。正式 LoginFrame 只依赖 `bin`、Connector/J 和本地 JavaFX SDK 运行。
 
-`build.bat` 编译 Common / Server / Client，并复制医院图片到
-`bin/vcampus/client/view/seu_logo.jpeg`。它不会自动清空旧 `bin`；clean 验证应先备份或清理旧产物。
-编译产物可直接运行，不需要把源码目录加入 classpath：
-
-```powershell
-java --module-path lib\javafx\lib --add-modules javafx.controls,javafx.fxml `
-  -cp "bin;lib\mysql-connector-j-9.7.0.jar" vcampus.client.view.LoginFrame
-```
-
-## 7. 演示账号与人工演示流程
-
-以下账号来自初始化脚本；若对应账号此前已存在，`INSERT IGNORE` 不会覆盖其密码和角色。
+## 11. 演示账号与五分钟 UAT
 
 | 身份 | 登录 ID | 初始密码 | 说明 |
 |---|---|---|---|
-| 学生 | `09010101` | `123456` | 正式学号 `2026000001` |
-| 教师 | `09010103` | `123456` | 姓名“王老师”，匹配 `CSE1001` |
-| 教务管理员 | `ADMIN001` | `123456` | 打开课程管理和排课管理 |
+| 模拟学生 | `C2400001` | `123456` | 映射学号 `2024000001` |
+| 模拟教师 | `TCH00001` | `123456` | 姓名“陈龙”，匹配教学班教师字段 |
+| 管理员 | `ADMIN001` | `123456` | Dashboard 与全部管理页 |
 
-1. 学生登录后进入“教务”，查询并选择一门课程。
-2. 在“我的课程”检查记录，在“我的课程表”检查教师、教室和时间。
-3. 退课后检查三个页面：大厅人数恢复，已选课程及对应课表记录消失。
-4. 教师登录，在“我教的课程”查看本人课程及选课学生名单，不显示选退课或管理入口。
-5. 管理员登录，新增、修改和删除测试课程；再新增排课并尝试教师重叠和教室重叠，检查拒绝提示。
-6. 清理本次新增的课程和排课；从 MainFrame 打开医院，确认入口和图片正常。
+建议只做以下人工检查：
 
-## 8. 自动化测试与验证
+1. 学生展开一门多教学班课程，确认状态文案；选退一门课并查看三页同步。
+2. 教师打开一个教学班名单，确认视觉与 CSV 保存对话框。
+3. 管理员查看 Dashboard，生成一次自动排课 Preview 后取消，确认方案可读。
+4. 将窗口在常用桌面尺寸间缩放，检查课程大厅、课表、Dashboard 和 Preview 的视觉手感。
 
-先构建并初始化测试数据库。除已隔离的排课 Service 测试外，部分既有 DAO / Socket 测试仍使用
-固定夹具 ID；应在测试库运行，并确认这些 ID 未被业务数据占用。
+## 12. 自动化测试与实际验证
 
-```powershell
-$cp = 'bin;lib\mysql-connector-j-9.7.0.jar'
-$tests = @(
-    'vcampus.server.dao.CourseDAOTest',
-    'vcampus.server.dao.SelectCourseDAOTest',
-    'vcampus.server.srv.CourseServerSrvTest',
-    'vcampus.server.srv.CourseRoleServerSrvTest',
-    'vcampus.server.dao.CourseScheduleDAOTest',
-    'vcampus.server.srv.CourseScheduleServerSrvTest'
-)
-foreach ($test in $tests) {
-    java -cp $cp $test
-    if ($LASTEXITCODE -ne 0) { throw "$test failed" }
-}
+JDK 21 clean build、Course DAO/Service/transaction、排课冲突、学生时间冲突、规则组、CSP、
+Dashboard SQL、CSV、Socket E2E、JavaFX programmatic smoke 和并发 benchmark 均已实际执行。
+
+关键测试入口：
+
+```text
+CourseDAOTest / SelectCourseDAOTest / TeachingClassDAOTest / CourseScheduleDAOTest
+CourseServerSrvTest / TeachingClassServerSrvTest / CourseScheduleServerSrvTest
+StudentScheduleConflictServerSrvTest / CourseRequirementGroupServerSrvTest
+CourseAutoSchedulerTest / CourseAutoScheduleServerSrvTest
+CourseDashboardDAOTest / CourseCsvExporterTest
+CourseClientSrvTest / CourseScheduleClientSrvTest
+CourseConcurrentEnrollmentBenchmark
 ```
 
-Socket E2E 需另行启动统一 Server；夹具会创建并清理回滚故障触发器，需要测试库的相应权限：
+并发基准使用 100 名隔离测试学生竞争容量 10 的教学班：
 
-```powershell
-$cp = 'bin;lib\mysql-connector-j-9.7.0.jar'
-try {
-    java -cp $cp vcampus.server.srv.CourseSocketTestFixture setup
-    if ($LASTEXITCODE -ne 0) { throw 'Fixture setup failed' }
-    java -cp $cp vcampus.client.biz.CourseClientSrvTest
-    if ($LASTEXITCODE -ne 0) { throw 'Course Socket E2E failed' }
-    java -cp $cp vcampus.client.biz.CourseScheduleClientSrvTest
-    if ($LASTEXITCODE -ne 0) { throw 'Schedule Socket E2E failed' }
-} finally {
-    java -cp $cp vcampus.server.srv.CourseSocketTestFixture cleanup
-    java -cp $cp vcampus.server.srv.CourseSocketTestFixture residue
-    if ($LASTEXITCODE -ne 0) { throw 'Fixture residue check failed' }
-}
+```text
+clients=100
+success=10
+rejected=90
+capacity_remaining=0
+oversold=0
+selectedCount=10
+residue=0
 ```
 
-本轮独立审计及修复回归的实际结果（补充验证使用本地审计程序，并非新增仓库测试入口）：
+Socket E2E 覆盖规则组、Dashboard、自动排课 Preview，并验证 Preview 前后排课数不变。
+无响应服务端故障注入在约 10 秒触发 `SocketTimeoutException`。JavaFX smoke 通过真实统一 Server 构造并
+显示学生 3 个 Tab、教师工作台和管理员 4 个 Tab，CSS 加载及布局成功。
 
-| 验证范围 | 实际结果 |
-|---|---|
-| 构建与正式入口 | JDK 21 编译全部 124 个 Java 文件；真实工作区 clean build、Hospital 资源复制和 `run-client.bat` 登录窗口启动通过 |
-| DAO / Service / Socket | 上述 6 个直接测试及 2 个 Socket E2E 通过；包含课程管理、教师名单、正常选退课、重复选课、满员、约束和故障回滚 |
-| 独立事务与并发 | 24 个客户端争抢 5 个名额，仅 5 个成功；16 次重复选课仅成功一次；12 次并发退课仅扣减一次；SQLException / RuntimeException 注入后数据回滚 |
-| 排课 | 教师/教室冲突、相邻时段、排除自身、更新/删除不存在记录均验证；默认 REPEATABLE-READ 下并发冲突排课未双提交，但可能出现 1213 |
-| 测试隔离 | 已建表空库、导入 demo、已有正常业务数据三环境通过，前后内容摘要一致，包括保留与旧测试 ID 相同的既有记录 |
-| JavaFX / Hospital | 真实 Socket 选退课后三页面同步，每页仅刷新一次；Course 网络调用不在 FX 线程；医院 MainFrame 卡片入口及缺图降级验证通过 |
-| 六模块集成 | 统一 Server 处理 User 登录失败响应，以及 Library / Student / Shop / Hospital / Course 查询；Shop 插入测试商品后能查询到，原空列表对应缺少数据 |
-| 测试收尾 | 原有 11 张业务表前后内容 SHA-256 一致；测试触发器、临时数据库已清理；测试 Server 停止，8888 释放；代码修复 diff 检查通过 |
+六模块 smoke 仅证明 User、Library、Student、Hospital、Shop、Course 可共同编译并由统一 Server 路由，
+不代表其他五个模块的全部业务完成了 Course 开发者人工 UAT。
 
-六模块 smoke 证明共同编译和路由可用，不等同于其他五模块全部业务流程的 UAT。
+## 13. 本 PR 修复的关键问题
 
-## 9. 最终人工 UAT 验收
+- 将单层 Course 重构为 Course → TeachingClass → 多段 Schedule，兼容旧数据 migration。
+- 服务端补齐学生课表冲突、同 Course 跨班互斥、容量与事务一致性。
+- Reality seed 改为无时间冲突的多组合数据。
+- Hospital 图片按 classpath 复制/加载并在缺图时降级。
+- Windows 中文 SQL 初始化改为 MySQL `SOURCE`。
+- 排课测试与 demo/业务数据隔离，测试前后已有数据不变。
+- 退课后统一刷新大厅、我的课程和课表，避免漏刷或重复请求。
+- 课表在常用桌面尺寸下响应式填充，避免多余水平滚动。
+- JavaFX module-path 与团队 `lib/javafx/lib` 布局统一。
+- 新增 `CHOOSE_ONE` 课程组、自动排课、Dashboard、CSV 和并发基准。
+- Course 客户端增加局部 connect/read timeout，不影响其他模块 Socket 实现。
 
-最终人工 UAT 已完成。项目负责人在业务代码基线
-`4e1d9c24093ca174361b0826659ce9bd3efb3520` 上实际验证并确认以下结果：
+## 14. 已知架构边界
 
-1. 验收时 `git status` clean，本地 HEAD 与 `origin/dev/course` 一致。
-2. 在真实工作区直接执行 `.\build.bat`，JDK 21 编译成功，Hospital 图片资源复制成功，输出 `Build succeeded.`。
-3. LoginFrame 实际启动成功，学生账号 `09010101 / 123456` 登录成功，MainFrame 正常。
-4. MainFrame → Hospital 实际打开成功，不再出现资源加载异常；MainFrame → Course 实际打开成功。
-5. Course 学生端课程大厅正常显示，选课、我的课程、我的课程表及退课均正常。
-6. 退课后无需手动点击“查询”，大厅已选人数立即自动刷新（例如 `1/60 -> 0/60`），我的课程和课程表状态同步。
-7. JavaFX Windows native DLL 本地运行环境正常。
+- 公共 Socket 协议没有可信 server session/token；UI 角色分流不能替代服务端身份认证。本分支未重构六模块认证体系。
+- 高并发排课仍可能出现 MySQL `1213` deadlock；当前完整回滚并返回错误，没有自动事务重试。
+- 排课尚未独立建模学期、单双周、离散教学周和临时调课，周次只支持连续区间。
+- 教师身份仍按用户姓名匹配 `TeachingClass.teacher`，尚无教师账号外键。
+- 自动排课候选域来自现有时间模式和教室集合，未建立完整教室资源表。
+- 培养方案组当前只实现 `CHOOSE_ONE`，只录入能从现有课程名称明确判断的中文/全英文等价课程。
 
-以上为项目负责人明确确认的人工验收范围。其他模块仍按第 8 节称为 smoke / integration regression，
-不表示其他五模块全部业务均经过本人完整 UAT；管理员排课的验证结果仍以工程回归记录为准。
+## 15. Git / PR 状态
 
-## 10. 本 PR 集成过程中修复的问题
+最终功能分支为 `feat/course-realistic-model`。各阶段按语义提交保存，不 rebase、不 force、
+不直接修改或推送 `main`。最终以本分支最新 HEAD 和 `origin/feat/course-realistic-model` 一致为交付条件。
 
-以下修复来自 2026-09-05 下午的独立审计、人工 UAT 反馈及实际回归。
-
-| 问题 | 修法 | 验证结果 / 提交 |
-|---|---|---|
-| MainFrame 打开医院时找不到 `seu_logo.jpeg` | 构建复制 classpath 资源，按包路径加载，缺图或解码失败时省略非关键图片 | 真实卡片入口正常打开；移除图片后不崩溃。`fa87fdb` |
-| PowerShell 5.1 管道执行中文 SQL 损坏编码 | 改用 MySQL `SOURCE` 直接读取 UTF-8，并明确用户、学籍、Course、demo 的执行顺序 | 原管道产生问号；SOURCE 导入后中文 HEX 正确，完整顺序执行通过。`fa87fdb` |
-| 排课 Service 测试与 demo 冲突 | 每轮隔离课程、学生、教师和教室标识；取消预先删除，按成功创建记录清理 | 空表、demo、正常业务数据三环境通过，既有数据不变。`304376a` |
-| 退课后大厅人数未自动刷新 | CoursePanel 统一刷新三个页面，移除子页面重复刷新 | 真实选退课后人数、已选记录和课表同步，逐页刷新次数为一次。`ed756df` |
-| Course 分支一度采用平铺 `lib/javafx`，与团队环境不一致 | 按团队约定将 `build.bat`、`run-client.bat`、`start-all.bat` 和 VS Code launch 统一为 `lib/javafx/lib` | 嵌套 SDK 下 JDK 21 构建、图片复制及正式 LoginFrame 启动通过 |
-| 本地仅有 JavaFX JAR，缺少 Windows native DLL | 在被忽略的 `lib/javafx/bin` 补齐同一 SDK 的匹配 DLL；不提交二进制 | 正式登录窗口正常显示并响应；此项为本地依赖准备，无二进制提交 |
-| Course 页面未区分教师，管理员只能维护排课 | CoursePanel 按登录角色显示学生、教师、管理员页面；新增教师名单查询和管理员课程 CRUD | Service 与 Socket 回归覆盖教师名单、课程 CRUD、引用保护和人数保持；JavaFX 角色页 smoke 通过 |
-
-本地依赖目录必须遵循团队 README 的嵌套 SDK 约定；正式脚本不包含个人绝对路径。
-
-## 11. 当前已知架构边界
-
-- 公共 Socket 架构缺少可信 server session/token，服务端权限控制不完整。Course 管理员 UI 隐藏不能防止直接报文调用，学号参数也不能作为可信身份；本 PR 未重构六模块认证体系。
-- 高并发排课可能触发 MySQL `1213` deadlock，目前回滚并返回错误，没有自动完整事务重试。
-- Course Socket 暂无统一 connect/read timeout；连接保持但不响应时，后台请求可能持续等待。
-- 排课模型暂未覆盖学期、教学周、单双周和临时调课。
-- 教师按名称识别，尚未建立教师账号外键。
-
-以上均为保留边界，不属于本轮已经修复的功能。
-
-## 12. 最终 Git / PR 状态
-
-核对快照：2026-09-07；PR #4 交付方向为 `dev/course -> main`。
-
-- 已推送并经最终人工 UAT 确认的业务代码基线：`4e1d9c24093ca174361b0826659ce9bd3efb3520`；验收时本地分支与 `origin/dev/course` 一致。
-- Course 分支已纳入 `origin/main@6096edd88cae5e6b261824f1bebe1233f80307ae` 的三角色登录与主界面角色展示变更。
-- 2026-09-07 新增教师课程名单、管理员课程管理，并将 JavaFX 启动路径恢复为团队统一的嵌套 SDK 布局。
-- 工程结论：`ready for review / merge`。原学生流程人工 UAT 已完成；新增角色功能已完成 Service、Socket 与 JavaFX smoke，仍建议按学生/教师/管理员各走一遍最终人工验收。
-
-第 11 节已知架构边界继续保留；最终合并状态以 GitHub PR #4 为准。
+PR 结论：完成最终门禁并推送后，可交给组长 review / merge。

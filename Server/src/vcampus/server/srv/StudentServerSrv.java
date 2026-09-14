@@ -35,6 +35,20 @@ public class StudentServerSrv implements IStudentServerSrv {
     }
 
     @Override
+    public Student findStudentTaughtBy(String teacherUserId, String studentId)
+            throws SQLException, IOException, StudentServiceException {
+        return _studentDAO.findStudentTaughtBy(requireText(teacherUserId, "教师账号"),
+                requireText(studentId, "学号"));
+    }
+
+    @Override
+    public List<Student> findStudentsTaughtByName(String teacherUserId, String name)
+            throws SQLException, IOException, StudentServiceException {
+        return _studentDAO.findStudentsTaughtByName(requireText(teacherUserId, "教师账号"),
+                requireText(name, "姓名"));
+    }
+
+    @Override
     public Student findByUserId(String userId)
             throws SQLException, IOException, StudentServiceException {
         return _studentDAO.findByUserId(requireText(userId, "用户账号"));

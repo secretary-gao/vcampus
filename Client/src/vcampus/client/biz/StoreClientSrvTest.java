@@ -50,24 +50,36 @@ public class StoreClientSrvTest {
             Message q2 = storeClientSrv.queryGoods("饮料", null);
             System.out.println("关键字[饮料]查询响应：statusCode=" + q2.getStatusCode() + ", data=" + q2.getData());
 
-            System.out.println("=== 3. 测试购买商品（G001 买2件）===");
+            System.out.println("=== 3. 测试查询校园卡余额 ===");
+            Message b1 = storeClientSrv.queryBalance(testUser);
+            System.out.println("余额查询响应：statusCode=" + b1.getStatusCode() + ", 余额=" + b1.getData());
+
+            System.out.println("=== 4. 测试充值 50 元 ===");
+            Message rc = storeClientSrv.recharge(testUser, new BigDecimal("50.00"));
+            System.out.println("充值响应：statusCode=" + rc.getStatusCode() + ", 充值后余额=" + rc.getData());
+
+            System.out.println("=== 5. 测试购买商品（G001 买2件，会扣余额）===");
             Message p = storeClientSrv.purchaseGoods(testUser, "G001", 2);
             System.out.println("购买响应：statusCode=" + p.getStatusCode() + ", data=" + p.getData());
 
-            System.out.println("=== 4. 测试查询购买记录 ===");
+            System.out.println("=== 6. 购买后再查余额（应已扣款）===");
+            Message b2 = storeClientSrv.queryBalance(testUser);
+            System.out.println("余额查询响应：statusCode=" + b2.getStatusCode() + ", 余额=" + b2.getData());
+
+            System.out.println("=== 7. 测试查询购买记录 ===");
             Message r = storeClientSrv.queryPurchaseRecords(testUser);
             System.out.println("记录响应：statusCode=" + r.getStatusCode() + ", data=" + r.getData());
 
-            System.out.println("=== 5. 测试新增商品（管理员）===");
+            System.out.println("=== 8. 测试新增商品（管理员）===");
             Goods newGoods = new Goods("ST001", "客户端测试商品", "测试类别", new BigDecimal("19.90"), 10);
             Message a = storeClientSrv.addGoods(newGoods);
             System.out.println("新增响应：statusCode=" + a.getStatusCode() + ", data=" + a.getData());
 
-            System.out.println("=== 6. 测试删除商品（G001 已有购买记录，应禁止）===");
+            System.out.println("=== 9. 测试删除商品（G001 已有购买记录，应禁止）===");
             Message d = storeClientSrv.deleteGoods("G001");
             System.out.println("删除G001响应：statusCode=" + d.getStatusCode() + ", data=" + d.getData());
 
-            System.out.println("=== 7. 测试修改商品（ST001）===");
+            System.out.println("=== 10. 测试修改商品（ST001）===");
             Goods update = new Goods("ST001", "客户端测试商品-改", "测试类别", new BigDecimal("29.90"), 20);
             Message u = storeClientSrv.updateGoods(update);
             System.out.println("修改响应：statusCode=" + u.getStatusCode() + ", data=" + u.getData());

@@ -61,6 +61,9 @@ public interface IConstant {
     /** 消息名：登出请求，对应 {@link vcampus.common.vo.Message#getName()}。 */
     String MSG_LOGOUT = "logout";
 
+    //医院模块新增常量
+    String MSG_HOSPITAL_GET_OCCUPIED_TIME = "hospital_get_occupied_time";
+
     /**
      * 消息名：管理员禁用/启用账号请求，对应说明书"管理员可注销/禁用账号"。
      * 请求 data 约定为 {@code Object[]{operatorUId, targetUId, newStatus}}。
@@ -88,6 +91,11 @@ public interface IConstant {
     String MSG_ADD_BOOK = "addBook";
     String MSG_UPDATE_BOOK = "updateBook";
     String MSG_DELETE_BOOK = "deleteBook";
+    String MSG_QUERY_PAPERS = "queryPapers";
+    String MSG_GET_PDF_DATA = "getPdfData";
+    String MSG_ADD_PAPER = "addPaper";
+    String MSG_DELETE_PAPER = "deletePaper";
+    String MSG_UPLOAD_PDF = "uploadPdf";
 
     // ========== 选课模块消息类型 ==========
     String MSG_COURSE_QUERY = "courseQuery";
@@ -104,6 +112,14 @@ public interface IConstant {
     String MSG_COURSE_SCHEDULE_DELETE = "courseScheduleDelete";
     String MSG_STUDENT_TIMETABLE_QUERY = "studentTimetableQuery";
     String MSG_TEACHER_COURSE_ENROLLMENTS_QUERY = "teacherCourseEnrollmentsQuery";
+    String MSG_TEACHING_CLASS_QUERY = "teachingClassQuery";
+    String MSG_TEACHING_CLASS_ADD = "teachingClassAdd";
+    String MSG_TEACHING_CLASS_UPDATE = "teachingClassUpdate";
+    String MSG_TEACHING_CLASS_DELETE = "teachingClassDelete";
+    String MSG_COURSE_REQUIREMENT_GROUP_QUERY = "courseRequirementGroupQuery";
+    String MSG_COURSE_AUTO_SCHEDULE_PREVIEW = "courseAutoSchedulePreview";
+    String MSG_COURSE_AUTO_SCHEDULE_APPLY = "courseAutoScheduleApply";
+    String MSG_COURSE_DASHBOARD_QUERY = "courseDashboardQuery";
 
     // ---------- 虚拟商店模块（store）消息名与状态码 ----------
 
@@ -115,6 +131,9 @@ public interface IConstant {
 
     /** 状态码：业务冲突（如商品编号重复、存在购买记录禁止删除）。 */
     String STATUS_CONFLICT = "409";
+
+    /** 状态码：余额不足。 */
+    String STATUS_BALANCE_NOT_ENOUGH = "409";
 
     /** 消息名：查询商品（按关键字/类别筛选）。 */
     String MSG_SHOP_QUERY_GOODS = "shopQueryGoods";
@@ -133,6 +152,12 @@ public interface IConstant {
 
     /** 消息名：删除商品（管理员）。 */
     String MSG_SHOP_DELETE_GOODS = "shopDeleteGoods";
+
+    /** 消息名：查询校园卡余额。 */
+    String MSG_SHOP_QUERY_BALANCE = "shopQueryBalance";
+
+    /** 消息名：校园卡充值。 */
+    String MSG_SHOP_RECHARGE = "shopRecharge";
     // ========== 医院模块新增常量 ==========
     /** 查询全部医生 */
     String MSG_HOSPITAL_QUERY_ALL_DOCTOR = "hospital_query_all_doctor";

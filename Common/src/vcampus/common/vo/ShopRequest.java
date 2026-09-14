@@ -10,6 +10,7 @@
 package vcampus.common.vo;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 /**
  * 虚拟商店模块的请求载体，用于把客户端发起的各类商店业务参数打包进
@@ -42,6 +43,9 @@ public class ShopRequest implements Serializable {
 
     /** 商品对象（增加/修改商品）。 */
     private Goods _goods;
+
+    /** 充值金额（校园卡充值）。 */
+    private BigDecimal _amount;
 
     /**
      * 无参构造方法。
@@ -155,5 +159,23 @@ public class ShopRequest implements Serializable {
      */
     public void setGoods(Goods goods) {
         this._goods = goods;
+    }
+
+    /**
+     * 获取充值金额。
+     *
+     * @return 充值金额
+     */
+    public BigDecimal getAmount() {
+        return _amount;
+    }
+
+    /**
+     * 设置充值金额。
+     *
+     * @param amount 充值金额
+     */
+    public void setAmount(BigDecimal amount) {
+        this._amount = amount;
     }
 }
