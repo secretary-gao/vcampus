@@ -13,6 +13,7 @@ import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Goods;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
+import vcampus.common.vo.Order;
 import vcampus.common.vo.PurchaseRecord;
 import vcampus.common.vo.ShopRequest;
 
@@ -48,7 +49,9 @@ public class StoreModuleHandler implements ModuleHandler {
                 IConstant.MSG_SHOP_UPDATE_GOODS,
                 IConstant.MSG_SHOP_DELETE_GOODS,
                 IConstant.MSG_SHOP_QUERY_BALANCE,
-                IConstant.MSG_SHOP_RECHARGE
+                IConstant.MSG_SHOP_RECHARGE,
+                IConstant.MSG_SHOP_CHECKOUT,
+                IConstant.MSG_SHOP_QUERY_ORDERS
         );
     }
 
@@ -74,6 +77,10 @@ public class StoreModuleHandler implements ModuleHandler {
                 return handleQueryBalance(request);
             case IConstant.MSG_SHOP_RECHARGE:
                 return handleRecharge(request);
+            case IConstant.MSG_SHOP_CHECKOUT:
+                return handleCheckout(request);
+            case IConstant.MSG_SHOP_QUERY_ORDERS:
+                return handleQueryOrders(request);
             default:
                 return new Message(request.getUid(), request.getName(), MessageType.DATA,
                         IConstant.STATUS_ERROR, "未知的商店操作：" + request.getName(), "Server");
@@ -235,6 +242,45 @@ public class StoreModuleHandler implements ModuleHandler {
                     e.getStatusCode(), e.getMessage(), "Server");
         } catch (SQLException | IOException e) {
             return new Message(request.getUid(), IConstant.MSG_SHOP_RECHARGE, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理"购物车结算"。
+     *
+     * @param request 结算请求，{@code data} 为 {@link ShopRequest}（含 items）
+     * @return 结算结果消息：{@code data} 为 {@link Order}（含订单号、总金额与明细）
+     */
+    private Message handleCheckout(Message request) {
+        try {
+            ShopRequest req = (ShopRequest) request.getData();
+            Order order = _storeServerSrv.checkout(req.getUserId(), req.getItems());
+            return new Message(request.getUid(), IConstant.MSG_SHOP_CHECKOUT, MessageType.DATA,
+                    IConstant.STATUS_SUCCESS, order, "Server");
+        } catch (ShopException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_CHECKOUT, MessageType.DATA,
+                    e.getStatusCode(), e.getMessage(), "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_CHECKOUT, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理"查询订单（含明细）"。
+     *
+     * @param request 查询请求，{@code data} 为 {@link ShopRequest}
+     * @return 查询结果消息：{@code data} 为 {@code List<Order>}
+     */
+    private Message handleQueryOrders(Message request) {
+        try {
+            ShopRequest req = (ShopRequest) request.getData();
+            List<Order> orders = _storeServerSrv.queryOrders(req.getUserId());
+            return new Message(request.getUid(), IConstant.MSG_SHOP_QUERY_ORDERS, MessageType.DATA,
+                    IConstant.STATUS_SUCCESS, orders, "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_QUERY_ORDERS, MessageType.DATA,
                     IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
         }
     }

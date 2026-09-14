@@ -10,6 +10,7 @@
 package vcampus.client.biz;
 
 import vcampus.common.constant.IConstant;
+import vcampus.common.vo.CartItem;
 import vcampus.common.vo.Goods;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
@@ -20,6 +21,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.net.Socket;
+import java.util.List;
 
 /**
  * {@link IStoreClientSrv} 的实现类：每次调用都新建一个 Socket 连接到服务器
@@ -121,6 +123,29 @@ public class StoreClientSrv implements IStoreClientSrv {
         req.setAmount(amount);
         return sendAndReceive(new Message(System.currentTimeMillis(),
                 IConstant.MSG_SHOP_RECHARGE, MessageType.COMMAND, null, req, userId));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Message checkout(String userId, List<CartItem> items) throws IOException, ClassNotFoundException {
+        ShopRequest req = new ShopRequest();
+        req.setUserId(userId);
+        req.setItems(items);
+        return sendAndReceive(new Message(System.currentTimeMillis(),
+                IConstant.MSG_SHOP_CHECKOUT, MessageType.COMMAND, null, req, userId));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Message queryOrders(String userId) throws IOException, ClassNotFoundException {
+        ShopRequest req = new ShopRequest();
+        req.setUserId(userId);
+        return sendAndReceive(new Message(System.currentTimeMillis(),
+                IConstant.MSG_SHOP_QUERY_ORDERS, MessageType.COMMAND, null, req, userId));
     }
 
     /**

@@ -12,11 +12,14 @@ package vcampus.client.view;
 import vcampus.client.biz.IStoreClientSrv;
 import vcampus.client.biz.StoreClientSrv;
 import vcampus.common.constant.IConstant;
+import vcampus.common.vo.CartItem;
 import vcampus.common.vo.Goods;
 import vcampus.common.vo.Message;
+import vcampus.common.vo.Order;
 import vcampus.common.vo.PurchaseRecord;
 import vcampus.common.vo.User;
 
+import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -48,10 +51,13 @@ import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -59,15 +65,19 @@ import java.util.function.Function;
 /**
  * 虚拟商店模块客户端主界面（JavaFX，电商卡片风格）。
  *
- * <p>包含三个页签：商品商城（卡片网格 + 搜索/分类）、我的订单（购买记录，仅本人/管理员全部）、
- * 商品管理（仅管理员）。所有业务请求通过 {@link StoreClientSrv} 发送到服务器，客户端不直接访问数据库。
+ * <p>包含四个页签：商品商城（卡片网格 + 搜索/分类 + 加入购物车/立即下单）、购物车（改数量、
+ * 删除、清空、结算）、我的订单（订单主从视图：上表订单、下表明细）、商品管理（仅管理员）。
+ * 所有业务请求通过 {@link StoreClientSrv} 发送到服务器，客户端不直接访问数据库。
  * 管理员表单的显示由 {@link User#getURole()} 决定，保证非管理员看不到管理入口。</p>
  *
  * <p>界面样式集中在模块样式表 {@code store.css} 中（与选课模块 {@code course.css} 统一设计语言），
  * 样式类在代码里挂载，颜色、圆角、按钮形态均在样式表中统一调整。</p>
  *
- * <p>说明：按说明书"一次购买仅针对单一商品"，本模块不提供购物车；商品卡片优先显示
- * {@link Goods#getImageUrl()} 指向的商品图片，无图时以"类别色块 + 类别图标"作为占位图。</p>
+ * <p>购物车说明：购物车只保存在客户端内存（{@code _cart}），不建数据库表，关闭窗口或重新
+ * 进入模块即清空；结算时客户端只提交"商品编号 + 数量"，单价、库存、余额一律由服务器在同一个
+ * 事务中校验与扣减，一次结算生成一个含多条明细的订单（对应设计说明书中"同一订单可包含多个
+ * 商品"这一开放问题的实现）。商品卡片优先显示 {@link Goods#getImageUrl()} 指向的商品图片，
+ * 无图时以"类别色块 + 类别图标"作为占位图。</p>
  */
 public class StoreFrame extends Application {
 
@@ -88,8 +98,17 @@ public class StoreFrame extends Application {
     private final TextField _searchField = new TextField();
     private final ComboBox<String> _categoryBox = new ComboBox<>();
 
-    // ---- 我的订单 ----
-    private TableView<PurchaseRecord> _recordsTable = new TableView<>();
+    // ---- 购物车（仅保存在客户端内存中，关闭窗口或重新进入模块即清空）----
+    private final List<CartItem> _cart = new ArrayList<>();
+    private final VBox _cartRows = new VBox(8);
+    private final Label _cartSummaryLabel = new Label("合计：¥0.00");
+    private final Label _cartEmptyLabel = new Label("购物车是空的，去「商品商城」挑几件吧");
+    private Tab _cartTab;
+    private final Label _hintLabel = new Label();
+
+    // ---- 我的订单（主从视图：上表为订单，下表为选中订单的明细）----
+    private TableView<Order> _ordersTable = new TableView<>();
+    private TableView<PurchaseRecord> _orderItemsTable = new TableView<>();
 
     // ---- 商品管理（管理员）----
     private TableView<Goods> _manageTable = new TableView<>();
@@ -172,14 +191,17 @@ public class StoreFrame extends Application {
         tabPane.getStyleClass().add("store-tabs");
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         tabPane.getTabs().add(new Tab("商品商城", buildBuyTab()));
-        tabPane.getTabs().add(new Tab("我的订单", buildRecordsTab()));
+        _cartTab = new Tab("购物车", buildCartTab());
+        _cartTab.setClosable(false);
+        tabPane.getTabs().add(_cartTab);
+        tabPane.getTabs().add(new Tab("我的订单", buildOrdersTab()));
         if (isAdmin()) {
             tabPane.getTabs().add(new Tab("商品管理", buildManageTab()));
         }
         // 切到"我的订单"时才查询：进入模块不必多发一次请求，且每次查看都是最新记录
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
             if (selected != null && "我的订单".equals(selected.getText())) {
-                loadRecords();
+                loadOrders();
             }
         });
         root.setCenter(tabPane);
@@ -266,7 +288,13 @@ public class StoreFrame extends Application {
         refreshButton.getStyleClass().add("secondary");
         refreshButton.setOnAction(e -> loadGoods());
 
-        HBox searchBar = new HBox(10, _categoryBox, _searchField, queryButton, refreshButton);
+        // 加入购物车后的轻提示（2.5 秒后自动消失），靠右显示
+        _hintLabel.getStyleClass().add("cart-hint");
+        _hintLabel.setMaxWidth(Double.MAX_VALUE);
+        _hintLabel.setAlignment(Pos.CENTER_RIGHT);
+        HBox.setHgrow(_hintLabel, Priority.ALWAYS);
+
+        HBox searchBar = new HBox(10, _categoryBox, _searchField, queryButton, refreshButton, _hintLabel);
         searchBar.setAlignment(Pos.CENTER_LEFT);
         searchBar.getStyleClass().add("tool-bar-card");
 
@@ -281,22 +309,35 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * 构建"我的订单"页签。
+     * 构建"我的订单"页签（主从视图）：上表为订单（一行一个订单），
+     * 下表为选中订单的商品明细（一个订单可含多个商品）。
      *
      * @return 页签内容
      */
-    private VBox buildRecordsTab() {
-        setUpRecordsColumns(_recordsTable);
-        VBox.setVgrow(_recordsTable, Priority.ALWAYS);
+    private VBox buildOrdersTab() {
+        setUpOrderColumns(_ordersTable);
+        setUpOrderItemColumns(_orderItemsTable);
+        VBox.setVgrow(_ordersTable, Priority.ALWAYS);
+
+        // 选中订单后，把该订单的明细显示在下方表格
+        _ordersTable.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
+            _orderItemsTable.getItems().setAll(selected == null ? List.of() : selected.getItems());
+        });
 
         Button refreshButton = new Button("刷新订单");
         refreshButton.getStyleClass().add("secondary");
-        refreshButton.setOnAction(e -> loadRecords());
-        HBox bar = new HBox(refreshButton);
+        refreshButton.setOnAction(e -> loadOrders());
+        Label tip = new Label(isAdmin() ? "显示全部用户的订单，选中一行查看明细" : "显示本人订单，选中一行查看明细");
+        tip.getStyleClass().add("cart-hint");
+        HBox bar = new HBox(12, refreshButton, tip);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.getStyleClass().add("tool-bar-card");
 
-        VBox box = new VBox(10, bar, _recordsTable);
+        Label itemsTitle = sectionTitle("订单明细");
+        _orderItemsTable.setPrefHeight(200);
+        _orderItemsTable.setMinHeight(140);
+
+        VBox box = new VBox(10, bar, _ordersTable, itemsTitle, _orderItemsTable);
         box.getStyleClass().add("store-page");
         return box;
     }
@@ -402,19 +443,49 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * 设置购买记录表格的列。
+     * 设置订单表格的列（一行一个订单，订单可含多个商品）。
      *
      * @param table 表格
      */
-    private void setUpRecordsColumns(TableView<PurchaseRecord> table) {
+    private void setUpOrderColumns(TableView<Order> table) {
         table.getStyleClass().add("store-table");
         // 与选课模块一致：列宽自适应填满表格，订单号不会被截断
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        table.getColumns().add(column("订单号", r -> safe(r.getOrderId()), 200));
-        table.getColumns().add(column("商品名称", r -> safe(r.getGoodsName()), 150));
-        table.getColumns().add(column("数量", r -> String.valueOf(r.getQuantity()), 70));
-        table.getColumns().add(column("总价", r -> r.getTotalPrice() == null ? "" : r.getTotalPrice().toPlainString(), 90));
-        table.getColumns().add(column("下单时间", r -> r.getOrderTime() == null ? "" : r.getOrderTime().format(TIME_FMT), 180));
+        table.getColumns().add(column("订单号", o -> safe(o.getOrderId()), 260));
+        table.getColumns().add(column("下单时间",
+                o -> o.getOrderTime() == null ? "" : o.getOrderTime().format(TIME_FMT), 170));
+        table.getColumns().add(column("商品种类", o -> o.getItemCount() + " 种", 90));
+        table.getColumns().add(column("总件数", o -> String.valueOf(o.getTotalQuantity()), 80));
+        table.getColumns().add(column("订单金额",
+                o -> o.getTotalAmount() == null ? "" : "¥" + o.getTotalAmount().toPlainString(), 100));
+    }
+
+    /**
+     * 设置订单明细表格的列（一行一个商品）。
+     *
+     * @param table 表格
+     */
+    private void setUpOrderItemColumns(TableView<PurchaseRecord> table) {
+        table.getStyleClass().add("store-table");
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        table.getColumns().add(column("商品名称", r -> safe(r.getGoodsName()), 200));
+        table.getColumns().add(column("单价", r -> unitPriceOf(r).toPlainString(), 100));
+        table.getColumns().add(column("数量", r -> String.valueOf(r.getQuantity()), 80));
+        table.getColumns().add(column("小计",
+                r -> r.getTotalPrice() == null ? "" : r.getTotalPrice().toPlainString(), 100));
+    }
+
+    /**
+     * 由"本行小计 ÷ 数量"反推单价（保留两位小数，避免除不尽抛异常）。
+     *
+     * @param record 明细行
+     * @return 单价
+     */
+    private BigDecimal unitPriceOf(PurchaseRecord record) {
+        if (record.getTotalPrice() == null || record.getQuantity() <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return record.getTotalPrice().divide(BigDecimal.valueOf(record.getQuantity()), 2, RoundingMode.HALF_UP);
     }
 
     /**
@@ -527,10 +598,19 @@ public class StoreFrame extends Application {
 
         Button buy = new Button("立即下单");
         buy.setMaxWidth(Double.MAX_VALUE);
-        buy.getStyleClass().add("primary");
+        buy.getStyleClass().addAll("primary", "card-action");
         buy.setOnAction(e -> promptAndBuy(g));
 
-        card.getChildren().addAll(img, name, price, stock, buy);
+        Button addToCart = new Button("加入购物车");
+        addToCart.setMaxWidth(Double.MAX_VALUE);
+        addToCart.getStyleClass().addAll("secondary", "card-action");
+        addToCart.setOnAction(e -> addToCart(g, 1));
+
+        HBox actions = new HBox(8, buy, addToCart);
+        HBox.setHgrow(buy, Priority.ALWAYS);
+        HBox.setHgrow(addToCart, Priority.ALWAYS);
+
+        card.getChildren().addAll(img, name, price, stock, actions);
         return card;
     }
 
@@ -726,22 +806,315 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * 加载购买记录并刷新表格。
+     * 加载订单列表（含明细）并刷新订单表格；明细表格先清空，等用户选中订单再显示。
      */
     @SuppressWarnings("unchecked") // 服务器返回的 List 元素类型在运行时是确定的，此处强转安全
-    private void loadRecords() {
+    private void loadOrders() {
         String userId = isAdmin() ? null : _currentUser.getUId();
         try {
-            Message response = _storeClientSrv.queryPurchaseRecords(userId);
+            Message response = _storeClientSrv.queryOrders(userId);
             if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
-                List<PurchaseRecord> records = (List<PurchaseRecord>) response.getData();
-                _recordsTable.getItems().setAll(records);
+                List<Order> orders = (List<Order>) response.getData();
+                _ordersTable.getItems().setAll(orders);
+                _orderItemsTable.getItems().clear();
             } else {
                 showAlert(Alert.AlertType.ERROR, "查询失败", String.valueOf(response.getData()));
             }
         } catch (IOException | ClassNotFoundException e) {
             showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器：" + e.getMessage());
         }
+    }
+
+    // ==================== 购物车（仅保存在客户端内存中） ====================
+
+    /**
+     * 构建"购物车"页签：条目列表 + 合计/清空/结算。
+     *
+     * @return 页签内容
+     */
+    private VBox buildCartTab() {
+        _cartEmptyLabel.getStyleClass().add("empty-state-label");
+        _cartSummaryLabel.getStyleClass().add("cart-total");
+
+        ScrollPane scroll = new ScrollPane(_cartRows);
+        scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("store-scroll");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+
+        Button clearButton = new Button("清空购物车");
+        clearButton.getStyleClass().add("secondary");
+        clearButton.setOnAction(e -> {
+            if (_cart.isEmpty()) {
+                return;
+            }
+            if (confirm("清空购物车", "确定要清空购物车中的 " + _cart.size() + " 种商品吗？")) {
+                _cart.clear();
+                renderCart();
+            }
+        });
+
+        Button checkoutButton = new Button("结算");
+        checkoutButton.getStyleClass().add("primary");
+        checkoutButton.setOnAction(e -> doCheckout());
+
+        HBox footer = new HBox(12, _cartSummaryLabel, clearButton, checkoutButton);
+        footer.setAlignment(Pos.CENTER_RIGHT);
+        footer.getStyleClass().add("tool-bar-card");
+
+        VBox box = new VBox(10, scroll, footer);
+        box.getStyleClass().add("store-page");
+        renderCart();
+        return box;
+    }
+
+    /**
+     * 把商品加入购物车；购物车中已有同一商品时累加数量。
+     *
+     * @param goods    商品
+     * @param quantity 数量（正整数）
+     */
+    private void addToCart(Goods goods, int quantity) {
+        if (goods == null || quantity <= 0) {
+            return;
+        }
+        if (goods.getStock() <= 0) {
+            showAlert(Alert.AlertType.WARNING, "无法加入购物车", "「" + safe(goods.getGoodsName()) + "」已无库存");
+            return;
+        }
+        CartItem exist = findCartItem(goods.getGoodsId());
+        if (exist == null) {
+            _cart.add(new CartItem(goods.getGoodsId(), goods.getGoodsName(), goods.getPrice(), quantity));
+        } else {
+            if (exist.getQuantity() + quantity > goods.getStock()) {
+                showAlert(Alert.AlertType.WARNING, "数量超出库存",
+                        "「" + safe(goods.getGoodsName()) + "」当前库存 " + goods.getStock()
+                                + "，购物车中已有 " + exist.getQuantity() + " 件");
+                return;
+            }
+            exist.setQuantity(exist.getQuantity() + quantity);
+            exist.setUnitPrice(goods.getPrice()); // 价格可能被管理员改过，刷新为最新快照
+        }
+        renderCart();
+        showHint("已加入购物车：" + safe(goods.getGoodsName()) + " ×" + quantity);
+    }
+
+    /**
+     * 在购物车中查找某个商品的条目。
+     *
+     * @param goodsId 商品编号
+     * @return 条目；不存在返回 {@code null}
+     */
+    private CartItem findCartItem(String goodsId) {
+        for (CartItem item : _cart) {
+            if (goodsId != null && goodsId.equals(item.getGoodsId())) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 修改购物车条目的数量；减到 0 时把该条目移出购物车。
+     *
+     * @param item  条目
+     * @param delta 变化量（+1 / -1）
+     */
+    private void changeCartQuantity(CartItem item, int delta) {
+        int next = item.getQuantity() + delta;
+        if (next <= 0) {
+            _cart.remove(item);
+        } else {
+            item.setQuantity(next);
+        }
+        renderCart();
+    }
+
+    /**
+     * 重新渲染购物车：条目行、合计金额与页签标题（含件数）。
+     */
+    private void renderCart() {
+        _cartRows.getChildren().clear();
+        if (_cart.isEmpty()) {
+            _cartRows.getChildren().add(_cartEmptyLabel);
+        } else {
+            for (CartItem item : _cart) {
+                _cartRows.getChildren().add(buildCartRow(item));
+            }
+        }
+        _cartSummaryLabel.setText("合计 " + _cart.size() + " 种 / " + cartQuantity()
+                + " 件，共 ¥" + plain(cartTotal()));
+        if (_cartTab != null) {
+            _cartTab.setText(_cart.isEmpty() ? "购物车" : "购物车 (" + cartQuantity() + ")");
+        }
+    }
+
+    /**
+     * 构建购物车中的一行：名称、单价、数量增减、小计、删除。
+     *
+     * @param item 购物车条目
+     * @return 行容器
+     */
+    private HBox buildCartRow(CartItem item) {
+        Label name = new Label(safe(item.getGoodsName()));
+        name.getStyleClass().add("cart-name");
+        name.setMinWidth(160);
+        name.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(name, Priority.ALWAYS);
+
+        Label unit = new Label("¥" + plain(item.getUnitPrice()) + " / 件");
+        unit.getStyleClass().add("cart-unit");
+        unit.setMinWidth(110);
+
+        Button minus = new Button("－");
+        minus.getStyleClass().add("qty-button");
+        minus.setOnAction(e -> changeCartQuantity(item, -1));
+
+        Label qty = new Label(String.valueOf(item.getQuantity()));
+        qty.getStyleClass().add("cart-qty");
+        qty.setMinWidth(50);
+        qty.setAlignment(Pos.CENTER);
+
+        Button plus = new Button("＋");
+        plus.getStyleClass().add("qty-button");
+        plus.setOnAction(e -> changeCartQuantity(item, 1));
+
+        Label subtotal = new Label("¥" + plain(item.getSubtotal()));
+        subtotal.getStyleClass().add("cart-subtotal");
+        subtotal.setMinWidth(100);
+
+        Button remove = new Button("删除");
+        remove.getStyleClass().add("danger");
+        remove.setOnAction(e -> {
+            _cart.remove(item);
+            renderCart();
+        });
+
+        HBox row = new HBox(10, name, unit, minus, qty, plus, subtotal, remove);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("cart-row");
+        return row;
+    }
+
+    /**
+     * 购物车合计金额。
+     *
+     * @return 合计金额
+     */
+    private BigDecimal cartTotal() {
+        BigDecimal total = BigDecimal.ZERO;
+        for (CartItem item : _cart) {
+            total = total.add(item.getSubtotal());
+        }
+        return total;
+    }
+
+    /**
+     * 购物车总件数。
+     *
+     * @return 件数
+     */
+    private int cartQuantity() {
+        int sum = 0;
+        for (CartItem item : _cart) {
+            sum += item.getQuantity();
+        }
+        return sum;
+    }
+
+    /**
+     * 购物车结算：把购物车中的多个商品作为一个订单提交给服务器。
+     *
+     * <p>只把"商品编号 + 数量"发给服务器，单价与总价由服务器按数据库实时数据计算；
+     * 成功后清空购物车并刷新余额、商品与订单列表，失败（库存不足/余额不足）时保留购物车。</p>
+     */
+    private void doCheckout() {
+        if (_cart.isEmpty()) {
+            showAlert(Alert.AlertType.WARNING, "提示", "购物车是空的，请先挑选商品");
+            return;
+        }
+        String userId = _currentUser == null ? null : _currentUser.getUId();
+        if (userId == null || userId.isBlank()) {
+            showAlert(Alert.AlertType.WARNING, "提示", "未登录，无法结算");
+            return;
+        }
+
+        StringBuilder message = new StringBuilder();
+        for (CartItem item : _cart) {
+            message.append("· ").append(safe(item.getGoodsName())).append(" ×").append(item.getQuantity())
+                    .append(" = ¥").append(plain(item.getSubtotal())).append('\n');
+        }
+        message.append("\n合计 ").append(cartQuantity()).append(" 件，应付 ¥").append(plain(cartTotal()))
+                .append(" 元。\n结算后将生成一个订单并扣减校园卡余额。");
+        if (!confirm("确认结算", message.toString())) {
+            return;
+        }
+
+        List<CartItem> items = new ArrayList<>();
+        for (CartItem item : _cart) {
+            items.add(new CartItem(item.getGoodsId(), item.getQuantity()));
+        }
+        try {
+            Message response = _storeClientSrv.checkout(userId, items);
+            if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
+                Order order = (Order) response.getData();
+                StringBuilder detail = new StringBuilder();
+                for (PurchaseRecord record : order.getItems()) {
+                    detail.append("· ").append(safe(record.getGoodsName())).append(" ×").append(record.getQuantity())
+                            .append(" = ").append(plain(record.getTotalPrice())).append(" 元\n");
+                }
+                _cart.clear();
+                renderCart();
+                loadBalance();
+                loadGoods();
+                showAlert(Alert.AlertType.INFORMATION, "结算成功",
+                        "订单号：" + order.getOrderId()
+                                + "\n商品共 " + order.getItemCount() + " 种 / " + order.getTotalQuantity() + " 件"
+                                + "\n订单金额：" + plain(order.getTotalAmount()) + " 元\n\n" + detail);
+            } else {
+                showAlert(Alert.AlertType.ERROR, "结算失败", String.valueOf(response.getData()));
+                loadGoods(); // 失败多半是库存/价格发生变化，刷新商品列表让用户看到最新库存
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 在搜索栏右侧显示一条轻提示，2.5 秒后自动消失。
+     *
+     * @param text 提示文字
+     */
+    private void showHint(String text) {
+        _hintLabel.setText(text);
+        PauseTransition pause = new PauseTransition(Duration.seconds(2.5));
+        pause.setOnFinished(e -> _hintLabel.setText(""));
+        pause.play();
+    }
+
+    /**
+     * 弹出二次确认框。
+     *
+     * @param title   标题
+     * @param message 提示内容
+     * @return 用户点击"确定"返回 {@code true}
+     */
+    private boolean confirm(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        Optional<javafx.scene.control.ButtonType> result = alert.showAndWait();
+        return result.isPresent() && result.get() == javafx.scene.control.ButtonType.OK;
+    }
+
+    /**
+     * 把金额格式化为字符串（{@code null} 视为 0.00）。
+     *
+     * @param value 金额
+     * @return 金额文本
+     */
+    private String plain(BigDecimal value) {
+        return value == null ? "0.00" : value.toPlainString();
     }
 
     /**

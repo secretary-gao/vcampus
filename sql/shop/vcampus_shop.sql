@@ -4,6 +4,8 @@
 -- 用法：mysql -u root -p --default-character-set=utf8mb4 < sql/shop/vcampus_shop.sql
 -- 依赖：先执行过 sql/vcampus_schema.sql（已建 vCampus 库与 tblUser 表）；
 --       购买/拿订单演示需要示例用户，请先执行 sql/seed_demo_data.sql
+-- 说明：如果你之前已经建过商店表（tblPurchase 以 orderId 为主键），不要重跑本脚本，
+--       请执行 sql/migration_add_order_group.sql 把表升级为"订单主表 + 订单明细"结构。
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS vCampus
@@ -30,25 +32,47 @@ CREATE TABLE IF NOT EXISTS tblGoods (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品信息表';
 
 -- ------------------------------------------------------------
--- tblPurchase：商品购买记录表
--- 说明书：orderId varchar(20) 主键（本项目用 ORDER+时间戳+随机数生成，
---   长度可能超过20，故用 varchar(32)）/ userId varchar(10) 外键 tblUser /
---   goodsId varchar(20) 外键 tblGoods / quantity int >0 /
---   totalPrice decimal(10,2) >=0 / orderTime datetime
+-- tblOrder：订单主表（一次结算 = 一个订单，可含多个商品）
+-- 说明书把"同一订单可包含多个商品"作为开放问题简化处理（一次购买仅针对单一商品）；
+-- 本模块在购物车功能中按"一单多商品"落地，因此拆出订单主表：
+--   orderId varchar(32) 主键 / userId varchar(10) 外键 tblUser /
+--   totalAmount decimal(10,2) 订单总金额 / orderTime datetime 下单时间
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tblOrder (
+    orderId     VARCHAR(32)   NOT NULL COMMENT '订单号（PK）',
+    userId      VARCHAR(10)   NOT NULL COMMENT '下单人ID，外键->tblUser.uId',
+    totalAmount DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '订单总金额（>=0）',
+    orderTime   DATETIME      NOT NULL COMMENT '下单时间',
+    PRIMARY KEY (orderId),
+    KEY idx_tblOrder_user_time (userId, orderTime),
+    CONSTRAINT fk_order_user FOREIGN KEY (userId) REFERENCES tblUser(uId),
+    CONSTRAINT chk_tblOrder_total CHECK (totalAmount >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单主表（一次结算一个订单，可含多个商品）';
+
+-- ------------------------------------------------------------
+-- tblPurchase：订单明细表（一个订单多行，每行一个商品）
+-- 说明书：userId varchar(10) 外键 tblUser / goodsId varchar(20) 外键 tblGoods /
+--   quantity int >0 / totalPrice decimal(10,2) >=0（本行小计 = 单价×数量）/
+--   orderTime datetime；订单号 orderId 在说明书中是主键，购物车需要"一单多商品"，
+--   故改为自增 itemId 主键 + orderId 外键（指向 tblOrder）并建索引。
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tblPurchase (
-    orderId    VARCHAR(32)   NOT NULL COMMENT '订单号（PK）',
+    itemId     BIGINT        NOT NULL AUTO_INCREMENT COMMENT '明细行号（PK）',
+    orderId    VARCHAR(32)   NOT NULL COMMENT '订单号，外键->tblOrder.orderId',
     userId     VARCHAR(10)   NOT NULL COMMENT '购买人ID，外键->tblUser.uId',
     goodsId    VARCHAR(20)   NOT NULL COMMENT '商品编号，外键->tblGoods.goodsId',
     quantity   INT           NOT NULL DEFAULT 1 COMMENT '购买数量（>0）',
-    totalPrice DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '订单总价（>=0）',
+    totalPrice DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '本行小计（单价×数量，>=0）',
     orderTime  DATETIME      NOT NULL COMMENT '下单时间',
-    PRIMARY KEY (orderId),
+    PRIMARY KEY (itemId),
+    KEY idx_tblPurchase_order (orderId),
+    KEY idx_tblPurchase_user_time (userId, orderTime),
+    CONSTRAINT fk_purchase_order FOREIGN KEY (orderId) REFERENCES tblOrder(orderId),
     CONSTRAINT fk_purchase_user  FOREIGN KEY (userId)  REFERENCES tblUser(uId),
     CONSTRAINT fk_purchase_goods FOREIGN KEY (goodsId) REFERENCES tblGoods(goodsId),
     CONSTRAINT chk_tblPurchase_qty   CHECK (quantity > 0),
     CONSTRAINT chk_tblPurchase_total CHECK (totalPrice >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品购买记录表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单明细表（一个订单可含多个商品）';
 
 -- ------------------------------------------------------------
 -- tblWallet：校园卡钱包表（商店模块自建，用于"余额 + 充值 + 购买扣款"）

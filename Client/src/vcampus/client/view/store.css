@@ -143,6 +143,12 @@
 .goods-price { -fx-text-fill: #e2553f; -fx-font-size: 18px; -fx-font-weight: bold; }
 .goods-stock { -fx-text-fill: #8794a6; -fx-font-size: 12px; }
 
+/* 商品卡片上的操作按钮：两个并排，收窄字号与内边距以便完整显示文字 */
+.button.card-action {
+    -fx-padding: 8 10 8 10;
+    -fx-font-size: 12px;
+}
+
 /* ==================== 表格 ==================== */
 .store-table {
     -fx-background-color: transparent;
@@ -196,6 +202,35 @@
     -fx-background-color: transparent;
     -fx-border-color: transparent;
 }
+
+/* ==================== 购物车 ==================== */
+.cart-row {
+    -fx-background-color: white;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: #e2eaf3;
+    -fx-padding: 10 14 10 14;
+}
+.cart-row:hover { -fx-border-color: #9fd8cd; -fx-background-color: #fbfefd; }
+.cart-name { -fx-text-fill: #17233a; -fx-font-size: 14px; -fx-font-weight: bold; }
+.cart-unit { -fx-text-fill: #8794a6; -fx-font-size: 12px; }
+.cart-qty { -fx-text-fill: #17233a; -fx-font-weight: bold; -fx-alignment: center; }
+.cart-subtotal { -fx-text-fill: #e2553f; -fx-font-size: 15px; -fx-font-weight: bold; }
+.cart-total { -fx-text-fill: #12564e; -fx-font-size: 15px; -fx-font-weight: bold; }
+.cart-hint { -fx-text-fill: #1f8f80; -fx-font-size: 12px; }
+
+/* 数量增减的小圆钮 */
+.button.qty-button {
+    -fx-background-color: #e9f5f3;
+    -fx-text-fill: #1f7f72;
+    -fx-background-radius: 14;
+    -fx-min-width: 28;
+    -fx-min-height: 28;
+    -fx-padding: 2 8 4 8;
+    -fx-font-size: 14px;
+}
+.button.qty-button:hover { -fx-background-color: #d3ebe6; }
+.button.qty-button:focused { -fx-background-color: #e9f5f3; -fx-text-fill: #1f7f72; }
 
 /* ==================== 滚动区 ==================== */
 .store-scroll { -fx-background-color: transparent; -fx-background: transparent; }

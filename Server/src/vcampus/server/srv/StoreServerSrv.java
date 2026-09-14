@@ -10,10 +10,13 @@
 package vcampus.server.srv;
 
 import vcampus.common.constant.IConstant;
+import vcampus.common.vo.CartItem;
 import vcampus.common.vo.Goods;
+import vcampus.common.vo.Order;
 import vcampus.common.vo.PurchaseRecord;
 import vcampus.common.vo.Wallet;
 import vcampus.server.dao.GoodsDAO;
+import vcampus.server.dao.OrderDAO;
 import vcampus.server.dao.PurchaseDAO;
 import vcampus.server.dao.WalletDAO;
 import vcampus.server.dao.DbHelper;
@@ -24,23 +27,32 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * {@link IStoreServerSrv} 的实现类，承载虚拟商店模块的业务逻辑，
- * 具体的数据库读写委托给 {@link GoodsDAO} 与 {@link PurchaseDAO}。
+ * 具体的数据库读写委托给 {@link GoodsDAO}、{@link OrderDAO} 与 {@link PurchaseDAO}。
  *
- * <p>购买操作涉及"插入订单 + 扣减库存"两个数据库写操作，为保证数据一致性，
- * 使用 JDBC 事务（关闭自动提交，成功后提交，异常时回滚），并在校验库存前
- * 通过 {@code SELECT ... FOR UPDATE} 锁定商品行以防并发超卖。</p>
+ * <p>下单操作涉及"写订单主表 + 写订单明细 + 扣减库存 + 扣减余额"多个数据库写操作，
+ * 为保证数据一致性，使用 JDBC 事务（关闭自动提交，成功后提交，异常时回滚），并在校验
+ * 库存前通过 {@code SELECT ... FOR UPDATE} 锁定商品行以防并发超卖；购物车一次结算多个
+ * 商品时按商品编号排序后逐行加锁，保证加锁顺序一致，避免并发死锁。</p>
  */
 public class StoreServerSrv implements IStoreServerSrv {
 
     /** 商品数据访问对象。 */
     private final GoodsDAO _goodsDAO = new GoodsDAO();
 
-    /** 购买记录数据访问对象。 */
+    /** 订单主表数据访问对象。 */
+    private final OrderDAO _orderDAO = new OrderDAO();
+
+    /** 购买记录（订单明细）数据访问对象。 */
     private final PurchaseDAO _purchaseDAO = new PurchaseDAO();
 
     /** 钱包（校园卡余额）数据访问对象。 */
@@ -59,59 +71,117 @@ public class StoreServerSrv implements IStoreServerSrv {
 
     /**
      * {@inheritDoc}
+     *
+     * <p>实现方式：把"一个商品 + 数量"包装成只有一条明细的购物车，复用
+     * {@link #checkout(String, List)} 的事务逻辑，保证单商品下单与购物车结算在
+     * 库存锁定、余额扣减、订单落库上完全一致。</p>
      */
     @Override
     public PurchaseRecord purchaseGoods(String userId, String goodsId, int quantity)
             throws ShopException, SQLException, IOException {
-        if (quantity <= 0) {
-            throw new ShopException(IConstant.STATUS_CONFLICT, "购买数量必须为正整数");
+        List<CartItem> items = new ArrayList<>();
+        items.add(new CartItem(goodsId, quantity));
+        Order order = checkout(userId, items);
+        return order.getItems().isEmpty() ? null : order.getItems().get(0);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>整个过程处于一个数据库事务中：先按商品编号排序逐行加锁校验库存（同一个商品在
+     * 购物车里出现多次会先合并数量），再一次性扣减整单金额，最后写订单主表、逐行写订单
+     * 明细并扣减库存；任何一步失败都整体回滚，不会出现"扣了钱没订单"或"订单缺库存"。</p>
+     */
+    @Override
+    public Order checkout(String userId, List<CartItem> items)
+            throws ShopException, SQLException, IOException {
+        if (userId == null || userId.isBlank()) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, "未登录或用户信息缺失");
         }
+
+        // 1) 合并购物车条目：同一商品多次加入合并数量；按商品编号排序，保证后续加锁顺序一致
+        Map<String, Integer> merged = new TreeMap<>();
+        for (CartItem item : items == null ? Collections.<CartItem>emptyList() : items) {
+            if (item == null || item.getGoodsId() == null || item.getGoodsId().isBlank()) {
+                throw new ShopException(IConstant.STATUS_CONFLICT, "购物车中存在无效商品");
+            }
+            if (item.getQuantity() <= 0) {
+                throw new ShopException(IConstant.STATUS_CONFLICT, "购买数量必须为正整数");
+            }
+            merged.merge(item.getGoodsId(), item.getQuantity(), Integer::sum);
+        }
+        if (merged.isEmpty()) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, "购物车为空，无法结算");
+        }
+
         Connection conn = null;
         try {
             conn = DbHelper.getConnection();
             conn.setAutoCommit(false);
 
-            // 1) 锁定商品行，防止并发超卖
-            Goods goods = _goodsDAO.findByGoodsIdForUpdate(conn, goodsId);
-            if (goods == null) {
-                throw new ShopException(IConstant.STATUS_GOODS_NOT_FOUND, "商品不存在：" + goodsId);
-            }
-            if (goods.getStock() < quantity) {
-                throw new ShopException(IConstant.STATUS_STOCK_NOT_ENOUGH,
-                        "库存不足：当前库存 " + goods.getStock() + "，购买数量 " + quantity);
+            // 2) 逐个商品加锁校验库存，金额一律取数据库实时单价（不信任客户端传来的价格快照）
+            BigDecimal totalAmount = BigDecimal.ZERO;
+            List<PurchaseRecord> details = new ArrayList<>();
+            for (Map.Entry<String, Integer> entry : merged.entrySet()) {
+                String goodsId = entry.getKey();
+                int quantity = entry.getValue();
+                Goods goods = _goodsDAO.findByGoodsIdForUpdate(conn, goodsId);
+                if (goods == null) {
+                    throw new ShopException(IConstant.STATUS_GOODS_NOT_FOUND, "商品不存在：" + goodsId);
+                }
+                if (goods.getStock() < quantity) {
+                    throw new ShopException(IConstant.STATUS_STOCK_NOT_ENOUGH,
+                            "库存不足：" + goods.getGoodsName() + " 当前库存 " + goods.getStock()
+                                    + "，购买数量 " + quantity);
+                }
+                BigDecimal subtotal = goods.getPrice().multiply(BigDecimal.valueOf(quantity));
+                totalAmount = totalAmount.add(subtotal);
+
+                PurchaseRecord detail = new PurchaseRecord();
+                detail.setUserId(userId);
+                detail.setGoodsId(goods.getGoodsId());
+                detail.setGoodsName(goods.getGoodsName());
+                detail.setQuantity(quantity);
+                detail.setTotalPrice(subtotal);
+                details.add(detail);
             }
 
-            // 2) 计算总价，并校验 + 扣减校园卡余额（与订单、库存同一事务）
-            BigDecimal totalPrice = goods.getPrice().multiply(BigDecimal.valueOf(quantity));
+            // 3) 校验并扣减校园卡余额（整单一次扣减，条件扣减从数据库层面防止扣成负数）
             Wallet wallet = _walletDAO.findByUserId(userId);
             BigDecimal balance = wallet == null ? BigDecimal.ZERO : wallet.getBalance();
-            if (balance.compareTo(totalPrice) < 0) {
+            if (balance.compareTo(totalAmount) < 0) {
                 throw new ShopException(IConstant.STATUS_BALANCE_NOT_ENOUGH,
                         "余额不足：当前余额 " + balance.toPlainString() + " 元，本单需要 "
-                                + totalPrice.toPlainString() + " 元，请先充值");
+                                + totalAmount.toPlainString() + " 元，请先充值");
             }
-            if (_walletDAO.deduct(conn, userId, totalPrice) != 1) {
+            if (_walletDAO.deduct(conn, userId, totalAmount) != 1) {
                 throw new ShopException(IConstant.STATUS_BALANCE_NOT_ENOUGH, "余额不足，请先充值");
             }
 
-            PurchaseRecord record = new PurchaseRecord();
-            record.setOrderId(generateOrderId());
-            record.setUserId(userId);
-            record.setGoodsId(goods.getGoodsId());
-            record.setGoodsName(goods.getGoodsName());
-            record.setQuantity(quantity);
-            record.setTotalPrice(totalPrice);
-            record.setOrderTime(LocalDateTime.now());
-
-            // 3) 插入订单 + 扣减库存（同一事务）
-            _purchaseDAO.insert(conn, record);
-            int updated = _goodsDAO.updateStock(conn, goodsId, -quantity);
-            if (updated != 1) {
-                throw new ShopException(IConstant.STATUS_CONFLICT, "库存扣减失败，请重试");
+            // 4) 写订单主表 + 逐行写明细并扣减库存（同一事务）
+            LocalDateTime now = LocalDateTime.now();
+            Order order = new Order();
+            order.setOrderId(generateOrderId());
+            order.setUserId(userId);
+            order.setTotalAmount(totalAmount);
+            order.setOrderTime(now);
+            if (!_orderDAO.insert(conn, order)) {
+                throw new ShopException(IConstant.STATUS_CONFLICT, "订单创建失败，请重试");
             }
+            for (PurchaseRecord detail : details) {
+                detail.setOrderId(order.getOrderId());
+                detail.setOrderTime(now);
+                _purchaseDAO.insert(conn, detail);
+                int updated = _goodsDAO.updateStock(conn, detail.getGoodsId(), -detail.getQuantity());
+                if (updated != 1) {
+                    throw new ShopException(IConstant.STATUS_CONFLICT,
+                            "库存扣减失败：" + detail.getGoodsName() + "，请重试");
+                }
+            }
+            order.setItems(details);
 
             conn.commit();
-            return record;
+            return order;
         } catch (ShopException e) {
             rollbackQuietly(conn);
             throw e;
@@ -135,6 +205,29 @@ public class StoreServerSrv implements IStoreServerSrv {
             return _purchaseDAO.findAll(); // 管理员查看全部记录
         }
         return _purchaseDAO.findByUserId(userId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Order> queryOrders(String userId) throws SQLException, IOException {
+        boolean all = userId == null || userId.isBlank(); // 管理员查看全部订单
+        List<Order> orders = all ? _orderDAO.findAll() : _orderDAO.findByUserId(userId);
+        List<PurchaseRecord> details = all ? _purchaseDAO.findAll() : _purchaseDAO.findByUserId(userId);
+
+        // 用订单号把明细挂回对应订单：一次查询拿到全部明细，避免 N+1 次数据库往返
+        Map<String, Order> orderById = new LinkedHashMap<>();
+        for (Order order : orders) {
+            orderById.put(order.getOrderId(), order);
+        }
+        for (PurchaseRecord detail : details) {
+            Order order = orderById.get(detail.getOrderId());
+            if (order != null) {
+                order.getItems().add(detail);
+            }
+        }
+        return orders;
     }
 
     /**
