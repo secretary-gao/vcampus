@@ -14,6 +14,7 @@ import vcampus.client.biz.UserClientSrv;
 import vcampus.common.constant.IConstant;
 import vcampus.common.util.MD5Util;
 import vcampus.common.vo.Message;
+import vcampus.common.vo.Student;
 import vcampus.common.vo.User;
 
 import javafx.application.Application;
@@ -41,6 +42,7 @@ import javafx.scene.paint.Stop;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.io.IOException;
 
@@ -58,14 +60,20 @@ public class LoginFrame extends Application {
     /** 登录ID输入框。 */
     private final TextField _uidField = new TextField();
 
-    /** 密码输入框。 */
+    /** 密码输入框（正常状态下显示的遮罩输入框）。 */
     private final PasswordField _pwdField = new PasswordField();
 
-    /** 角色选择框。 */
-    private final ComboBox<String> _roleBox = new ComboBox<>();
+    /** 密码明文输入框，跟 {@link #_pwdField} 文本双向绑定，点"显示密码"
+     *  按钮时临时切换显示这一个，几秒后自动切回遮罩状态。 */
+    private final TextField _pwdPlainField = new TextField();
 
     /** 记住密码复选框。 */
     private final CheckBox _rememberBox = new CheckBox("记住密码");
+
+    /** 本地记住的登录信息存放路径，放在用户主目录下，不会被提交进仓库
+     *  （每台电脑各记各的，纯粹是本地便利功能，不是安全存储）。 */
+    private static final java.io.File REMEMBER_FILE =
+            new java.io.File(System.getProperty("user.home"), ".vcampus_login.properties");
 
     /** 客户端用户业务服务，负责实际的 Socket 通信。 */
     private final IUserClientSrv _userClientSrv = new UserClientSrv();
@@ -158,7 +166,9 @@ public class LoginFrame extends Application {
     }
 
     /**
-     * 构建表单区：登录ID、密码、角色三个纵向排列的字段，宽度撑满卡片。
+     * 构建表单区：登录ID、密码两个纵向排列的字段，宽度撑满卡片（角色选择
+     * 已经挪到注册弹窗里——登录不需要选角色，服务器会按登录ID查库返回
+     * 真实角色，客户端选什么都不影响登录结果）。
      *
      * @return 表单面板
      */
@@ -172,20 +182,62 @@ public class LoginFrame extends Application {
         _uidField.setStyle(fieldStyle());
         _pwdField.setStyle(fieldStyle());
 
-        _roleBox.getItems().setAll("学生", "教师", "管理员");
-        _roleBox.getSelectionModel().selectFirst();
-        _roleBox.setPrefHeight(44);
-        _roleBox.setMaxWidth(Double.MAX_VALUE);
-        _roleBox.setStyle(fieldStyle());
-
         VBox form = new VBox(6,
                 fieldLabel("登录ID"), _uidField,
-                fieldLabel("密码"), _pwdField,
-                fieldLabel("角色"), _roleBox);
+                fieldLabel("密码"), buildPasswordRow());
         form.setFillWidth(true);
         VBox.setMargin(_uidField, new Insets(0, 0, 8, 0));
-        VBox.setMargin(_pwdField, new Insets(0, 0, 8, 0));
+
+        loadRememberedCredential();
         return form;
+    }
+
+    /**
+     * 构建密码输入行：遮罩输入框叠加一个明文输入框（两者文本双向绑定），
+     * 右侧一个"显示密码"按钮，点一下临时切到明文输入框，2秒后自动切
+     * 回遮罩状态，对应"点击右侧短暂查看"的需求。
+     *
+     * @return 密码输入行
+     */
+    private HBox buildPasswordRow() {
+        _pwdPlainField.textProperty().bindBidirectional(_pwdField.textProperty());
+        _pwdPlainField.setPromptText("请输入密码");
+        _pwdPlainField.setPrefHeight(44);
+        _pwdPlainField.setMaxWidth(Double.MAX_VALUE);
+        _pwdPlainField.setStyle(fieldStyle());
+        _pwdPlainField.setManaged(false);
+        _pwdPlainField.setVisible(false);
+
+        StackPane pwdStack = new StackPane(_pwdField, _pwdPlainField);
+        HBox.setHgrow(pwdStack, javafx.scene.layout.Priority.ALWAYS);
+
+        Button toggleButton = new Button("显示");
+        toggleButton.setPrefHeight(44);
+        toggleButton.setStyle("-fx-background-color: #f8fafc; -fx-text-fill: #5a6472;"
+                + " -fx-border-color: #e3e9ef; -fx-border-radius: 12; -fx-background-radius: 12;"
+                + " -fx-font-size: 12.5px; -fx-cursor: hand;");
+
+        javafx.animation.PauseTransition autoHide = new javafx.animation.PauseTransition(Duration.seconds(2));
+        autoHide.setOnFinished(e -> {
+            _pwdField.setManaged(true);
+            _pwdField.setVisible(true);
+            _pwdPlainField.setManaged(false);
+            _pwdPlainField.setVisible(false);
+            toggleButton.setText("显示");
+        });
+
+        toggleButton.setOnAction(e -> {
+            _pwdField.setManaged(false);
+            _pwdField.setVisible(false);
+            _pwdPlainField.setManaged(true);
+            _pwdPlainField.setVisible(true);
+            toggleButton.setText("隐藏");
+            autoHide.playFromStart();
+        });
+
+        HBox row = new HBox(8, pwdStack, toggleButton);
+        row.setAlignment(Pos.CENTER_LEFT);
+        return row;
     }
 
     /**
@@ -269,20 +321,21 @@ public class LoginFrame extends Application {
      */
     @Override
     public void start(Stage stage) {
+        AppIcons.installGlobalIcon();
         this._stage = stage;
         buildUi(stage);
         stage.show();
     }
 
     /**
-     * 从界面收集输入并校验，密码在这里就完成 MD5 摘要（明文密码不会经网络传输）。
+     * 从登录表单收集输入并校验，密码在这里就完成 MD5 摘要（明文密码不会经
+     * 网络传输）。登录不需要选角色，服务器按登录ID查库返回真实角色。
      *
      * @return 校验通过时返回封装好的 {@link User}；输入不合法时返回 {@code null}
      */
-    private User collectInput() {
+    private User collectLoginInput() {
         String uid = _uidField.getText().trim();
         String pwd = _pwdField.getText();
-        String role = _roleBox.getSelectionModel().getSelectedItem();
 
         if (uid.isEmpty() || pwd.isEmpty()) {
             showAlert(Alert.AlertType.WARNING, "提示", "登录ID和密码不能为空");
@@ -296,7 +349,6 @@ public class LoginFrame extends Application {
         User user = new User();
         user.setUId(uid);
         user.setUPwd(MD5Util.md5(pwd));
-        user.setURole(role);
         return user;
     }
 
@@ -304,7 +356,8 @@ public class LoginFrame extends Application {
      * "登录"按钮的点击处理：发送登录请求并根据响应弹窗提示。
      */
     private void onLogin() {
-        User loginUser = collectInput();
+        String rawPwd = _pwdField.getText();
+        User loginUser = collectLoginInput();
         if (loginUser == null) {
             return;
         }
@@ -312,6 +365,11 @@ public class LoginFrame extends Application {
             Message response = _userClientSrv.login(loginUser);
             if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
                 User found = (User) response.getData();
+                if (_rememberBox.isSelected()) {
+                    saveRememberedCredential(loginUser.getUId(), rawPwd);
+                } else {
+                    clearRememberedCredential();
+                }
                 showAlert(Alert.AlertType.INFORMATION, "登录成功", "登录成功，欢迎 " + found.getUId() + "！");
                 openMainFrame(found);
             } else {
@@ -325,24 +383,277 @@ public class LoginFrame extends Application {
     }
 
     /**
-     * "注册"按钮的点击处理：发送注册请求并根据响应弹窗提示。
+     * "立即注册"链接的点击处理：弹出独立的注册窗口，角色选择放在
+     * 注册窗口里（登录界面不再需要选角色）。
      */
     private void onRegister() {
-        User newUser = collectInput();
-        if (newUser == null) {
-            return;
+        openRegisterDialog();
+    }
+
+    /**
+     * 弹出独立的注册窗口：登录ID、密码、确认密码、角色（角色选择从
+     * 登录界面挪到这里）。注册成功后账号是"待审核"状态，不能立即
+     * 登录，要等管理员在"账号管理"页面手动确认。
+     */
+    private void openRegisterDialog() {
+        Stage dialogStage = new Stage();
+        dialogStage.setTitle("注册新账号");
+        dialogStage.initOwner(_stage);
+        dialogStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+
+        TextField uidField = new TextField();
+        uidField.setPromptText("请输入8位学号/工号");
+        PasswordField pwdField = new PasswordField();
+        pwdField.setPromptText("请输入密码");
+        PasswordField confirmField = new PasswordField();
+        confirmField.setPromptText("请再输入一次密码");
+        TextField nameField = new TextField();
+        nameField.setPromptText("请输入真实姓名");
+        TextField ageField = new TextField();
+        ageField.setPromptText("请输入年龄");
+
+        ComboBox<String> sexBox = new ComboBox<>();
+        sexBox.getItems().setAll("男", "女");
+        sexBox.getSelectionModel().selectFirst();
+        sexBox.setMaxWidth(Double.MAX_VALUE);
+
+        ComboBox<String> roleBox = new ComboBox<>();
+        roleBox.getItems().setAll("学生", "教师", "管理员");
+        roleBox.getSelectionModel().selectFirst();
+        roleBox.setMaxWidth(Double.MAX_VALUE);
+
+        // 学生角色专属：班级/专业/年级，服务器要用这些新建一条学籍记录，
+        // 教师/管理员没有对应的数据表，选这两个角色时把这块隐藏掉。
+        TextField classField = new TextField();
+        classField.setPromptText("例如：软件2601");
+        TextField majorField = new TextField();
+        majorField.setPromptText("例如：软件工程");
+        TextField gradeField = new TextField();
+        gradeField.setPromptText("入学年份，4位数字，例如2026");
+
+        for (TextField field : new TextField[] {uidField, pwdField, confirmField, nameField,
+                ageField, classField, majorField, gradeField}) {
+            field.setPrefHeight(38);
+            field.setMaxWidth(Double.MAX_VALUE);
+            field.setStyle(fieldStyle());
         }
+        sexBox.setPrefHeight(38);
+        sexBox.setStyle(fieldStyle());
+        roleBox.setPrefHeight(38);
+        roleBox.setStyle(fieldStyle());
+
+        VBox studentSection = new VBox(6,
+                fieldLabel("班级"), classField,
+                fieldLabel("专业"), majorField,
+                fieldLabel("年级"), gradeField);
+        studentSection.setFillWidth(true);
+        studentSection.managedProperty().bind(studentSection.visibleProperty());
+        roleBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) ->
+                studentSection.setVisible("学生".equals(newVal)));
+        studentSection.setVisible(true);
+
+        Label resultLabel = new Label();
+        resultLabel.setWrapText(true);
+        resultLabel.setTextFill(Color.web("#e6604f"));
+
+        Button submitButton = new Button("提交注册");
+        submitButton.setMaxWidth(Double.MAX_VALUE);
+        submitButton.setPrefHeight(42);
+        submitButton.setStyle("-fx-background-color: linear-gradient(to right, #3fa34d, #5bc46d);"
+                + " -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;"
+                + " -fx-background-radius: 21; -fx-cursor: hand;");
+
+        submitButton.setOnAction(e -> {
+            String uid = uidField.getText() == null ? "" : uidField.getText().trim();
+            String pwd = pwdField.getText() == null ? "" : pwdField.getText();
+            String confirm = confirmField.getText() == null ? "" : confirmField.getText();
+            String name = nameField.getText() == null ? "" : nameField.getText().trim();
+            String ageText = ageField.getText() == null ? "" : ageField.getText().trim();
+            String sex = sexBox.getSelectionModel().getSelectedItem();
+            String role = roleBox.getSelectionModel().getSelectedItem();
+            boolean isStudent = "学生".equals(role);
+
+            if (uid.isEmpty() || pwd.isEmpty() || name.isEmpty()) {
+                resultLabel.setText("登录ID、密码、姓名都不能为空");
+                return;
+            }
+            if (uid.length() != 8) {
+                resultLabel.setText("登录ID必须为8位");
+                return;
+            }
+            if (!pwd.equals(confirm)) {
+                resultLabel.setText("两次输入的密码不一致");
+                return;
+            }
+            Integer age = null;
+            if (!ageText.isEmpty()) {
+                try {
+                    age = Integer.valueOf(ageText);
+                } catch (NumberFormatException ex) {
+                    resultLabel.setText("年龄必须是数字");
+                    return;
+                }
+            }
+            String className = classField.getText() == null ? "" : classField.getText().trim();
+            String major = majorField.getText() == null ? "" : majorField.getText().trim();
+            String grade = gradeField.getText() == null ? "" : gradeField.getText().trim();
+            if (isStudent) {
+                if (className.isEmpty() || major.isEmpty() || grade.isEmpty()) {
+                    resultLabel.setText("班级、专业、年级都不能为空");
+                    return;
+                }
+                if (!grade.matches("[0-9]{4}")) {
+                    resultLabel.setText("年级必须是4位数字，例如2026");
+                    return;
+                }
+            }
+
+            User newUser = new User();
+            newUser.setUId(uid);
+            newUser.setUPwd(MD5Util.md5(pwd));
+            newUser.setURole(role);
+            newUser.setUName(name);
+            newUser.setUAge(age);
+            newUser.setUSex(sex);
+
+            submitButton.setDisable(true);
+            resultLabel.setTextFill(Color.web("#697687"));
+            resultLabel.setText("正在提交…");
+
+            new Thread(() -> {
+                String message;
+                boolean success;
+                try {
+                    Message response;
+                    if (isStudent) {
+                        Student profile = new Student();
+                        // 学号/一卡通号由登录ID派生，保证不跟已有数据冲突，不用学生自己填。
+                        profile.setStudentId(uid);
+                        profile.setCampusCardNo("SC" + uid);
+                        profile.setName(name);
+                        profile.setClassName(className);
+                        profile.setMajor(major);
+                        profile.setGrade(grade);
+                        response = _userClientSrv.registerStudent(newUser, profile);
+                    } else {
+                        response = _userClientSrv.register(newUser);
+                    }
+                    success = IConstant.STATUS_SUCCESS.equals(response.getStatusCode());
+                    message = success
+                            ? "提交成功！账号需要管理员审核通过后才能登录，请耐心等待。"
+                            : String.valueOf(response.getData());
+                } catch (IOException ex) {
+                    success = false;
+                    message = "无法连接服务器，请确认服务器已启动：" + ex.getMessage();
+                } catch (ClassNotFoundException ex) {
+                    success = false;
+                    message = "服务器返回的数据无法识别：" + ex.getMessage();
+                }
+                final String finalMessage = message;
+                final boolean finalSuccess = success;
+                Platform.runLater(() -> {
+                    submitButton.setDisable(false);
+                    if (finalSuccess) {
+                        showAlert(Alert.AlertType.INFORMATION, "注册成功", finalMessage);
+                        dialogStage.close();
+                    } else {
+                        resultLabel.setTextFill(Color.web("#e6604f"));
+                        resultLabel.setText(finalMessage);
+                    }
+                });
+            }).start();
+        });
+
+        VBox form = new VBox(6,
+                fieldLabel("登录ID"), uidField,
+                fieldLabel("密码"), pwdField,
+                fieldLabel("确认密码"), confirmField,
+                fieldLabel("角色"), roleBox,
+                fieldLabel("姓名"), nameField,
+                fieldLabel("年龄"), ageField,
+                fieldLabel("性别"), sexBox,
+                studentSection);
+        form.setFillWidth(true);
+
+        Label title = new Label("注册新账号");
+        title.setFont(Font.font("System", FontWeight.BOLD, 20));
+        title.setTextFill(Color.web("#1d2b39"));
+
+        Label tip = new Label("提交后需要管理员审核通过才能登录，请如实填写角色和个人信息。");
+        tip.setWrapText(true);
+        tip.setTextFill(Color.web("#8b96a4"));
+        tip.setFont(Font.font("System", 12));
+
+        VBox card = new VBox(12, title, tip, form, submitButton, resultLabel);
+        card.setPadding(new Insets(26));
+        card.setPrefWidth(380);
+        card.setStyle("-fx-background-color: white; -fx-background-radius: 18;");
+
+        StackPane root = new StackPane(card);
+        root.setStyle("-fx-background-color: #eef3f8;");
+        javafx.scene.control.ScrollPane scrollPane = new javafx.scene.control.ScrollPane(root);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background-color: transparent;");
+        Scene scene = new Scene(scrollPane, 440, 680);
+        dialogStage.setScene(scene);
+        dialogStage.setResizable(false);
+        dialogStage.showAndWait();
+    }
+
+    /**
+     * 把这次登录成功的账号密码记到本地文件里（供下次自动填充），文件放在
+     * 用户主目录，不会被提交进仓库。只做简单编码，不是安全存储，纯粹是
+     * 本地使用便利——如果要更安全，得走操作系统级别的凭据管理，这个不在
+     * 课程项目范围内。
+     *
+     * @param uid    登录ID
+     * @param rawPwd 明文密码
+     */
+    private void saveRememberedCredential(String uid, String rawPwd) {
         try {
-            Message response = _userClientSrv.register(newUser);
-            if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
-                showAlert(Alert.AlertType.INFORMATION, "注册成功", String.valueOf(response.getData()));
-            } else {
-                showAlert(Alert.AlertType.ERROR, "注册失败", String.valueOf(response.getData()));
+            java.util.Properties props = new java.util.Properties();
+            props.setProperty("uid", uid);
+            props.setProperty("pwd", java.util.Base64.getEncoder()
+                    .encodeToString(rawPwd.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            try (java.io.OutputStream out = new java.io.FileOutputStream(REMEMBER_FILE)) {
+                props.store(out, "Vcampus 本地记住的登录信息，删掉这个文件就能清空");
             }
         } catch (IOException e) {
-            showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器，请确认服务器已启动：" + e.getMessage());
-        } catch (ClassNotFoundException e) {
-            showAlert(Alert.AlertType.ERROR, "错误", "服务器返回的数据无法识别：" + e.getMessage());
+            // 记住密码只是便利功能，写文件失败不影响正常登录，忽略即可。
+        }
+    }
+
+    /**
+     * 清空本地记住的登录信息（取消勾选"记住密码"后登录时调用）。
+     */
+    private void clearRememberedCredential() {
+        if (REMEMBER_FILE.isFile()) {
+            REMEMBER_FILE.delete();
+        }
+    }
+
+    /**
+     * 启动时如果本地有记住的登录信息，回填登录ID和密码，并勾上"记住密码"。
+     * 文件不存在或读取失败时静默跳过，不影响正常使用。
+     */
+    private void loadRememberedCredential() {
+        if (!REMEMBER_FILE.isFile()) {
+            return;
+        }
+        try (java.io.InputStream in = new java.io.FileInputStream(REMEMBER_FILE)) {
+            java.util.Properties props = new java.util.Properties();
+            props.load(in);
+            String uid = props.getProperty("uid");
+            String encodedPwd = props.getProperty("pwd");
+            if (uid != null && encodedPwd != null) {
+                String rawPwd = new String(java.util.Base64.getDecoder().decode(encodedPwd),
+                        java.nio.charset.StandardCharsets.UTF_8);
+                _uidField.setText(uid);
+                _pwdField.setText(rawPwd);
+                _rememberBox.setSelected(true);
+            }
+        } catch (Exception e) {
+            // 本地记住的文件损坏或者格式不对，直接当作没记住处理。
         }
     }
 
