@@ -130,7 +130,7 @@ public class CourseRoleServerSrvTest {
 
     private static void deleteIfPresent(CourseDAO dao, String courseId) throws Exception {
         if (dao.findById(courseId) != null) {
-            dao.deleteCourse(courseId);
+            CourseTestData.cleanupCourse(courseId);
         }
     }
 

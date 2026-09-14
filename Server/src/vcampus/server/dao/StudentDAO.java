@@ -36,28 +36,51 @@ public class StudentDAO {
     }
 
     /**
-     * 查询选修当前教师所授课程的学生。
+     * 查询选修当前教师所授教学班的学生；选修多个班的同一学生只返回一次。
      *
-     * <p>课程模块目前以教师姓名保存授课教师，因此先用唯一账号找到教师姓名，
+     * <p>教学班目前以教师姓名保存授课教师，因此先用唯一账号找到教师姓名，
      * 并排除教师重名的情况，避免两个同名教师互相看到对方的学生。</p>
      */
     public List<Student> findStudentsTaughtBy(String teacherUserId)
             throws SQLException, IOException {
+        return queryStudentsTaughtBy(teacherUserId, "", null);
+    }
+
+    /** 在同一次数据库查询中检查授课关系并查找指定学号。 */
+    public Student findStudentTaughtBy(String teacherUserId, String studentId)
+            throws SQLException, IOException {
+        List<Student> students = queryStudentsTaughtBy(teacherUserId,
+                " AND BINARY s.studentId = BINARY ?", studentId);
+        return students.isEmpty() ? null : students.get(0);
+    }
+
+    /** 按姓名精确查询本人教学班的学生，重名学生均保留。 */
+    public List<Student> findStudentsTaughtByName(String teacherUserId, String name)
+            throws SQLException, IOException {
+        return queryStudentsTaughtBy(teacherUserId, " AND BINARY s.name = BINARY ?", name);
+    }
+
+    private List<Student> queryStudentsTaughtBy(String teacherUserId, String filter, String value)
+            throws SQLException, IOException {
         String sql = "SELECT DISTINCT " + qualifiedColumns("s")
                 + " FROM tblStudent s"
                 + " JOIN tblSelectCourse sc ON BINARY sc.studentId = BINARY s.studentId"
-                + " JOIN tblCourse c ON BINARY c.courseId = BINARY sc.courseId"
+                + " JOIN tblTeachingClass tc ON BINARY tc.teachingClassId = BINARY sc.teachingClassId"
+                + " AND BINARY tc.courseId = BINARY sc.courseId"
                 + " JOIN tblUser t ON t.uId = ? AND t.uRole = '教师'"
-                + " WHERE BINARY c.teacher = BINARY t.uName"
+                + " WHERE BINARY tc.teacher = BINARY t.uName"
                 + " AND NOT EXISTS (SELECT 1 FROM tblUser duplicateTeacher"
                 + " WHERE duplicateTeacher.uRole = '教师'"
                 + " AND duplicateTeacher.uName = t.uName"
                 + " AND duplicateTeacher.uId <> t.uId)"
-                + " ORDER BY s.studentId";
+                + filter + " ORDER BY s.studentId";
         List<Student> students = new ArrayList<>();
         try (Connection connection = DbHelper.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, teacherUserId);
+            if (!filter.isEmpty()) {
+                statement.setString(2, value);
+            }
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
                     students.add(mapRow(resultSet));
@@ -65,7 +88,8 @@ public class StudentDAO {
             }
         } catch (SQLException exception) {
             if (isMissingCourseTable(exception)) {
-                return students;
+                throw new SQLException("课程数据尚未就绪，请联系管理员完成选课模块初始化",
+                        exception.getSQLState(), exception.getErrorCode(), exception);
             }
             throw exception;
         }

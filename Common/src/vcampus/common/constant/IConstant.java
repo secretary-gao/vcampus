@@ -61,6 +61,9 @@ public interface IConstant {
     /** 消息名：登出请求，对应 {@link vcampus.common.vo.Message#getName()}。 */
     String MSG_LOGOUT = "logout";
 
+    //医院模块新增常量
+    String MSG_HOSPITAL_GET_OCCUPIED_TIME = "hospital_get_occupied_time";
+
     /**
      * 消息名：管理员禁用/启用账号请求，对应说明书"管理员可注销/禁用账号"。
      * 请求 data 约定为 {@code Object[]{operatorUId, targetUId, newStatus}}。
@@ -109,6 +112,14 @@ public interface IConstant {
     String MSG_COURSE_SCHEDULE_DELETE = "courseScheduleDelete";
     String MSG_STUDENT_TIMETABLE_QUERY = "studentTimetableQuery";
     String MSG_TEACHER_COURSE_ENROLLMENTS_QUERY = "teacherCourseEnrollmentsQuery";
+    String MSG_TEACHING_CLASS_QUERY = "teachingClassQuery";
+    String MSG_TEACHING_CLASS_ADD = "teachingClassAdd";
+    String MSG_TEACHING_CLASS_UPDATE = "teachingClassUpdate";
+    String MSG_TEACHING_CLASS_DELETE = "teachingClassDelete";
+    String MSG_COURSE_REQUIREMENT_GROUP_QUERY = "courseRequirementGroupQuery";
+    String MSG_COURSE_AUTO_SCHEDULE_PREVIEW = "courseAutoSchedulePreview";
+    String MSG_COURSE_AUTO_SCHEDULE_APPLY = "courseAutoScheduleApply";
+    String MSG_COURSE_DASHBOARD_QUERY = "courseDashboardQuery";
 
     // ---------- 虚拟商店模块（store）消息名与状态码 ----------
 

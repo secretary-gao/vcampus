@@ -10,9 +10,14 @@
 package vcampus.client.biz;
 
 import vcampus.common.vo.Course;
+import vcampus.common.vo.AutoSchedulePlan;
+import vcampus.common.vo.AutoScheduleRequest;
 import vcampus.common.vo.CourseSchedule;
+import vcampus.common.vo.CourseRequirementGroup;
+import vcampus.common.vo.CourseDashboardStats;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
+import vcampus.common.vo.TeachingClass;
 
 import java.io.IOException;
 import java.util.List;
@@ -22,6 +27,29 @@ public interface ICourseClientSrv {
 
     /** 查询课程。 */
     List<Course> queryCourse(String keyword) throws IOException, ClassNotFoundException;
+
+    List<TeachingClass> queryTeachingClass(String keyword)
+            throws IOException, ClassNotFoundException;
+
+    List<CourseRequirementGroup> queryRequirementGroups()
+            throws IOException, ClassNotFoundException;
+
+    AutoSchedulePlan previewAutoSchedule(AutoScheduleRequest request)
+            throws IOException, ClassNotFoundException;
+
+    int applyAutoSchedule(AutoSchedulePlan plan)
+            throws IOException, ClassNotFoundException;
+
+    CourseDashboardStats queryDashboard() throws IOException, ClassNotFoundException;
+
+    TeachingClass addTeachingClass(TeachingClass teachingClass)
+            throws IOException, ClassNotFoundException;
+
+    boolean updateTeachingClass(TeachingClass teachingClass)
+            throws IOException, ClassNotFoundException;
+
+    boolean deleteTeachingClass(String teachingClassId)
+            throws IOException, ClassNotFoundException;
 
     /** 新增课程。 */
     Course addCourse(Course course) throws IOException, ClassNotFoundException;

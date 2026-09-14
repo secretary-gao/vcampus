@@ -43,16 +43,18 @@ public class CourseDAO {
     /** 使用调用方提供的连接插入课程，用于跨 DAO 事务。 */
     public boolean insertCourse(Connection conn, Course course) throws SQLException {
         String sql = "INSERT INTO tblCourse "
-                + "(courseId, courseName, teacher, credit, capacity, selectedCount) "
-                + "VALUES (?, ?, ?, ?, ?, ?)";
+                + "(courseId, courseName, credit, courseNature, openingUnit, "
+                + "teacher, capacity, selectedCount) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, course.getCourseId());
             pstmt.setString(2, course.getCourseName());
-            pstmt.setString(3, course.getTeacher());
-            pstmt.setInt(4, course.getCredit());
-            pstmt.setInt(5, course.getCapacity());
-            pstmt.setInt(6, course.getSelectedCount());
+            pstmt.setInt(3, course.getCredit());
+            pstmt.setString(4, course.getCourseNature());
+            pstmt.setString(5, course.getOpeningUnit());
+            pstmt.setString(6, course.getTeacher());
+            pstmt.setInt(7, course.getCapacity());
+            pstmt.setInt(8, course.getSelectedCount());
             return pstmt.executeUpdate() > 0;
         }
     }
@@ -104,16 +106,19 @@ public class CourseDAO {
      * @throws SQLException 数据库操作异常
      */
     public boolean updateCourse(Connection conn, Course course) throws SQLException {
-        String sql = "UPDATE tblCourse SET courseName = ?, teacher = ?, credit = ?, "
-                + "capacity = ?, selectedCount = ? WHERE courseId = ?";
+        String sql = "UPDATE tblCourse SET courseName = ?, credit = ?, courseNature = ?, "
+                + "openingUnit = ?, teacher = ?, capacity = ?, selectedCount = ? "
+                + "WHERE courseId = ?";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, course.getCourseName());
-            pstmt.setString(2, course.getTeacher());
-            pstmt.setInt(3, course.getCredit());
-            pstmt.setInt(4, course.getCapacity());
-            pstmt.setInt(5, course.getSelectedCount());
-            pstmt.setString(6, course.getCourseId());
+            pstmt.setInt(2, course.getCredit());
+            pstmt.setString(3, course.getCourseNature());
+            pstmt.setString(4, course.getOpeningUnit());
+            pstmt.setString(5, course.getTeacher());
+            pstmt.setInt(6, course.getCapacity());
+            pstmt.setInt(7, course.getSelectedCount());
+            pstmt.setString(8, course.getCourseId());
             return pstmt.executeUpdate() > 0;
         }
     }
@@ -141,7 +146,8 @@ public class CourseDAO {
      * @throws SQLException 数据库操作异常
      */
     public Course findById(Connection conn, String courseId) throws SQLException {
-        String sql = "SELECT courseId, courseName, teacher, credit, capacity, selectedCount "
+        String sql = "SELECT courseId, courseName, teacher, credit, capacity, selectedCount, "
+                + "courseNature, openingUnit "
                 + "FROM tblCourse WHERE courseId = ?";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -161,7 +167,8 @@ public class CourseDAO {
      * @throws SQLException 数据库操作异常
      */
     public Course findByIdForUpdate(Connection conn, String courseId) throws SQLException {
-        String sql = "SELECT courseId, courseName, teacher, credit, capacity, selectedCount "
+        String sql = "SELECT courseId, courseName, teacher, credit, capacity, selectedCount, "
+                + "courseNature, openingUnit "
                 + "FROM tblCourse WHERE courseId = ? FOR UPDATE";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -185,7 +192,8 @@ public class CourseDAO {
             return findAll();
         }
 
-        String sql = "SELECT courseId, courseName, teacher, credit, capacity, selectedCount "
+        String sql = "SELECT courseId, courseName, teacher, credit, capacity, selectedCount, "
+                + "courseNature, openingUnit "
                 + "FROM tblCourse WHERE courseId LIKE ? OR courseName LIKE ? OR teacher LIKE ? "
                 + "ORDER BY courseId";
         String like = "%" + keyword.trim() + "%";
@@ -213,7 +221,8 @@ public class CourseDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public List<Course> findAll() throws SQLException, IOException {
-        String sql = "SELECT courseId, courseName, teacher, credit, capacity, selectedCount "
+        String sql = "SELECT courseId, courseName, teacher, credit, capacity, selectedCount, "
+                + "courseNature, openingUnit "
                 + "FROM tblCourse ORDER BY courseId";
 
         try (Connection conn = DbHelper.getConnection();
@@ -242,6 +251,27 @@ public class CourseDAO {
         course.setCredit(rs.getInt("credit"));
         course.setCapacity(rs.getInt("capacity"));
         course.setSelectedCount(rs.getInt("selectedCount"));
+        course.setCourseNature(rs.getString("courseNature"));
+        course.setOpeningUnit(rs.getString("openingUnit"));
         return course;
+    }
+
+    /**
+     * Refreshes deprecated Course 1.0 projection columns from normalized teaching classes.
+     * Runtime enrollment decisions never read these columns.
+     */
+    public void refreshCompatibilityProjection(Connection conn, String courseId)
+            throws SQLException {
+        String sql = "UPDATE tblCourse c SET "
+                + "c.teacher=COALESCE((SELECT tc.teacher FROM tblTeachingClass tc "
+                + "WHERE tc.courseId=c.courseId ORDER BY tc.classNumber LIMIT 1), c.teacher), "
+                + "c.capacity=COALESCE((SELECT SUM(tc.capacity) FROM tblTeachingClass tc "
+                + "WHERE tc.courseId=c.courseId), c.capacity), "
+                + "c.selectedCount=COALESCE((SELECT SUM(tc.selectedCount) FROM tblTeachingClass tc "
+                + "WHERE tc.courseId=c.courseId), c.selectedCount) WHERE c.courseId=?";
+        try (PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setString(1, courseId);
+            statement.executeUpdate();
+        }
     }
 }

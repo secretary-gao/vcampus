@@ -55,9 +55,9 @@ import java.io.IOException;
  */
 public class MainFrame extends Application {
     /** 卡片统一圆角与阴影样式。 */
-    private static final String CARD_STYLE = "-fx-border-color: rgba(29,90,153,0.12); -fx-border-radius: 18;"
+    private static final String CARD_STYLE = "-fx-border-color: rgba(54,111,67,0.15); -fx-border-radius: 18;"
             + "-fx-background-radius: 18; -fx-background-color: rgba(255,255,255,0.97);"
-            + "-fx-effect: dropshadow(gaussian, rgba(15,40,70,0.10), 20, 0.12, 0, 8);";
+            + "-fx-effect: dropshadow(gaussian, rgba(35,74,42,0.12), 20, 0.12, 0, 8);";
     /** 当前登录用户。 */
     private final User _currentUser;
     /** 客户端用户业务服务，负责向服务器发送登出请求。 */
@@ -94,8 +94,8 @@ public class MainFrame extends Application {
         root.setPrefSize(1200, 780);
         root.setBackground(new Background(new BackgroundFill(
                 new LinearGradient(0, 0, 1, 1, true, CycleMethod.NO_CYCLE,
-                        new Stop(0, Color.web("#eef3f8")),
-                        new Stop(1, Color.web("#dde8f4"))),
+                        new Stop(0, Color.web("#f4f8f1")),
+                        new Stop(1, Color.web("#e3eedf"))),
                 CornerRadii.EMPTY, Insets.EMPTY)));
         root.setTop(buildNavBar());
         root.setCenter(buildCenterStack());
@@ -117,14 +117,14 @@ public class MainFrame extends Application {
     private BorderPane buildNavBar() {
         BorderPane nav = new BorderPane();
         nav.setPadding(new Insets(14, 26, 14, 26));
-        nav.setStyle("-fx-background-color: linear-gradient(to right, #1c5a97, #3f86c9);"
+        nav.setStyle("-fx-background-color: linear-gradient(to right, #2f7d4b, #78a943);"
                 + "-fx-background-radius: 0 0 18 18;");
         StackPane smallEmblem = SeuEmblem.build(42);
         Label title = new Label("东南大学 · Vcampus");
         title.setTextFill(Color.WHITE);
         title.setFont(Font.font("System", FontWeight.BOLD, 19));
         Label subtitle = new Label("综合服务大厅");
-        subtitle.setTextFill(Color.web("#dcebfb"));
+        subtitle.setTextFill(Color.web("#e8f3dc"));
         subtitle.setFont(Font.font("System", 12));
         VBox titleBlock = new VBox(1, title, subtitle);
         HBox left = new HBox(12, smallEmblem, titleBlock);
@@ -147,7 +147,7 @@ public class MainFrame extends Application {
         avatar.setPrefSize(36, 36);
         Circle avatarCircle = new Circle(18, Color.web("#f4e2ab"));
         Label avatarText = new Label(initial);
-        avatarText.setTextFill(Color.web("#1c5a97"));
+        avatarText.setTextFill(Color.web("#2f6f42"));
         avatarText.setFont(Font.font("System", FontWeight.BOLD, 15));
         avatar.getChildren().addAll(avatarCircle, avatarText);
         Label nameLabel = new Label(display.isEmpty() ? "未登录" : display);
@@ -211,7 +211,7 @@ public class MainFrame extends Application {
         String initial = display.isEmpty() ? "?" : display.substring(0, 1);
         StackPane avatar = new StackPane();
         avatar.setPrefSize(64, 64);
-        Circle avatarCircle = new Circle(32, Color.web("#1c5a97"));
+        Circle avatarCircle = new Circle(32, Color.web("#3f8f46"));
         Label avatarText = new Label(initial);
         avatarText.setTextFill(Color.WHITE);
         avatarText.setFont(Font.font("System", FontWeight.BOLD, 24));
@@ -229,7 +229,7 @@ public class MainFrame extends Application {
         Region divider = new Region();
         divider.setPrefHeight(1);
         divider.setMaxWidth(Double.MAX_VALUE);
-        divider.setStyle("-fx-background-color: rgba(29,90,153,0.10);");
+        divider.setStyle("-fx-background-color: rgba(54,111,67,0.12);");
         VBox navList = new VBox(4);
         navList.setPadding(new Insets(14, 0, 0, 0));
         navList.getChildren().add(buildNavItem("总览", "dashboard", "#697687", this::showDashboard));
@@ -243,8 +243,8 @@ public class MainFrame extends Application {
                 () -> showModulePage("教务", "课表、选课、考试通知", "edu", "#e0a53b")));
         navList.getChildren().add(buildNavItem("商店", "shop", "#2fa89a",
                 () -> showModulePage("商店", "商品、支付、订单", "shop", "#2fa89a")));
-        navList.getChildren().add(buildNavItem("校园AI", "ai", "#1c5a97",
-                () -> showModulePage("校园AI", "有什么问题都可以问问", "ai", "#1c5a97")));
+        navList.getChildren().add(buildNavItem("校园AI", "ai", "#7d9f3b",
+                () -> showModulePage("校园AI", "有什么问题都可以问问", "ai", "#7d9f3b")));
         if (isAdmin()) {
             navList.getChildren().add(buildNavItem("账号管理", "usermgmt", "#d4a017",
                     () -> showModulePage("账号管理", "禁用/启用用户账号", "usermgmt", "#d4a017")));
@@ -261,7 +261,7 @@ public class MainFrame extends Application {
         exitButton.setPrefHeight(38);
         backButton.setStyle("-fx-background-radius: 20; -fx-background-color: #3fa34d; -fx-text-fill: white;"
                 + " -fx-font-size: 12.5px; -fx-font-weight: bold; -fx-cursor: hand;");
-        exitButton.setStyle("-fx-background-radius: 20; -fx-background-color: #eef3f8; -fx-text-fill: #1c5a97;"
+        exitButton.setStyle("-fx-background-radius: 20; -fx-background-color: #edf4e9; -fx-text-fill: #2f6f42;"
                 + " -fx-font-size: 12.5px; -fx-font-weight: bold; -fx-cursor: hand;");
         VBox buttonBlock = new VBox(10, backButton, exitButton);
         buttonBlock.setMaxWidth(Double.MAX_VALUE);
@@ -295,7 +295,7 @@ public class MainFrame extends Application {
         row.setStyle("-fx-background-radius: 10; -fx-cursor: hand;");
         row.setOnMouseEntered(e -> {
             if (!key.equals(_activeModuleKey)) {
-                row.setStyle("-fx-background-radius: 10; -fx-cursor: hand; -fx-background-color: #f2f6fa;");
+                row.setStyle("-fx-background-radius: 10; -fx-cursor: hand; -fx-background-color: #f0f6ed;");
             }
         });
         row.setOnMouseExited(e -> {
@@ -316,9 +316,9 @@ public class MainFrame extends Application {
             boolean active = entry.getKey().equals(_activeModuleKey);
             HBox row = entry.getValue();
             row.setStyle("-fx-background-radius: 10; -fx-cursor: hand;"
-                    + (active ? " -fx-background-color: #e3edf7;" : ""));
+                    + (active ? " -fx-background-color: #e4f0df;" : ""));
             Label label = (Label) row.getChildren().get(1);
-            label.setTextFill(Color.web(active ? "#1c5a97" : "#1d2b39"));
+            label.setTextFill(Color.web(active ? "#2f6f42" : "#1d2b39"));
         }
     }
     /**
@@ -664,7 +664,7 @@ public class MainFrame extends Application {
         wrapper.setStyle("-fx-background-color: rgba(255,255,255,0.98);"
                 + "-fx-background-radius: 20;"
                 + "-fx-border-radius: 20;"
-                + "-fx-border-color: rgba(45,106,159,0.18);"
+                + "-fx-border-color: rgba(54,111,67,0.18);"
                 + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 22, 0.12, 0, 8);");
         _contentStack.getChildren().setAll(wrapper);
     }
@@ -680,7 +680,7 @@ public class MainFrame extends Application {
         wrapper.setStyle("-fx-background-color: rgba(255,255,255,0.98);"
                 + "-fx-background-radius: 20;"
                 + "-fx-border-radius: 20;"
-                + "-fx-border-color: rgba(45,106,159,0.18);"
+                + "-fx-border-color: rgba(54,111,67,0.18);"
                 + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 22, 0.12, 0, 8);");
         _contentStack.getChildren().setAll(wrapper);
         studentFrame.attachStyleSheet(_stage.getScene());
@@ -727,7 +727,7 @@ public class MainFrame extends Application {
         VBox tile = new VBox(6);
         tile.setPrefWidth(170);
         tile.setPadding(new Insets(14));
-        tile.setStyle("-fx-background-color: #f8fbff;"
+        tile.setStyle("-fx-background-color: #f6faf3;"
                 + "-fx-background-radius: 16;"
                 + "-fx-border-radius: 16;"
                 + "-fx-border-color: rgba(0,0,0,0.05);");
@@ -737,6 +737,7 @@ public class MainFrame extends Application {
         Label valueText = new Label(value);
         valueText.setTextFill(Color.web(color));
         valueText.setFont(Font.font("System", FontWeight.BOLD, 16));
+        valueText.setWrapText(true);
         tile.getChildren().addAll(labelText, valueText);
         return tile;
     }
@@ -765,6 +766,7 @@ public class MainFrame extends Application {
         VBox page = new VBox(14);
         page.setPadding(new Insets(28));
         page.setMaxWidth(720);
+        page.setMaxHeight(Region.USE_PREF_SIZE);
         page.setStyle(CARD_STYLE);
         Label title = new Label("欢迎回来" + (display.isEmpty() ? "" : "，" + display));
         title.setTextFill(Color.web("#1d2b39"));
@@ -772,7 +774,14 @@ public class MainFrame extends Application {
         Label tip = new Label("从左侧选择一个功能模块开始操作。");
         tip.setTextFill(Color.web("#697687"));
         tip.setFont(Font.font("System", 14));
-        page.getChildren().addAll(title, tip);
+        Label serviceTitle = new Label("校园服务概览");
+        serviceTitle.setTextFill(Color.web("#2f5139"));
+        serviceTitle.setFont(Font.font("System", FontWeight.BOLD, 14));
+        VBox studyServices = buildInfoTile("学习服务", "教务 · 图书 · 学籍", "#3f8f46");
+        VBox campusServices = buildInfoTile("校园生活", "医院 · 商店", "#d18f25");
+        VBox smartServices = buildInfoTile("智能助手", "校园 AI", "#789a3d");
+        HBox serviceOverview = new HBox(12, studyServices, campusServices, smartServices);
+        page.getChildren().addAll(title, tip, serviceTitle, serviceOverview);
         if (_contentStack != null) {
             _contentStack.getChildren().setAll(page);
         }
@@ -834,7 +843,7 @@ public class MainFrame extends Application {
     }
     /**
      * 角色对应的强调色（用于用户信息卡片里的角色标签背景），三种角色一眼可辨：
-     * 学生-绿、教师-蓝、管理员-金。
+     * 学生-绿、教师-墨绿、管理员-金。
      *
      * @param role 角色文本
      * @return 十六进制颜色字符串
@@ -844,12 +853,12 @@ public class MainFrame extends Application {
             return "#c9860a";
         }
         if ("教师".equals(role)) {
-            return "#2d6a9f";
+            return "#477a61";
         }
         return "#3fa34d";
     }
     /**
-     * 角色对应的导航栏文字颜色（深蓝渐变背景上要用浅色文字才看得清）。
+     * 角色对应的导航栏文字颜色（深绿渐变背景上要用浅色文字才看得清）。
      *
      * @param role 角色文本
      * @return 十六进制颜色字符串
@@ -859,9 +868,9 @@ public class MainFrame extends Application {
             return "#ffd54f";
         }
         if ("教师".equals(role)) {
-            return "#bfe3ff";
+            return "#d7f0df";
         }
-        return "#dcebfb";
+        return "#e6f3dc";
     }
     /**
      * 判断当前登录用户是否为管理员，用于控制"账号管理"等管理员专属

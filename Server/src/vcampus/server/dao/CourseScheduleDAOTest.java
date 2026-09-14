@@ -29,7 +29,7 @@ public class CourseScheduleDAOTest {
         CourseScheduleDAO scheduleDAO = new CourseScheduleDAO();
         cleanup(courseDAO, scheduleDAO);
         try {
-            require(courseDAO.insertCourse(new Course(
+            require(CourseTestData.prepareCourse(new Course(
                     COURSE_ID, "排课 DAO 测试", "测试教师", 2, 20, 0)), "准备测试课程");
             CourseSchedule schedule = new CourseSchedule(
                     SCHEDULE_ID, COURSE_ID, "教一-101", 1,
@@ -85,7 +85,7 @@ public class CourseScheduleDAOTest {
             scheduleDAO.deleteSchedule(BAD_SCHEDULE_ID);
         }
         if (courseDAO.findById(COURSE_ID) != null) {
-            courseDAO.deleteCourse(COURSE_ID);
+            CourseTestData.cleanupCourse(COURSE_ID);
         }
     }
 
