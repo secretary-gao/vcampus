@@ -177,6 +177,9 @@ public interface IConstant {
     String MSG_HOSPITAL_QUERY_CAN_DELETE_DOCTOR = "HOSPITAL_QUERY_CAN_DELETE_DOCTOR";
     // 新增：删除【已取消】预约记录
     String MSG_HOSPITAL_DELETE_CANCEL_APPOINT = "HOSPITAL_DELETE_CANCEL_APPOINT";
+    //==================== 健康教育模块 ====================
+    String MSG_HOSPITAL_QUERY_HEALTH_ARTICLE = "hospital_query_health_article";
+
 
     // 医院业务自定义状态码
     /** 预约记录不存在 */

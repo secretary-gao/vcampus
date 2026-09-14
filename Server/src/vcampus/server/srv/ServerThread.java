@@ -13,6 +13,7 @@ import vcampus.common.constant.StudentProtocol;
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Appointment;
 import vcampus.common.vo.Doctor;
+import vcampus.common.vo.HealthArticle;
 import vcampus.common.vo.HospitalAdminReq;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
@@ -209,6 +210,7 @@ public class ServerThread implements Runnable {
         _handlerMap.put(IConstant.MSG_HOSPITAL_UPDATE_DOCTOR, this::handleUpdateDoctor);
         _handlerMap.put(IConstant.MSG_HOSPITAL_DELETE_DOCTOR, this::handleDeleteDoctor);
         _handlerMap.put(IConstant.MSG_HOSPITAL_GET_OCCUPIED_TIME, this::handleGetDoctorOccupiedTime);
+        _handlerMap.put(IConstant.MSG_HOSPITAL_QUERY_HEALTH_ARTICLE, this::handleQueryHealthArticle);
         //新增：查询可安全删除医生
         _handlerMap.put(IConstant.MSG_HOSPITAL_QUERY_CAN_DELETE_DOCTOR, this::handleQueryCanDeleteDoctor);
         _handlerMap.put(IConstant.MSG_HOSPITAL_DELETE_CANCEL_APPOINT, this::handleDeleteCancelAppoint);
@@ -597,6 +599,23 @@ public class ServerThread implements Runnable {
         return new Message(request.getUid(), request.getName(), MessageType.DATA,
                 IConstant.STATUS_ERROR, "查询医生占用时段异常：" + e.getMessage(), "Server");
     }
+}
+
+private Message handleQueryHealthArticle(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_QUERY_HEALTH_ARTICLE);
+    resp.setSender("Server");
+    try {
+        List<HealthArticle> list = _hospitalSrv.queryAllHealthArticle();
+        resp.setStatusCode(IConstant.STATUS_SUCCESS);
+        resp.setData(list);
+    } catch (Exception e) {
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("查询健康教育文章失败：" + e.getMessage());
+    }
+    return resp;
 }
 
 
