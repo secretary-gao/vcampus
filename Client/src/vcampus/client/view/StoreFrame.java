@@ -22,6 +22,8 @@ import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -36,20 +38,15 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.Background;
-import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -66,8 +63,11 @@ import java.util.function.Function;
  * 商品管理（仅管理员）。所有业务请求通过 {@link StoreClientSrv} 发送到服务器，客户端不直接访问数据库。
  * 管理员表单的显示由 {@link User#getURole()} 决定，保证非管理员看不到管理入口。</p>
  *
- * <p>说明：按说明书"一次购买仅针对单一商品"，本模块不提供购物车；商品卡片不设图片字段，
- * 用"类别色块 + 名称首字"作为占位图。</p>
+ * <p>界面样式集中在模块样式表 {@code store.css} 中（与选课模块 {@code course.css} 统一设计语言），
+ * 样式类在代码里挂载，颜色、圆角、按钮形态均在样式表中统一调整。</p>
+ *
+ * <p>说明：按说明书"一次购买仅针对单一商品"，本模块不提供购物车；商品卡片优先显示
+ * {@link Goods#getImageUrl()} 指向的商品图片，无图时以"类别色块 + 类别图标"作为占位图。</p>
  */
 public class StoreFrame extends Application {
 
@@ -134,10 +134,10 @@ public class StoreFrame extends Application {
     public void start(Stage stage) {
         BorderPane root = new BorderPane(buildContent());
         root.setPrefSize(1080, 720);
+        applyStylesheet(root);
 
         Button exitButton = new Button("退出");
-        exitButton.setStyle("-fx-background-radius: 20; -fx-background-color: #ecf3fb;"
-                + " -fx-text-fill: #2d6a9f; -fx-font-size: 14px; -fx-font-weight: bold;");
+        exitButton.getStyleClass().add("secondary");
         exitButton.setOnAction(e -> Platform.exit());
         HBox bottom = new HBox(exitButton);
         bottom.setAlignment(Pos.CENTER_RIGHT);
@@ -165,17 +165,23 @@ public class StoreFrame extends Application {
 
         BorderPane root = new BorderPane();
         root.setPrefSize(1080, 720);
-        root.setBackground(new Background(new BackgroundFill(
-                Color.web("#f4f7fb"), CornerRadii.EMPTY, Insets.EMPTY)));
+        root.getStyleClass().add("store-root");
         root.setTop(buildBanner());
 
         TabPane tabPane = new TabPane();
+        tabPane.getStyleClass().add("store-tabs");
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         tabPane.getTabs().add(new Tab("商品商城", buildBuyTab()));
         tabPane.getTabs().add(new Tab("我的订单", buildRecordsTab()));
         if (isAdmin()) {
             tabPane.getTabs().add(new Tab("商品管理", buildManageTab()));
         }
+        // 切到"我的订单"时才查询：进入模块不必多发一次请求，且每次查看都是最新记录
+        tabPane.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
+            if (selected != null && "我的订单".equals(selected.getText())) {
+                loadRecords();
+            }
+        });
         root.setCenter(tabPane);
         return root;
     }
@@ -185,12 +191,29 @@ public class StoreFrame extends Application {
      *
      * @return 商店内容节点
      */
-    public javafx.scene.Node createView() {
+    public Node createView() {
         BorderPane content = buildContent();
         content.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        applyStylesheet(content);
         loadGoods();
         loadBalance();
         return content;
+    }
+
+    /**
+     * 为商店界面挂载模块样式表 {@code store.css}。
+     *
+     * <p>样式表以 classpath 资源方式加载（{@code bin/vcampus/client/view/store.css}，
+     * 由 {@code build.bat} 从源码目录拷贝），与选课模块加载 {@code course.css} 的方式一致；
+     * 挂在商店内容根节点上，因此只影响商店子树。</p>
+     *
+     * @param root 商店内容根节点
+     */
+    private void applyStylesheet(Parent root) {
+        java.net.URL css = getClass().getResource("store.css");
+        if (css != null) {
+            root.getStylesheets().add(css.toExternalForm());
+        }
     }
 
     /**
@@ -200,32 +223,25 @@ public class StoreFrame extends Application {
      */
     private BorderPane buildBanner() {
         BorderPane banner = new BorderPane();
-        banner.setPadding(new Insets(16, 26, 16, 26));
-        banner.setStyle("-fx-background-color: linear-gradient(to right, #0f8f8f, #38b5a6);"
-                + "-fx-background-radius: 0 0 22 22;");
+        banner.getStyleClass().add("store-header");
 
         VBox titleBlock = new VBox(2);
         Label title = new Label("东南大学 · 虚拟商店");
-        title.setTextFill(Color.WHITE);
-        title.setFont(Font.font("System", FontWeight.BOLD, 22));
+        title.getStyleClass().add("store-title");
         Label crumb = new Label("数字校园 / 虚拟商店");
-        crumb.setTextFill(Color.web("#d6f0ee"));
-        crumb.setFont(Font.font("System", 12));
+        crumb.getStyleClass().add("store-subtitle");
         titleBlock.getChildren().addAll(title, crumb);
         banner.setLeft(titleBlock);
 
-        _balanceLabel.setTextFill(Color.WHITE);
-        _balanceLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+        _balanceLabel.getStyleClass().add("balance-badge");
 
         Button rechargeButton = new Button("充值");
-        rechargeButton.setStyle("-fx-background-color: #f4e2ab; -fx-text-fill: #0f6f6f;"
-                + " -fx-background-radius: 16; -fx-font-weight: bold; -fx-cursor: hand;");
+        rechargeButton.getStyleClass().add("accent");
         rechargeButton.setOnAction(e -> onRecharge());
 
         Label userInfo = new Label("用户：" + safe(_currentUser == null ? "" : _currentUser.getUId())
                 + "（" + safe(_currentUser == null ? "" : _currentUser.getURole()) + "）");
-        userInfo.setTextFill(Color.WHITE);
-        userInfo.setFont(Font.font("System", 14));
+        userInfo.getStyleClass().add("store-subtitle");
 
         HBox right = new HBox(14, _balanceLabel, rechargeButton, userInfo);
         right.setAlignment(Pos.CENTER_RIGHT);
@@ -244,24 +260,23 @@ public class StoreFrame extends Application {
         _searchField.setPrefWidth(300);
 
         Button queryButton = new Button("查询");
+        queryButton.getStyleClass().add("primary");
         queryButton.setOnAction(e -> loadGoods());
         Button refreshButton = new Button("刷新");
+        refreshButton.getStyleClass().add("secondary");
         refreshButton.setOnAction(e -> loadGoods());
 
         HBox searchBar = new HBox(10, _categoryBox, _searchField, queryButton, refreshButton);
         searchBar.setAlignment(Pos.CENTER_LEFT);
-        searchBar.setPadding(new Insets(10, 12, 10, 12));
-        searchBar.setStyle("-fx-background-color: white; -fx-background-radius: 12;"
-                + " -fx-border-radius: 12; -fx-border-color: rgba(0,0,0,0.06);"
-                + " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0.1, 0, 2);");
+        searchBar.getStyleClass().add("tool-bar-card");
 
         _goodsCards.setPadding(new Insets(12));
         ScrollPane scroll = new ScrollPane(_goodsCards);
         scroll.setFitToWidth(true);
-        scroll.setStyle("-fx-background-color: transparent;");
+        scroll.getStyleClass().add("store-scroll");
 
         VBox box = new VBox(10, searchBar, scroll);
-        box.setPadding(new Insets(12, 16, 12, 16));
+        box.getStyleClass().add("store-page");
         return box;
     }
 
@@ -275,13 +290,14 @@ public class StoreFrame extends Application {
         VBox.setVgrow(_recordsTable, Priority.ALWAYS);
 
         Button refreshButton = new Button("刷新订单");
+        refreshButton.getStyleClass().add("secondary");
         refreshButton.setOnAction(e -> loadRecords());
         HBox bar = new HBox(refreshButton);
         bar.setAlignment(Pos.CENTER_LEFT);
-        bar.setPadding(new Insets(6));
+        bar.getStyleClass().add("tool-bar-card");
 
-        VBox box = new VBox(8, bar, _recordsTable);
-        box.setPadding(new Insets(12, 16, 12, 16));
+        VBox box = new VBox(10, bar, _recordsTable);
+        box.getStyleClass().add("store-page");
         return box;
     }
 
@@ -302,24 +318,28 @@ public class StoreFrame extends Application {
         GridPane form = new GridPane();
         form.setHgap(10);
         form.setVgap(10);
-        form.add(new Label("编号"), 0, 0);
+        form.getStyleClass().add("tool-bar-card");
+        form.add(formLabel("编号"), 0, 0);
         form.add(_goodsIdField, 1, 0);
-        form.add(new Label("名称"), 0, 1);
+        form.add(formLabel("名称"), 0, 1);
         form.add(_goodsNameField, 1, 1);
-        form.add(new Label("类别"), 0, 2);
+        form.add(formLabel("类别"), 0, 2);
         form.add(_categoryField, 1, 2);
-        form.add(new Label("单价"), 0, 3);
+        form.add(formLabel("单价"), 0, 3);
         form.add(_priceField, 1, 3);
-        form.add(new Label("库存"), 0, 4);
+        form.add(formLabel("库存"), 0, 4);
         form.add(_stockField, 1, 4);
-        form.add(new Label("图片路径"), 0, 5);
+        form.add(formLabel("图片路径"), 0, 5);
         form.add(_imageUrlField, 1, 5);
 
         Button addButton = new Button("新增");
+        addButton.getStyleClass().add("primary");
         addButton.setOnAction(e -> onAddGoods());
         Button updateButton = new Button("修改");
+        updateButton.getStyleClass().add("primary");
         updateButton.setOnAction(e -> onUpdateGoods());
         Button deleteButton = new Button("删除");
+        deleteButton.getStyleClass().add("danger");
         deleteButton.setOnAction(e -> onDeleteGoods());
         Button clearButton = new Button("清空表单");
         clearButton.setOnAction(e -> clearForm());
@@ -335,10 +355,34 @@ public class StoreFrame extends Application {
         setUpGoodsColumns(_manageTable);
         VBox.setVgrow(_manageTable, Priority.ALWAYS);
 
-        VBox box = new VBox(8, new Label("录入商品（管理员）"), form, buttons,
-                new Label("商品列表"), _manageTable);
-        box.setPadding(new Insets(12, 16, 12, 16));
+        VBox box = new VBox(10, sectionTitle("录入商品（管理员）"), form, buttons,
+                sectionTitle("商品列表"), _manageTable);
+        box.getStyleClass().add("store-page");
         return box;
+    }
+
+    /**
+     * 生成一个带样式的小节标题。
+     *
+     * @param text 标题文字
+     * @return 标题标签
+     */
+    private Label sectionTitle(String text) {
+        Label label = new Label(text);
+        label.getStyleClass().add("section-title");
+        return label;
+    }
+
+    /**
+     * 生成一个带样式的表单字段标签。
+     *
+     * @param text 标签文字
+     * @return 标签
+     */
+    private Label formLabel(String text) {
+        Label label = new Label(text);
+        label.getStyleClass().add("form-label");
+        return label;
     }
 
     /**
@@ -347,6 +391,9 @@ public class StoreFrame extends Application {
      * @param table 表格
      */
     private void setUpGoodsColumns(TableView<Goods> table) {
+        table.getStyleClass().add("store-table");
+        // 与选课模块一致：列宽自适应填满表格，消除右侧空白
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.getColumns().add(column("商品编号", g -> safe(g.getGoodsId()), 100));
         table.getColumns().add(column("名称", g -> safe(g.getGoodsName()), 160));
         table.getColumns().add(column("类别", g -> safe(g.getCategory()), 110));
@@ -360,6 +407,9 @@ public class StoreFrame extends Application {
      * @param table 表格
      */
     private void setUpRecordsColumns(TableView<PurchaseRecord> table) {
+        table.getStyleClass().add("store-table");
+        // 与选课模块一致：列宽自适应填满表格，订单号不会被截断
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.getColumns().add(column("订单号", r -> safe(r.getOrderId()), 200));
         table.getColumns().add(column("商品名称", r -> safe(r.getGoodsName()), 150));
         table.getColumns().add(column("数量", r -> String.valueOf(r.getQuantity()), 70));
@@ -416,8 +466,7 @@ public class StoreFrame extends Application {
         _goodsCards.getChildren().clear();
         if (goods == null || goods.isEmpty()) {
             Label empty = new Label("暂无商品");
-            empty.setTextFill(Color.web("#9aa5b1"));
-            empty.setFont(Font.font("System", 14));
+            empty.getStyleClass().add("empty-state-label");
             _goodsCards.getChildren().add(empty);
             return;
         }
@@ -435,10 +484,7 @@ public class StoreFrame extends Application {
     private VBox buildGoodsCard(Goods g) {
         VBox card = new VBox(8);
         card.setPrefWidth(210);
-        card.setPadding(new Insets(12));
-        card.setStyle("-fx-background-color: white; -fx-background-radius: 14;"
-                + " -fx-border-radius: 14; -fx-border-color: rgba(0,0,0,0.06);"
-                + " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12, 0.1, 0, 4);");
+        card.getStyleClass().add("goods-card");
 
         // 占位"图"：类别色块 + 类别 emoji；有图片地址则后台加载真实图片
         StackPane img = buildPlaceholderImage(g);
@@ -471,21 +517,17 @@ public class StoreFrame extends Application {
 
         Label name = new Label(safe(g.getGoodsName()));
         name.setWrapText(true);
-        name.setFont(Font.font("System", FontWeight.BOLD, 15));
-        name.setTextFill(Color.web("#1d2b39"));
+        name.getStyleClass().add("goods-name");
 
         Label price = new Label("¥ " + g.getPrice().toPlainString());
-        price.setFont(Font.font("System", FontWeight.BOLD, 18));
-        price.setTextFill(Color.web("#e6604f"));
+        price.getStyleClass().add("goods-price");
 
         Label stock = new Label("库存 " + g.getStock());
-        stock.setTextFill(Color.web("#9aa5b1"));
-        stock.setFont(Font.font("System", 12));
+        stock.getStyleClass().add("goods-stock");
 
         Button buy = new Button("立即下单");
         buy.setMaxWidth(Double.MAX_VALUE);
-        buy.setStyle("-fx-background-color: #2fa89a; -fx-text-fill: white;"
-                + " -fx-background-radius: 18; -fx-font-weight: bold; -fx-cursor: hand;");
+        buy.getStyleClass().add("primary");
         buy.setOnAction(e -> promptAndBuy(g));
 
         card.getChildren().addAll(img, name, price, stock, buy);
@@ -529,7 +571,8 @@ public class StoreFrame extends Application {
         img.setPrefSize(186, 186);
         img.setMinSize(186, 186);
         img.setMaxSize(186, 186);
-        img.setStyle("-fx-background-radius: 10; -fx-background-color: " + categoryColor(g.getCategory()) + ";");
+        img.getStyleClass().add("goods-thumb");
+        img.setStyle("-fx-background-color: " + categoryColor(g.getCategory()) + ";");
         Rectangle clip = new Rectangle(186, 186);
         clip.setArcWidth(20);
         clip.setArcHeight(20);

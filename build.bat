@@ -39,6 +39,12 @@ if errorlevel 1 (
   echo Course stylesheet copy FAILED.
   exit /b 1
 )
+rem 商店模块样式表（虚拟商店）
+copy /y "Client\src\vcampus\client\view\store.css" "bin\vcampus\client\view\store.css" >nul
+if errorlevel 1 (
+  echo Store stylesheet copy FAILED.
+  exit /b 1
+)
 
 echo Build succeeded.
 exit /b 0
