@@ -10,6 +10,7 @@
 package vcampus.client.view.course;
 
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -122,7 +123,7 @@ public class CourseHallPane extends VBox {
         searchRow.setAlignment(Pos.CENTER_LEFT);
         HBox filters = new HBox(8, new Label("状态"), all, available, selected, conflict);
         filters.setAlignment(Pos.CENTER_LEFT);
-        VBox toolbar = new VBox(10, searchRow, filters);
+        VBox toolbar = new VBox(7, searchRow, filters);
         toolbar.getStyleClass().add("tool-bar-card");
 
         GridPane columns = courseHeader();
@@ -398,7 +399,7 @@ public class CourseHallPane extends VBox {
         summary.add(status, 6, 0);
         Button expand = new Button(expanded ? "收起" : "展开");
         expand.getStyleClass().add("course-expand-button");
-        expand.setOnAction(event -> {
+        Runnable toggleClasses = () -> {
             boolean show = !classes.isVisible();
             classes.setVisible(show);
             classes.setManaged(show);
@@ -408,12 +409,30 @@ public class CourseHallPane extends VBox {
             } else {
                 _expandedCourseIds.remove(courseId);
             }
+        };
+        expand.setOnAction(event -> toggleClasses.run());
+        summary.setOnMouseClicked(event -> {
+            if (!(event.getTarget() instanceof Node target) || !isWithin(target, expand)) {
+                toggleClasses.run();
+            }
         });
         summary.add(expand, 7, 0);
 
         VBox groupBox = new VBox(summary, classes);
         groupBox.getStyleClass().add("course-group");
         return groupBox;
+    }
+
+    /** 判断鼠标事件目标是否来自指定控件，避免点击展开按钮时触发两次切换。 */
+    private boolean isWithin(Node target, Node ancestor) {
+        Node current = target;
+        while (current != null) {
+            if (current == ancestor) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
     }
 
     private GridPane teachingClassView(TeachingClassRow row) {
