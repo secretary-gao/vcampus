@@ -200,6 +200,7 @@ public class ServerThread implements Runnable {
         _handlerMap.put(IConstant.MSG_HOSPITAL_ADD_DOCTOR, this::handleAddDoctor);
         _handlerMap.put(IConstant.MSG_HOSPITAL_UPDATE_DOCTOR, this::handleUpdateDoctor);
         _handlerMap.put(IConstant.MSG_HOSPITAL_DELETE_DOCTOR, this::handleDeleteDoctor);
+        _handlerMap.put(IConstant.MSG_HOSPITAL_GET_OCCUPIED_TIME, this::handleGetDoctorOccupiedTime);
         //新增：查询可安全删除医生
         _handlerMap.put(IConstant.MSG_HOSPITAL_QUERY_CAN_DELETE_DOCTOR, this::handleQueryCanDeleteDoctor);
         _handlerMap.put(IConstant.MSG_HOSPITAL_DELETE_CANCEL_APPOINT, this::handleDeleteCancelAppoint);
@@ -574,4 +575,19 @@ public class ServerThread implements Runnable {
          */
         Message handle(Message request);
     }
+
+    private Message handleGetDoctorOccupiedTime(Message request) {
+    try {
+        String doctorId = (String) request.getData();
+        List<java.sql.Timestamp> tsList = _hospitalSrv.getDoctorOccupiedTime(doctorId);
+        return new Message(request.getUid(), request.getName(), MessageType.DATA,
+                IConstant.STATUS_SUCCESS, tsList, "Server");
+    } catch (SQLException | IOException e) {
+        return new Message(request.getUid(), request.getName(), MessageType.DATA,
+                IConstant.STATUS_ERROR, "查询医生占用时段异常：" + e.getMessage(), "Server");
+    }
+}
+
+
+
 }
