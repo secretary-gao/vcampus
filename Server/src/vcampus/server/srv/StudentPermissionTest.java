@@ -63,6 +63,26 @@ public class StudentPermissionTest {
                 credentials("admin001", "管理员")));
         requireSuccess(adminUpdate, "管理员修改学籍失败");
 
+        // 客户端即使保留原登录信息并自称“正常”，也必须服从数据库中的最新状态。
+        for (String status : new String[] {User.STATUS_DISABLED, User.STATUS_PENDING, null, "未知状态"}) {
+            userDAO.status = status;
+            requireForbidden(handler.handle(request(StudentProtocol.GET_SELF, null,
+                    credentials("student1", "学生"))), "非正常学生账号读取了本人学籍");
+            requireForbidden(handler.handle(request(StudentProtocol.LIST, null,
+                    credentials("teacher1", "教师"))), "非正常教师账号读取了学籍列表");
+            requireForbidden(handler.handle(request(StudentProtocol.QUERY_BY_ID, "2024000001",
+                    credentials("teacher1", "教师"))), "非正常教师账号读取了单个学生");
+            requireForbidden(handler.handle(request(StudentProtocol.UPDATE, service.student,
+                    credentials("admin001", "管理员"))), "非正常管理员账号修改了学籍");
+        }
+        userDAO.status = User.STATUS_NORMAL;
+        requireSuccess(handler.handle(request(StudentProtocol.QUERY_BY_ID, "2024000001",
+                credentials("teacher1", "教师"))), "恢复账号状态后仍无法查看学籍");
+        User incorrectPassword = credentials("teacher1", "教师");
+        incorrectPassword.setUPwd("wrong-password");
+        requireForbidden(handler.handle(request(StudentProtocol.LIST, null, incorrectPassword)),
+                "错误密码通过了身份校验");
+
         System.out.println("Student permission tests passed");
     }
 
@@ -83,6 +103,10 @@ public class StudentPermissionTest {
         require(StudentProtocol.STATUS_SUCCESS.equals(message.getStatusCode()), error);
     }
 
+    private static void requireForbidden(Message message, String error) {
+        require(StudentProtocol.STATUS_FORBIDDEN.equals(message.getStatusCode()), error);
+    }
+
     private static void require(boolean condition, String error) {
         if (!condition) {
             throw new AssertionError(error);
@@ -90,6 +114,8 @@ public class StudentPermissionTest {
     }
 
     private static final class FakeUserDAO extends UserDAO {
+        private String status = User.STATUS_NORMAL;
+
         @Override
         public User findByUId(String userId) {
             User user = credentials(userId, switch (userId) {
@@ -98,6 +124,7 @@ public class StudentPermissionTest {
                 default -> "学生";
             });
             user.setUPwd("test-password-hash");
+            user.setUStatus(status);
             return user;
         }
     }
@@ -116,6 +143,18 @@ public class StudentPermissionTest {
         public List<Student> findStudentsTaughtBy(String teacherUserId) {
             lastTeacherUserId = teacherUserId;
             return List.of(student);
+        }
+
+        @Override
+        public Student findStudentTaughtBy(String teacherUserId, String studentId) {
+            lastTeacherUserId = teacherUserId;
+            return student.getStudentId().equals(studentId) ? student : null;
+        }
+
+        @Override
+        public List<Student> findStudentsTaughtByName(String teacherUserId, String name) {
+            lastTeacherUserId = teacherUserId;
+            return student.getName().equals(name) ? List.of(student) : List.of();
         }
 
         @Override

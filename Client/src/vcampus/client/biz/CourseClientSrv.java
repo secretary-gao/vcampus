@@ -40,6 +40,19 @@ public class CourseClientSrv implements ICourseClientSrv {
     private static final int CONNECT_TIMEOUT_MILLIS = 5_000;
     private static final int READ_TIMEOUT_MILLIS = 10_000;
 
+    private final String _host;
+    private final int _port;
+
+    public CourseClientSrv() {
+        this(IConstant.SERVER_HOST, IConstant.SERVER_PORT);
+    }
+
+    /** 指定服务器地址，便于连接独立的联调服务。 */
+    public CourseClientSrv(String host, int port) {
+        _host = host;
+        _port = port;
+    }
+
     @Override
     public CourseDashboardStats queryDashboard() throws IOException, ClassNotFoundException {
         Message response = send(IConstant.MSG_COURSE_DASHBOARD_QUERY, null, "Admin");
@@ -263,7 +276,7 @@ public class CourseClientSrv implements ICourseClientSrv {
     /** 建立短连接、发送请求并接收响应。 */
     private Message sendAndReceive(Message request) throws IOException, ClassNotFoundException {
         try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(IConstant.SERVER_HOST, IConstant.SERVER_PORT),
+            socket.connect(new InetSocketAddress(_host, _port),
                     CONNECT_TIMEOUT_MILLIS);
             socket.setSoTimeout(READ_TIMEOUT_MILLIS);
             try (ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream())) {
