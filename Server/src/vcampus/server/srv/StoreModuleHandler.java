@@ -46,7 +46,9 @@ public class StoreModuleHandler implements ModuleHandler {
                 IConstant.MSG_SHOP_QUERY_RECORDS,
                 IConstant.MSG_SHOP_ADD_GOODS,
                 IConstant.MSG_SHOP_UPDATE_GOODS,
-                IConstant.MSG_SHOP_DELETE_GOODS
+                IConstant.MSG_SHOP_DELETE_GOODS,
+                IConstant.MSG_SHOP_QUERY_BALANCE,
+                IConstant.MSG_SHOP_RECHARGE
         );
     }
 
@@ -68,6 +70,10 @@ public class StoreModuleHandler implements ModuleHandler {
                 return handleUpdateGoods(request);
             case IConstant.MSG_SHOP_DELETE_GOODS:
                 return handleDeleteGoods(request);
+            case IConstant.MSG_SHOP_QUERY_BALANCE:
+                return handleQueryBalance(request);
+            case IConstant.MSG_SHOP_RECHARGE:
+                return handleRecharge(request);
             default:
                 return new Message(request.getUid(), request.getName(), MessageType.DATA,
                         IConstant.STATUS_ERROR, "未知的商店操作：" + request.getName(), "Server");
@@ -190,6 +196,45 @@ public class StoreModuleHandler implements ModuleHandler {
                     e.getStatusCode(), e.getMessage(), "Server");
         } catch (SQLException | IOException e) {
             return new Message(request.getUid(), IConstant.MSG_SHOP_DELETE_GOODS, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理"查询校园卡余额"。
+     *
+     * @param request 查询请求，{@code data} 为 {@link ShopRequest}
+     * @return 查询结果消息：{@code data} 为余额（{@code BigDecimal}）
+     */
+    private Message handleQueryBalance(Message request) {
+        try {
+            ShopRequest req = (ShopRequest) request.getData();
+            java.math.BigDecimal balance = _storeServerSrv.queryBalance(req.getUserId());
+            return new Message(request.getUid(), IConstant.MSG_SHOP_QUERY_BALANCE, MessageType.DATA,
+                    IConstant.STATUS_SUCCESS, balance, "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_QUERY_BALANCE, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理"校园卡充值"。
+     *
+     * @param request 充值请求，{@code data} 为 {@link ShopRequest}（含 amount）
+     * @return 充值结果消息：{@code data} 为充值后的最新余额
+     */
+    private Message handleRecharge(Message request) {
+        try {
+            ShopRequest req = (ShopRequest) request.getData();
+            java.math.BigDecimal balance = _storeServerSrv.recharge(req.getUserId(), req.getAmount());
+            return new Message(request.getUid(), IConstant.MSG_SHOP_RECHARGE, MessageType.DATA,
+                    IConstant.STATUS_SUCCESS, balance, "Server");
+        } catch (ShopException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_RECHARGE, MessageType.DATA,
+                    e.getStatusCode(), e.getMessage(), "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_RECHARGE, MessageType.DATA,
                     IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
         }
     }

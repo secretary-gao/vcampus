@@ -124,6 +124,9 @@ public interface IConstant {
     /** 状态码：业务冲突（如商品编号重复、存在购买记录禁止删除）。 */
     String STATUS_CONFLICT = "409";
 
+    /** 状态码：余额不足。 */
+    String STATUS_BALANCE_NOT_ENOUGH = "409";
+
     /** 消息名：查询商品（按关键字/类别筛选）。 */
     String MSG_SHOP_QUERY_GOODS = "shopQueryGoods";
 
@@ -141,6 +144,12 @@ public interface IConstant {
 
     /** 消息名：删除商品（管理员）。 */
     String MSG_SHOP_DELETE_GOODS = "shopDeleteGoods";
+
+    /** 消息名：查询校园卡余额。 */
+    String MSG_SHOP_QUERY_BALANCE = "shopQueryBalance";
+
+    /** 消息名：校园卡充值。 */
+    String MSG_SHOP_RECHARGE = "shopRecharge";
     // ========== 医院模块新增常量 ==========
     /** 查询全部医生 */
     String MSG_HOSPITAL_QUERY_ALL_DOCTOR = "hospital_query_all_doctor";

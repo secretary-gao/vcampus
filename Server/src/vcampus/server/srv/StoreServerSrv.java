@@ -12,8 +12,10 @@ package vcampus.server.srv;
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Goods;
 import vcampus.common.vo.PurchaseRecord;
+import vcampus.common.vo.Wallet;
 import vcampus.server.dao.GoodsDAO;
 import vcampus.server.dao.PurchaseDAO;
+import vcampus.server.dao.WalletDAO;
 import vcampus.server.dao.DbHelper;
 
 import java.io.IOException;
@@ -40,6 +42,9 @@ public class StoreServerSrv implements IStoreServerSrv {
 
     /** 购买记录数据访问对象。 */
     private final PurchaseDAO _purchaseDAO = new PurchaseDAO();
+
+    /** 钱包（校园卡余额）数据访问对象。 */
+    private final WalletDAO _walletDAO = new WalletDAO();
 
     /** 订单号时间戳格式。 */
     private static final DateTimeFormatter ORDER_ID_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
@@ -76,8 +81,19 @@ public class StoreServerSrv implements IStoreServerSrv {
                         "库存不足：当前库存 " + goods.getStock() + "，购买数量 " + quantity);
             }
 
-            // 2) 生成订单并计算总价
+            // 2) 计算总价，并校验 + 扣减校园卡余额（与订单、库存同一事务）
             BigDecimal totalPrice = goods.getPrice().multiply(BigDecimal.valueOf(quantity));
+            Wallet wallet = _walletDAO.findByUserId(userId);
+            BigDecimal balance = wallet == null ? BigDecimal.ZERO : wallet.getBalance();
+            if (balance.compareTo(totalPrice) < 0) {
+                throw new ShopException(IConstant.STATUS_BALANCE_NOT_ENOUGH,
+                        "余额不足：当前余额 " + balance.toPlainString() + " 元，本单需要 "
+                                + totalPrice.toPlainString() + " 元，请先充值");
+            }
+            if (_walletDAO.deduct(conn, userId, totalPrice) != 1) {
+                throw new ShopException(IConstant.STATUS_BALANCE_NOT_ENOUGH, "余额不足，请先充值");
+            }
+
             PurchaseRecord record = new PurchaseRecord();
             record.setOrderId(generateOrderId());
             record.setUserId(userId);
@@ -138,8 +154,13 @@ public class StoreServerSrv implements IStoreServerSrv {
      */
     @Override
     public Goods updateGoods(Goods goods) throws ShopException, SQLException, IOException {
-        if (_goodsDAO.findByGoodsId(goods.getGoodsId()) == null) {
+        Goods existing = _goodsDAO.findByGoodsId(goods.getGoodsId());
+        if (existing == null) {
             throw new ShopException(IConstant.STATUS_GOODS_NOT_FOUND, "商品不存在：" + goods.getGoodsId());
+        }
+        // 管理表单没有图片字段：本次没带图片地址时保留原有图片，避免把商品图改没了
+        if (goods.getImageUrl() == null || goods.getImageUrl().isBlank()) {
+            goods.setImageUrl(existing.getImageUrl());
         }
         _goodsDAO.update(goods);
         return _goodsDAO.findByGoodsId(goods.getGoodsId());
@@ -157,6 +178,30 @@ public class StoreServerSrv implements IStoreServerSrv {
             throw new ShopException(IConstant.STATUS_CONFLICT, "该商品已有购买记录，无法删除");
         }
         return _goodsDAO.delete(goodsId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public BigDecimal queryBalance(String userId) throws SQLException, IOException {
+        Wallet wallet = _walletDAO.findByUserId(userId);
+        return wallet == null || wallet.getBalance() == null ? BigDecimal.ZERO : wallet.getBalance();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public BigDecimal recharge(String userId, BigDecimal amount) throws ShopException, SQLException, IOException {
+        if (userId == null || userId.isBlank()) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, "未登录或用户信息缺失");
+        }
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, "充值金额必须为正数");
+        }
+        _walletDAO.recharge(userId, amount);
+        return queryBalance(userId);
     }
 
     /**

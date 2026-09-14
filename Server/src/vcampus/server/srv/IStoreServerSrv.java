@@ -13,6 +13,7 @@ import vcampus.common.vo.Goods;
 import vcampus.common.vo.PurchaseRecord;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -91,4 +92,26 @@ public interface IStoreServerSrv {
      * @throws IOException   数据库配置文件读取异常
      */
     boolean deleteGoods(String goodsId) throws ShopException, SQLException, IOException;
+
+    /**
+     * 查询校园卡余额：用户还没有钱包记录时返回 0。
+     *
+     * @param userId 用户ID
+     * @return 当前余额
+     * @throws SQLException 数据库操作异常
+     * @throws IOException  数据库配置文件读取异常
+     */
+    BigDecimal queryBalance(String userId) throws SQLException, IOException;
+
+    /**
+     * 校园卡充值（演示用，直接增加余额）。
+     *
+     * @param userId 用户ID
+     * @param amount 充值金额（必须为正数）
+     * @return 充值后的最新余额
+     * @throws ShopException 金额非法
+     * @throws SQLException  数据库操作异常
+     * @throws IOException   数据库配置文件读取异常
+     */
+    BigDecimal recharge(String userId, BigDecimal amount) throws ShopException, SQLException, IOException;
 }
