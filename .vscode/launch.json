@@ -3,6 +3,27 @@
     "configurations": [
         {
             "type": "java",
+            "name": "TestPaperClient",
+            "request": "launch",
+            "mainClass": "vcampus.client.biz.Library.TestPaperClient",
+            "projectName": "vcampus_db40ecb4"
+        },
+        {
+            "type": "java",
+            "name": "TestPaperHandler",
+            "request": "launch",
+            "mainClass": "vcampus.server.srv.Library.TestPaperHandler",
+            "projectName": "vcampus_db40ecb4"
+        },
+        {
+            "type": "java",
+            "name": "TestPaperDAO",
+            "request": "launch",
+            "mainClass": "vcampus.server.dao.Library.TestPaperDAO",
+            "projectName": "vcampus_db40ecb4"
+        },
+        {
+            "type": "java",
             "name": "LibraryPanel",
             "request": "launch",
             "mainClass": "vcampus.client.view.Library.LibraryPanel",
