@@ -55,8 +55,8 @@ public class CourseAutoSchedulerTest {
         value.setWeekEnd(weekEnd);
         value.setStartPeriod(start);
         value.setEndPeriod(end);
-        value.setStartTime(start == 1 ? LocalTime.of(8, 0) : LocalTime.of(9, 55));
-        value.setEndTime(start == 1 ? LocalTime.of(9, 35) : LocalTime.of(12, 20));
+        value.setStartTime(start == 1 ? LocalTime.of(8, 0) : LocalTime.of(9, 50));
+        value.setEndTime(start == 1 ? LocalTime.of(9, 35) : LocalTime.of(12, 15));
         value.setClassroom(room);
         return value;
     }

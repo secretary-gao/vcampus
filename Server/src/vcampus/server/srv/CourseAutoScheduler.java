@@ -132,7 +132,7 @@ public class CourseAutoScheduler {
         if (rooms.isEmpty()) rooms.add("教一-101");
         if (times.isEmpty()) {
             times.add(new TimePattern(1, 1, 2, LocalTime.of(8, 0), LocalTime.of(9, 35)));
-            times.add(new TimePattern(2, 3, 5, LocalTime.of(9, 55), LocalTime.of(12, 20)));
+            times.add(new TimePattern(2, 3, 5, LocalTime.of(9, 50), LocalTime.of(12, 15)));
         }
         List<Slot> result = new ArrayList<>();
         for (TimePattern time : times) for (String room : rooms) result.add(new Slot(time, room));
