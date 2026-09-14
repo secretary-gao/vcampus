@@ -132,6 +132,10 @@ public class StoreClientSrvTest {
             Message bad = storeClientSrv.checkout(testUser, badCart);
             System.out.println("结算响应：statusCode=" + bad.getStatusCode() + ", data=" + bad.getData());
 
+            System.out.println("=== 16. 清理：删除本次测试新增的商品 ST001（应删除成功）===");
+            Message clean = storeClientSrv.deleteGoods("ST001");
+            System.out.println("删除ST001响应：statusCode=" + clean.getStatusCode() + ", data=" + clean.getData());
+
             System.out.println();
             System.out.println("=== 商店模块 Socket 端到端自测完成 ===");
         } catch (Exception e) {
