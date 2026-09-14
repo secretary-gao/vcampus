@@ -23,7 +23,7 @@ public interface IAIServerSrv {
      *
      * @param question 用户输入的问题文本
      * @return AI 的回答文本
-     * @throws IOException 网络请求失败、API Key 未配置、或响应格式不符合预期时抛出
+     * @throws IOException Agent 配置错误、网络请求失败或响应格式不符合预期时抛出
      */
     String ask(String question) throws IOException;
 }

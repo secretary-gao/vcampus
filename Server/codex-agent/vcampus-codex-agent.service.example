@@ -1,0 +1,25 @@
+[Unit]
+Description=Vcampus Codex Agent backed by DashScope Qwen
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/vcampus-codex-agent.env
+Environment=CODEX_HOME=%h/.local/share/vcampus-codex-home
+Environment=CODEX_BIN=/usr/local/bin/codex
+Environment=CODEX_WORKDIR=%h/.local/share/vcampus-codex-agent/workspace
+Environment=VCAMPUS_AGENT_HOST=127.0.0.1
+Environment=VCAMPUS_AGENT_PORT=8765
+ExecStart=/usr/bin/python3 %h/.local/share/vcampus-codex-agent/codex_agent_server.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/share/vcampus-codex-home
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=default.target

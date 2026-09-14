@@ -10,6 +10,9 @@ Server/db.properties
 
 # AI 问答模块的本地 API Key 配置（含真实密钥，不提交），请参考 Server/ai.properties.example
 Server/ai.properties
+Server/codex-agent/.env
+__pycache__/
+*.pyc
 
 # IDE / 系统产生的临时文件
 .vscode/.classpath

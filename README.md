@@ -62,6 +62,15 @@ coJava/
 3. （可选）想让界面演示时有数据可看，跑一遍 `sql/seed_demo_data.sql` 填一批演示账号/
    学籍/挂号/购买记录。
 
+## 校园 AI（Codex + 千问）
+
+校园 AI 的调用链为 Vcampus 服务端 -> Codex Agent -> DashScope Responses API -> 千问。
+Codex Agent 的部署文件和完整说明位于 `Server/codex-agent/README.md`。
+
+本地使用时，根据 `Server/ai.properties.example` 创建 `Server/ai.properties`，然后
+运行 `start-codex-tunnel.bat username@服务器地址` 建立隧道，再启动 Vcampus。
+千问 API Key 只保存在 Agent 服务器上，不会分发到客户端或提交到 Git。
+
 ## 编译与运行
 
 最简单：双击根目录的 **`start-all.bat`**——自动编译，然后弹出两个新窗口分别跑
