@@ -172,6 +172,31 @@
 }
 .store-table .placeholder .label { -fx-text-fill: #9aa5b1; }
 
+/* ==================== 焦点框 ==================== */
+/* 点击页签后 TabPane 获得焦点，modena 会给选中页签画一圈蓝色焦点框（.focus-indicator），
+   与商店配色无关。这里用比 modena 更高优先级的选择器把它去掉（不动 -fx-focus-color，
+   以免影响输入框等其他控件的焦点表现）。 */
+.store-root .store-tabs > .tab-header-area > .headers-region > .tab .focus-indicator,
+.store-root .store-tabs > .tab-header-area > .headers-region > .tab:selected .focus-indicator,
+.store-root .store-tabs:focused > .tab-header-area > .headers-region > .tab:selected .focus-indicator {
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-background-color: transparent;
+}
+
+/* 按钮获得焦点时保持原有配色（否则 modena 的 .button:focused 会叠加蓝色焦点层） */
+.button:focused { -fx-background-color: #eef3f9; -fx-text-fill: #33475f; }
+.button.primary:focused { -fx-background-color: #1f8f80; -fx-text-fill: white; }
+.button.secondary:focused { -fx-background-color: #e9f5f3; -fx-text-fill: #1f7f72; }
+.button.danger:focused { -fx-background-color: #fdeeee; -fx-text-fill: #c8402f; }
+.button.accent:focused { -fx-background-color: #ffe6a3; -fx-text-fill: #0d6b64; }
+
+/* 表格获得焦点时不要蓝色描边 */
+.store-root .store-table:focused {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
 /* ==================== 滚动区 ==================== */
 .store-scroll { -fx-background-color: transparent; -fx-background: transparent; }
 .store-scroll > .viewport { -fx-background-color: transparent; }
