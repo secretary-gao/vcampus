@@ -204,6 +204,56 @@ public class AppointmentDAO {
         }
         return false;
     }
+
+    /**
+ * 判断：该医生该时间是否已经存在待就诊预约（已取消不计入占用）
+ * @param doctorId 医生编号
+ * @param appointTime 预约时间
+ * @return true=已经被占用，不能预约；false=可以预约
+ * @throws SQLException
+ * @throws IOException
+ */
+public boolean existDoctorTimeOccupied(String doctorId, java.util.Date appointTime) throws SQLException, IOException{
+    String sql = "SELECT COUNT(*) FROM tblAppointment " +
+            "WHERE doctorId = ? " +
+            "AND appointmentTime >= ? AND appointmentTime < DATE_ADD(?, INTERVAL 1 MINUTE) " +
+            "AND status != '已取消'";
+    try(Connection conn = DbHelper.getConnection();
+        PreparedStatement pstmt = conn.prepareStatement(sql))
+    {
+        Timestamp ts = new Timestamp(appointTime.getTime());
+        pstmt.setString(1,doctorId);
+        pstmt.setTimestamp(2, ts);
+        pstmt.setTimestamp(3, ts);
+        ResultSet rs = pstmt.executeQuery();
+        if(rs.next()){
+            return rs.getInt(1) > 0;
+        }
+    }
+    return false;
+}
+
+
+/**
+ * 查询指定医生所有【待就诊】的预约时间
+ * @param doctorId 医生编号
+ * @return 预约时间列表
+ */
+public List<Timestamp> getOccupiedAppointTimeByDoctor(String doctorId) throws SQLException,IOException {
+    List<Timestamp> timeList = new ArrayList<>();
+    String sql = "SELECT appointmentTime FROM tblappointment WHERE doctorId = ? AND status = '待就诊'";
+    try(Connection conn = DbHelper.getConnection();
+        PreparedStatement pstmt = conn.prepareStatement(sql))
+    {
+        pstmt.setString(1, doctorId);
+        ResultSet rs = pstmt.executeQuery();
+        while(rs.next()){
+            timeList.add(rs.getTimestamp("appointmentTime"));
+        }
+    }
+    return timeList;
+}
+
     /**
      * 【单元测试专用】清理指定用户+时间的预约记录
      * @param userId 用户编号

@@ -99,7 +99,7 @@ public class CoursePanel extends BorderPane {
                 setCenter(message("当前教师账号尚未设置姓名，无法匹配授课课程。"));
                 return;
             }
-            addTab("教师工作台", new TeacherCoursesPane(_client, _currentUser.getUName()));
+            addTab("教师工作台", new TeacherCoursesPane(_client, _currentUser));
             setCenter(_tabs);
             return;
         }

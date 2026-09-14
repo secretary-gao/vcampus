@@ -91,6 +91,15 @@ public class StudentRequestHandler {
         if (actualUser == null || !credentials.getUPwd().equals(actualUser.getUPwd())) {
             throw forbidden("登录状态无效，请重新登录");
         }
+        if (User.STATUS_DISABLED.equals(actualUser.getUStatus())) {
+            throw forbidden("账号已被禁用，请联系管理员");
+        }
+        if (User.STATUS_PENDING.equals(actualUser.getUStatus())) {
+            throw forbidden("账号尚未通过审核，请联系管理员");
+        }
+        if (!User.STATUS_NORMAL.equals(actualUser.getUStatus())) {
+            throw forbidden("账号状态异常，请联系管理员");
+        }
         return actualUser;
     }
 
@@ -116,11 +125,7 @@ public class StudentRequestHandler {
         requireTeacherOrAdmin(currentUser);
         if (currentUser.isTeacher()) {
             String keyword = requireQueryText(studentId, "学号");
-            return publicStudent(_studentServerSrv.findStudentsTaughtBy(currentUser.getUId())
-                    .stream()
-                    .filter(student -> keyword.equals(student.getStudentId()))
-                    .findFirst()
-                    .orElse(null));
+            return publicStudent(_studentServerSrv.findStudentTaughtBy(currentUser.getUId(), keyword));
         }
         Student student = _studentServerSrv.findByStudentId(studentId);
         return student;
@@ -137,10 +142,7 @@ public class StudentRequestHandler {
         requireTeacherOrAdmin(currentUser);
         if (currentUser.isTeacher()) {
             String keyword = requireQueryText(name, "姓名");
-            return publicStudents(_studentServerSrv.findStudentsTaughtBy(currentUser.getUId())
-                    .stream()
-                    .filter(student -> keyword.equals(student.getName()))
-                    .toList());
+            return publicStudents(_studentServerSrv.findStudentsTaughtByName(currentUser.getUId(), keyword));
         }
         return _studentServerSrv.findByName(name);
     }
