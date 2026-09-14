@@ -1,7 +1,7 @@
 /*
  * HospitalFrame
  *
- * Version 2.9 增加前端禁用医生已占用预约时段；角色动态主题配色；去掉弹窗；区分我的预约/取消预约列表；已取消可删除
+ * Version 3.0 表格UI美化，模仿学籍界面；角色动态主题配色；前端时段禁用
  *
  * 2026-09-14
  *
@@ -29,7 +29,6 @@ import javafx.scene.paint.Stop;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
-
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -44,12 +43,10 @@ public class HospitalFrame extends VBox {
     private final String _loginUserId;
     private final String _loginUserRole;
     private final HospitalClientSrv _hospitalSrv = new HospitalClientSrv();
-
     //====【角色动态主题颜色】====
     private final String themePrimaryColor;
     private final String themeHoverColor;
     private final String themeActiveColor;
-
     // 导航按钮
     private Button btnQueryAllDoctor;
     private Button btnQueryByDept;
@@ -61,7 +58,6 @@ public class HospitalFrame extends VBox {
     private Button btnUpdateDoctor;
     private Button btnDeleteDoctor;
     private StackPane _contentPane;
-
     //====【新增】记录当前激活导航按钮，用于高亮
     private Button _activeNavButton;
     //====【新增：分组折叠】分组容器
@@ -71,7 +67,6 @@ public class HospitalFrame extends VBox {
     private Label lblAdminGroupTitle;
     private boolean userGroupExpanded = true;
     private boolean adminGroupExpanded = true;
-
     // ---------------------- 面板控件（TableView） ----------------------
     private VBox panelQueryAllDoctor;
     private TableView<Doctor> tableAllDoctor;
@@ -86,7 +81,6 @@ public class HospitalFrame extends VBox {
     private DatePicker dpAppointDate;
     private ComboBox<String> cbAppointTime;
     private Button btnSubmitAppoint;
-
     //========【前端预约时段禁用新增成员变量】========
     private Map<LocalDate, Set<String>> dateDisableTimeMap;
     private Set<String> currentDisableSet;
@@ -116,7 +110,6 @@ public class HospitalFrame extends VBox {
     public HospitalFrame(String loginUserId, String loginUserRole) {
         this._loginUserId = loginUserId;
         this._loginUserRole = loginUserRole;
-
         //========初始化预约时段禁用相关集合========
         dateDisableTimeMap = new HashMap<>();
         currentDisableSet = new HashSet<>();
@@ -144,13 +137,20 @@ public class HospitalFrame extends VBox {
                 themeActiveColor = "#6b8a40";
                 break;
         }
-
         setSpacing(0);
         buildUi();
     }
 
     private void buildUi() {
         BorderPane root = new BorderPane();
+        root.setStyle("""
+                .table-view-clean .table-row-cell:hover {
+                    -fx-background-color:#e8f2fc;
+                }
+                .table-view-clean .table-row-cell:selected{
+                    -fx-background-color:#c5e0fa;
+                }
+                """);
         root.setBackground(new Background(new BackgroundFill(
                 new LinearGradient(0, 0, 1, 1, true, CycleMethod.NO_CYCLE,
                         new Stop(0, Color.web("#f4f8fb")),
@@ -198,9 +198,6 @@ public class HospitalFrame extends VBox {
         return banner;
     }
 
-
-
-
     private VBox buildSideBar() {
         VBox side = new VBox(10);
         side.setPrefWidth(190);
@@ -219,7 +216,6 @@ public class HospitalFrame extends VBox {
         lblUserGroupTitle.setFont(Font.font("System", FontWeight.BOLD, 13));
         lblUserGroupTitle.setTextFill(Color.web(themePrimaryColor));
         lblUserGroupTitle.setCursor(Cursor.HAND);
-
         vboxUserGroup = new VBox(6);
         btnQueryAllDoctor = new Button("查询全部医生");
         btnQueryByDept = new Button("按科室查询医生");
@@ -234,7 +230,6 @@ public class HospitalFrame extends VBox {
         lblAdminGroupTitle.setFont(Font.font("System", FontWeight.BOLD, 13));
         lblAdminGroupTitle.setTextFill(Color.web(themePrimaryColor));
         lblAdminGroupTitle.setCursor(Cursor.HAND);
-
         vboxAdminGroup = new VBox(6);
         btnQueryAllAppoint = new Button("查询全部预约");
         btnAddDoctor = new Button("新增医生");
@@ -319,13 +314,10 @@ public class HospitalFrame extends VBox {
             actionQueryAllAppointment();
         }else if(panel == panelAddAppoint){
             loadAppointDoctorTable();
-            //切换到预约面板清空禁用缓存
             dateDisableTimeMap.clear();
             currentDisableSet.clear();
             cbAppointTime.getSelectionModel().clearSelection();
-            //cbAppointTime.refresh(); 删掉这行
             cbAppointTime.setItems(FXCollections.observableArrayList(allTimeOptions));
-
         }else if(panel == panelCancelAppoint){
             loadCancelAbleAppointment();
         }else if(panel == panelDeleteDoctor){
@@ -347,6 +339,54 @@ public class HospitalFrame extends VBox {
         return card;
     }
 
+    // =====================表格美化工具方法【模仿学籍界面】=====================
+    private void styleTable(TableView<?> tableView) {
+        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        tableView.setPlaceholder(buildTablePlaceholder());
+        tableView.getStyleClass().addAll("table-view-clean");
+    }
+
+    private Label buildTablePlaceholder() {
+        Label placeholder = new Label("暂无数据");
+        placeholder.setStyle("-fx-font-size:14px;-fx-text-fill:#888888;");
+        return placeholder;
+    }
+
+    private TableCell<Appointment,String> createAppointStatusCell() {
+        return new TableCell<Appointment, String>(){
+            private final Label badge = new Label();
+            {
+                badge.setPadding(new Insets(3,8,3,8));
+            }
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if(empty || item == null){
+                    setGraphic(null);
+                    return;
+                }
+                String status = item.isBlank() ? "待就诊" : item;
+                badge.setText(status);
+                switch (status){
+                    case "待就诊":
+                        badge.setStyle("-fx-background-color:#2196F3;-fx-text-fill:white;-fx-padding:3 8 3 8;-fx-background-radius:4;");
+                        break;
+                    case "已取消":
+                        badge.setStyle("-fx-background-color:#9E9E9E;-fx-text-fill:white;-fx-padding:3 8 3 8;-fx-background-radius:4;");
+                        break;
+                    case "已就诊":
+                        badge.setStyle("-fx-background-color:#4CAF50;-fx-text-fill:white;-fx-padding:3 8 3 8;-fx-background-radius:4;");
+                        break;
+                    default:
+                        badge.setStyle("-fx-background-color:#757575;-fx-text-fill:white;-fx-padding:3 8 3 8;-fx-background-radius:4;");
+                }
+                setGraphic(badge);
+                setAlignment(Pos.CENTER);
+            }
+        };
+    }
+    // ======================================================================
+
     private void initAllPanels() {
         // ========== 1. 查询全部医生 ==========
         panelQueryAllDoctor = new VBox(10);
@@ -356,23 +396,21 @@ public class HospitalFrame extends VBox {
         lab1.setFont(Font.font("System", FontWeight.BOLD, 17));
         lab1.setTextFill(Color.web(themePrimaryColor));
         tableAllDoctor = new TableView<>();
-        tableAllDoctor.setMaxWidth(Double.MAX_VALUE);
-        tableAllDoctor.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(tableAllDoctor, Priority.ALWAYS);
-        tableAllDoctor.setPlaceholder(new Label("暂无医生数据"));
         TableColumn<Doctor, String> colDocId = new TableColumn<>("医生编号");
         colDocId.setCellValueFactory(new PropertyValueFactory<>("doctorId"));
-        colDocId.setPrefWidth(120);
+        colDocId.setMinWidth(100);
         TableColumn<Doctor, String> colName = new TableColumn<>("姓名");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
-        colName.setPrefWidth(100);
+        colName.setMinWidth(80);
         TableColumn<Doctor, String> colDept = new TableColumn<>("科室");
         colDept.setCellValueFactory(new PropertyValueFactory<>("department"));
-        colDept.setPrefWidth(100);
+        colDept.setMinWidth(80);
         TableColumn<Doctor, String> colTitle = new TableColumn<>("职称");
         colTitle.setCellValueFactory(new PropertyValueFactory<>("title"));
-        colTitle.setPrefWidth(100);
+        colTitle.setMinWidth(80);
         tableAllDoctor.getColumns().addAll(colDocId, colName, colDept, colTitle);
+        styleTable(tableAllDoctor);
 
         tableAllDoctor.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if(newVal != null){
@@ -400,27 +438,26 @@ public class HospitalFrame extends VBox {
         btnQDept.setStyle("-fx-background-color:"+themePrimaryColor+";-fx-text-fill:white;-fx-background-radius:5;");
         btnQDept.setOnAction(e -> actionQueryDoctorByDept());
         tableDeptDoctor = new TableView<>();
-        tableDeptDoctor.setMaxWidth(Double.MAX_VALUE);
-        tableDeptDoctor.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(tableDeptDoctor, Priority.ALWAYS);
-        tableDeptDoctor.setPlaceholder(new Label("未找到该科室医生"));
         TableColumn<Doctor, String> c1 = new TableColumn<>("医生编号");
         c1.setCellValueFactory(new PropertyValueFactory<>("doctorId"));
-        c1.setPrefWidth(120);
+        c1.setMinWidth(100);
         TableColumn<Doctor, String> c2 = new TableColumn<>("姓名");
         c2.setCellValueFactory(new PropertyValueFactory<>("name"));
-        c2.setPrefWidth(100);
+        c2.setMinWidth(80);
         TableColumn<Doctor, String> c3 = new TableColumn<>("科室");
         c3.setCellValueFactory(new PropertyValueFactory<>("department"));
-        c3.setPrefWidth(100);
+        c3.setMinWidth(80);
         TableColumn<Doctor, String> c4 = new TableColumn<>("职称");
         c4.setCellValueFactory(new PropertyValueFactory<>("title"));
-        c4.setPrefWidth(100);
+        c4.setMinWidth(80);
         tableDeptDoctor.getColumns().addAll(c1, c2, c3, c4);
+        styleTable(tableDeptDoctor);
+
         panelQueryDept.getChildren().addAll(lab2, tfDept, btnQDept, tableDeptDoctor);
         VBox.setVgrow(panelQueryDept, Priority.ALWAYS);
 
-        // ==========3.预约挂号【重点已修改，增加时段禁用逻辑】 ==========
+        // ==========3.预约挂号 ==========
         panelAddAppoint = new VBox(10);
         panelAddAppoint.setAlignment(Pos.TOP_LEFT);
         panelAddAppoint.setMaxWidth(Double.MAX_VALUE);
@@ -430,36 +467,30 @@ public class HospitalFrame extends VBox {
         Label tipAppoint = new Label("在下方表格选中一位医生，再选择日期与就诊时段，灰色时段代表该时段已被占用不可选");
         tipAppoint.setFont(Font.font("System", 13));
         tipAppoint.setTextFill(Color.web("#555555"));
-
         lblSelectedDoctorTip = new Label("✅尚未选择医生");
         lblSelectedDoctorTip.setFont(Font.font("System",13));
         lblSelectedDoctorTip.setTextFill(Color.web("#c0392b"));
-
         tvAppointDoctor = new TableView<>();
-        tvAppointDoctor.setMaxWidth(Double.MAX_VALUE);
-        tvAppointDoctor.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(tvAppointDoctor, Priority.ALWAYS);
-        tvAppointDoctor.setPlaceholder(new Label("暂无可预约医生"));
         TableColumn<Doctor, String> colADocId = new TableColumn<>("医生编号");
         colADocId.setCellValueFactory(new PropertyValueFactory<>("doctorId"));
-        colADocId.setPrefWidth(120);
+        colADocId.setMinWidth(100);
         TableColumn<Doctor, String> colAName = new TableColumn<>("姓名");
         colAName.setCellValueFactory(new PropertyValueFactory<>("name"));
-        colAName.setPrefWidth(100);
+        colAName.setMinWidth(80);
         TableColumn<Doctor, String> colADept = new TableColumn<>("科室");
         colADept.setCellValueFactory(new PropertyValueFactory<>("department"));
-        colADept.setPrefWidth(100);
+        colADept.setMinWidth(80);
         TableColumn<Doctor, String> colATitle = new TableColumn<>("职称");
         colATitle.setCellValueFactory(new PropertyValueFactory<>("title"));
-        colATitle.setPrefWidth(100);
+        colATitle.setMinWidth(80);
         tvAppointDoctor.getColumns().addAll(colADocId, colAName, colADept, colATitle);
+        styleTable(tvAppointDoctor);
 
-        //=====选中医生事件：请求后端获取占用时段=====
         tvAppointDoctor.getSelectionModel().selectedItemProperty().addListener((obs, oldDoc, newDoc) -> {
             if(newDoc != null){
                 lblSelectedDoctorTip.setText("✅已选择医生："+newDoc.getDoctorId()+" | "+newDoc.getName()+" | "+newDoc.getDepartment());
                 lblSelectedDoctorTip.setTextFill(Color.web("#27ae60"));
-
                 String docId = newDoc.getDoctorId();
                 new Thread(()->{
                     try {
@@ -481,9 +512,7 @@ public class HospitalFrame extends VBox {
                                 if(selDate!=null && dateDisableTimeMap.containsKey(selDate)){
                                     currentDisableSet.addAll(dateDisableTimeMap.get(selDate));
                                 }
-                                //cbAppointTime.refresh(); 删掉这行
-                                 cbAppointTime.setItems(FXCollections.observableArrayList(allTimeOptions));
-
+                                cbAppointTime.setItems(FXCollections.observableArrayList(allTimeOptions));
                             });
                         }else{
                             Platform.runLater(()->showAlert(Alert.AlertType.ERROR,"获取占用时段失败",resp.getData().toString()));
@@ -493,16 +522,13 @@ public class HospitalFrame extends VBox {
                         Platform.runLater(()->showAlert(Alert.AlertType.ERROR,"网络异常","查询医生占用时段失败"));
                     }
                 }).start();
-
             }else{
                 lblSelectedDoctorTip.setText("✅尚未选择医生");
                 lblSelectedDoctorTip.setTextFill(Color.web("#c0392b"));
                 dateDisableTimeMap.clear();
                 currentDisableSet.clear();
                 cbAppointTime.getSelectionModel().clearSelection();
-                //cbAppointTime.refresh(); 删掉这行
                 cbAppointTime.setItems(FXCollections.observableArrayList(allTimeOptions));
-
             }
         });
 
@@ -518,11 +544,9 @@ public class HospitalFrame extends VBox {
             }
         });
 
-        //=====重写ComboBox，支持单项禁用灰色=====
         cbAppointTime = new ComboBox<>();
         cbAppointTime.setItems(allTimeOptions);
         cbAppointTime.setPromptText("选择就诊时刻");
-
         cbAppointTime.setCellFactory(param -> new ListCell<String>(){
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -550,16 +574,13 @@ public class HospitalFrame extends VBox {
             }
         });
 
-        //====日期切换监听，刷新禁用时段====
         dpAppointDate.valueProperty().addListener((obs,oldD,newD)->{
             currentDisableSet.clear();
             if(newD!=null && dateDisableTimeMap.containsKey(newD)){
                 currentDisableSet.addAll(dateDisableTimeMap.get(newD));
             }
             cbAppointTime.getSelectionModel().clearSelection();
-            //cbAppointTime.refresh(); 删掉这行
             cbAppointTime.setItems(FXCollections.observableArrayList(allTimeOptions));
-
         });
 
         HBox hbRow = new HBox(15, new Label("就诊日期："), dpAppointDate, new Label("就诊时段："), cbAppointTime);
@@ -570,7 +591,7 @@ public class HospitalFrame extends VBox {
         panelAddAppoint.getChildren().addAll(lab3, tipAppoint, lblSelectedDoctorTip, tvAppointDoctor, hbRow, btnSubmitAppoint);
         VBox.setVgrow(panelAddAppoint, Priority.ALWAYS);
 
-        // ==========4.我的预约记录【展示全部状态】 ==========
+        // ==========4.我的预约记录 ==========
         panelMyAppoint = new VBox(10);
         panelMyAppoint.setAlignment(Pos.TOP_LEFT);
         panelMyAppoint.setMaxWidth(Double.MAX_VALUE);
@@ -578,43 +599,29 @@ public class HospitalFrame extends VBox {
         lab4.setFont(Font.font("System", FontWeight.BOLD, 17));
         lab4.setTextFill(Color.web(themePrimaryColor));
         tableAllMyAppoint = new TableView<>();
-        tableAllMyAppoint.setMaxWidth(Double.MAX_VALUE);
-        tableAllMyAppoint.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(tableAllMyAppoint, Priority.ALWAYS);
-        tableAllMyAppoint.setPlaceholder(new Label("暂无我的预约记录"));
         TableColumn<Appointment, String> aid = new TableColumn<>("预约编号");
         aid.setCellValueFactory(new PropertyValueFactory<>("appointmentId"));
-        aid.setPrefWidth(130);
+        aid.setMinWidth(110);
         TableColumn<Appointment, String> uid = new TableColumn<>("用户ID");
         uid.setCellValueFactory(new PropertyValueFactory<>("userId"));
-        uid.setPrefWidth(100);
+        uid.setMinWidth(90);
         TableColumn<Appointment, String> did = new TableColumn<>("医生ID");
         did.setCellValueFactory(new PropertyValueFactory<>("doctorId"));
-        did.setPrefWidth(100);
+        did.setMinWidth(90);
         TableColumn<Appointment, Date> atime = new TableColumn<>("预约时间");
         atime.setCellValueFactory(new PropertyValueFactory<>("appointmentTime"));
-        atime.setPrefWidth(170);
+        atime.setMinWidth(150);
         TableColumn<Appointment, String> stat = new TableColumn<>("状态");
         stat.setCellValueFactory(new PropertyValueFactory<>("status"));
-        stat.setPrefWidth(110);
-        stat.setCellFactory(col -> new TableCell<Appointment, String>() {
-            @Override
-            protected void updateItem(String value, boolean empty) {
-                super.updateItem(value, empty);
-                if (empty) {
-                    setText(null);
-                } else if (value == null || value.isBlank()) {
-                    setText("待就诊");
-                } else {
-                    setText(value);
-                }
-            }
-        });
+        stat.setMinWidth(100);
+        stat.setCellFactory(col -> createAppointStatusCell());
         tableAllMyAppoint.getColumns().addAll(aid, uid, did, atime, stat);
+        styleTable(tableAllMyAppoint);
         panelMyAppoint.getChildren().addAll(lab4, tableAllMyAppoint);
         VBox.setVgrow(panelMyAppoint, Priority.ALWAYS);
 
-        // ==========5.取消预约【只加载待就诊】 ==========
+        // ==========5.取消预约 ==========
         panelCancelAppoint = new VBox(10);
         panelCancelAppoint.setAlignment(Pos.TOP_LEFT);
         panelCancelAppoint.setMaxWidth(Double.MAX_VALUE);
@@ -625,35 +632,26 @@ public class HospitalFrame extends VBox {
         tipCancel.setFont(Font.font("System", 13));
         tipCancel.setTextFill(Color.web("#555555"));
         tableMyAppoint = new TableView<>();
-        tableMyAppoint.setMaxWidth(Double.MAX_VALUE);
-        tableMyAppoint.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(tableMyAppoint, Priority.ALWAYS);
-        tableMyAppoint.setPlaceholder(new Label("没有可取消的待就诊预约记录"));
         TableColumn<Appointment, String> cAid = new TableColumn<>("预约编号");
         cAid.setCellValueFactory(new PropertyValueFactory<>("appointmentId"));
-        cAid.setPrefWidth(130);
+        cAid.setMinWidth(110);
         TableColumn<Appointment, String> cUid = new TableColumn<>("用户ID");
         cUid.setCellValueFactory(new PropertyValueFactory<>("userId"));
-        cUid.setPrefWidth(100);
+        cUid.setMinWidth(90);
         TableColumn<Appointment, String> cDid = new TableColumn<>("医生ID");
         cDid.setCellValueFactory(new PropertyValueFactory<>("doctorId"));
-        cDid.setPrefWidth(100);
+        cDid.setMinWidth(90);
         TableColumn<Appointment, Date> cTime = new TableColumn<>("预约时间");
         cTime.setCellValueFactory(new PropertyValueFactory<>("appointmentTime"));
-        cTime.setPrefWidth(170);
+        cTime.setMinWidth(150);
         TableColumn<Appointment, String> cStat = new TableColumn<>("状态");
         cStat.setCellValueFactory(new PropertyValueFactory<>("status"));
-        cStat.setPrefWidth(110);
-        cStat.setCellFactory(col -> new TableCell<Appointment, String>() {
-            @Override
-            protected void updateItem(String value, boolean empty) {
-                super.updateItem(value, empty);
-                if (empty) setText(null);
-                else if(value==null||value.isBlank()) setText("待就诊");
-                else setText(value);
-            }
-        });
+        cStat.setMinWidth(100);
+        cStat.setCellFactory(col -> createAppointStatusCell());
         tableMyAppoint.getColumns().addAll(cAid,cUid,cDid,cTime,cStat);
+        styleTable(tableMyAppoint);
+
         btnCancelSelectedAppoint = new Button("取消选中的预约");
         btnCancelSelectedAppoint.setStyle("-fx-background-color:"+themePrimaryColor+"; -fx-text-fill:white; -fx-background-radius:5;");
         btnCancelSelectedAppoint.setOnAction(e -> doCancelSelected());
@@ -668,41 +666,27 @@ public class HospitalFrame extends VBox {
         labA1.setFont(Font.font("System", FontWeight.BOLD, 17));
         labA1.setTextFill(Color.web(themePrimaryColor));
         tableAllAppoint = new TableView<>();
-        tableAllAppoint.setMaxWidth(Double.MAX_VALUE);
-        tableAllAppoint.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(tableAllAppoint, Priority.ALWAYS);
-        tableAllAppoint.setPlaceholder(new Label("暂无预约数据"));
         TableColumn<Appointment, String> aa = new TableColumn<>("预约编号");
         aa.setCellValueFactory(new PropertyValueFactory<>("appointmentId"));
-        aa.setPrefWidth(130);
+        aa.setMinWidth(110);
         TableColumn<Appointment, String> uu = new TableColumn<>("用户ID");
         uu.setCellValueFactory(new PropertyValueFactory<>("userId"));
-        uu.setPrefWidth(100);
+        uu.setMinWidth(90);
         TableColumn<Appointment, String> dd = new TableColumn<>("医生ID");
         dd.setCellValueFactory(new PropertyValueFactory<>("doctorId"));
-        dd.setPrefWidth(100);
+        dd.setMinWidth(90);
         TableColumn<Appointment, Date> tt = new TableColumn<>("预约时间");
         tt.setCellValueFactory(new PropertyValueFactory<>("appointmentTime"));
-        tt.setPrefWidth(170);
+        tt.setMinWidth(150);
         TableColumn<Appointment, String> ss = new TableColumn<>("状态");
         ss.setCellValueFactory(new PropertyValueFactory<>("status"));
-        ss.setPrefWidth(110);
-        ss.setCellFactory(col -> new TableCell<Appointment, String>() {
-            @Override
-            protected void updateItem(String value, boolean empty) {
-                super.updateItem(value, empty);
-                if (empty) {
-                    setText(null);
-                } else if (value == null || value.isBlank()) {
-                    setText("待就诊");
-                } else {
-                    setText(value);
-                }
-            }
-        });
+        ss.setMinWidth(100);
+        ss.setCellFactory(col -> createAppointStatusCell());
         tableAllAppoint.getColumns().addAll(aa, uu, dd, tt, ss);
+
         TableColumn<Appointment, Void> colOpt = new TableColumn<>("操作");
-        colOpt.setPrefWidth(100);
+        colOpt.setMinWidth(90);
         colOpt.setCellFactory(param -> new TableCell<Appointment, Void>() {
             @Override
             protected void updateItem(Void item, boolean empty) {
@@ -748,6 +732,7 @@ public class HospitalFrame extends VBox {
             }
         });
         tableAllAppoint.getColumns().add(colOpt);
+        styleTable(tableAllAppoint);
         panelQueryAllAppoint.getChildren().addAll(labA1, tableAllAppoint);
         VBox.setVgrow(panelQueryAllAppoint, Priority.ALWAYS);
 
@@ -812,7 +797,7 @@ public class HospitalFrame extends VBox {
         panelUpdateDoctor.getChildren().addAll(labA3, tipUpdate, tfUpdDocId, tfUpdDocName, tfUpdDocDept, tfUpdDocTitle, btnUpdDoc);
         VBox.setVgrow(panelUpdateDoctor, Priority.ALWAYS);
 
-        // ==========管理员删除医生【去掉弹窗】 ==========
+        // ==========管理员删除医生 ==========
         panelDeleteDoctor = new VBox(10);
         panelDeleteDoctor.setAlignment(Pos.TOP_LEFT);
         panelDeleteDoctor.setMaxWidth(Double.MAX_VALUE);
@@ -823,23 +808,22 @@ public class HospitalFrame extends VBox {
         tipDel.setFont(Font.font("System", 13));
         tipDel.setTextFill(Color.web("#555555"));
         tvDelDoctor = new TableView<>();
-        tvDelDoctor.setMaxWidth(Double.MAX_VALUE);
-        tvDelDoctor.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(tvDelDoctor, Priority.ALWAYS);
-        tvDelDoctor.setPlaceholder(new Label("暂无可删除的医生（该医生存在关联预约记录则不可删除）"));
         TableColumn<Doctor, String> colDDocId = new TableColumn<>("医生编号");
         colDDocId.setCellValueFactory(new PropertyValueFactory<>("doctorId"));
-        colDDocId.setPrefWidth(120);
+        colDDocId.setMinWidth(100);
         TableColumn<Doctor, String> colDName = new TableColumn<>("姓名");
         colDName.setCellValueFactory(new PropertyValueFactory<>("name"));
-        colDName.setPrefWidth(100);
+        colDName.setMinWidth(80);
         TableColumn<Doctor, String> colDDept = new TableColumn<>("科室");
         colDDept.setCellValueFactory(new PropertyValueFactory<>("department"));
-        colDDept.setPrefWidth(100);
+        colDDept.setMinWidth(80);
         TableColumn<Doctor, String> colDTitle = new TableColumn<>("职称");
         colDTitle.setCellValueFactory(new PropertyValueFactory<>("title"));
-        colDTitle.setPrefWidth(100);
+        colDTitle.setMinWidth(80);
         tvDelDoctor.getColumns().addAll(colDDocId, colDName, colDDept, colDTitle);
+        styleTable(tvDelDoctor);
+
         btnDeleteSelectedDoctor = new Button("删除选中医生");
         btnDeleteSelectedDoctor.setStyle("-fx-background-color:#dc3545; -fx-text-fill:white; -fx-background-radius:5;");
         btnDeleteSelectedDoctor.setOnAction(e -> doDeleteSelectedDoctor());
@@ -891,13 +875,10 @@ public class HospitalFrame extends VBox {
                     if (IConstant.STATUS_SUCCESS.equals(resp.getStatusCode())) {
                         showAlert(Alert.AlertType.INFORMATION, "预约成功", String.valueOf(resp.getData()));
                         loadAppointDoctorTable();
-                        //预约成功清空缓存
                         dateDisableTimeMap.clear();
                         currentDisableSet.clear();
                         cbAppointTime.getSelectionModel().clearSelection();
-                        //cbAppointTime.refresh(); 删掉这行
                         cbAppointTime.setItems(FXCollections.observableArrayList(allTimeOptions));
-
                     } else {
                         showAlert(Alert.AlertType.ERROR, "预约失败", String.valueOf(resp.getData()));
                     }
