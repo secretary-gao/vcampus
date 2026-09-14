@@ -19,6 +19,7 @@ import vcampus.common.vo.MessageType;
 import vcampus.common.vo.Student;
 import vcampus.common.vo.User;
 import vcampus.server.srv.Library.LibraryHandler;
+import vcampus.server.srv.Library.PaperHandler;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -55,6 +56,8 @@ public class ServerThread implements Runnable {
     private final IUserServerSrv _userServerSrv = new UserServerSrv();
     /** 图书馆模块业务服务，由本线程独立持有，避免多线程共享状态。 */
     private final LibraryHandler _libraryHandler = new LibraryHandler();
+
+    private final PaperHandler _paperHandler = new PaperHandler();
 
     /** 学籍模块请求处理器，由统一服务器负责分发请求。 */
     private final StudentRequestHandler _studentRequestHandler = new StudentRequestHandler();
@@ -175,6 +178,11 @@ public class ServerThread implements Runnable {
         _handlerMap.put(IConstant.MSG_ADD_BOOK, this::handleLibraryRequest);
         _handlerMap.put(IConstant.MSG_UPDATE_BOOK, this::handleLibraryRequest);
         _handlerMap.put(IConstant.MSG_DELETE_BOOK, this::handleLibraryRequest);
+        _handlerMap.put(IConstant.MSG_QUERY_PAPERS, this::handlePaperRequest);
+        _handlerMap.put(IConstant.MSG_GET_PDF_DATA, this::handlePaperRequest);
+        _handlerMap.put(IConstant.MSG_ADD_PAPER, this::handlePaperRequest);
+        _handlerMap.put(IConstant.MSG_DELETE_PAPER, this::handlePaperRequest);
+        _handlerMap.put(IConstant.MSG_UPLOAD_PDF, this::handlePaperRequest);
 
         // ========= 学籍模块 =========
         _handlerMap.put(StudentProtocol.LIST, this::handleStudentRequest);
@@ -515,7 +523,10 @@ public class ServerThread implements Runnable {
                     IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
         }
     }
-
+    
+    private Message handlePaperRequest(Message request) {
+        return _paperHandler.handle(request);
+    }
     /**
      * 处理"查询待审核账号列表"请求，仅管理员可用。
      *
