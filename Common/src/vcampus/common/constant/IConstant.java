@@ -50,6 +50,9 @@ public interface IConstant {
     /** 状态码：账号已被管理员禁用。 */
     String STATUS_ACCOUNT_DISABLED = "403";
 
+    /** 状态码：账号注册后还在等待管理员审核，暂时不能登录。 */
+    String STATUS_ACCOUNT_PENDING = "402";
+
     // ========= 用户模块消息 =========
     /** 消息名：登录请求，对应 {@link vcampus.common.vo.Message#getName()}。 */
     String MSG_LOGIN = "login";
@@ -63,6 +66,19 @@ public interface IConstant {
      * 请求 data 约定为 {@code Object[]{operatorUId, targetUId, newStatus}}。
      */
     String MSG_USER_SET_STATUS = "userSetStatus";
+
+    /**
+     * 消息名：管理员查询"待审核"账号列表请求。请求 data 为操作者登录ID
+     * （{@code String}），成功响应 data 为 {@code List<User>}。
+     */
+    String MSG_USER_LIST_PENDING = "userListPending";
+
+    /**
+     * 消息名：学生角色自助注册请求（跟普通 {@link #MSG_REGISTER} 分开，
+     * 因为学生注册除了写 tblUser，还要顺带写一条 tblStudent 学籍记录）。
+     * 请求 data 约定为 {@code Object[]{User newUser, Student profile}}。
+     */
+    String MSG_REGISTER_STUDENT = "registerStudent";
 
     // ========== 图书馆模块消息类型 ==========
     String MSG_QUERY_BOOKS = "queryBooks";
