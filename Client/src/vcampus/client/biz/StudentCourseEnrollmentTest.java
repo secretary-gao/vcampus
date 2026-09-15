@@ -95,8 +95,9 @@ public final class StudentCourseEnrollmentTest {
                                 && "2024".equals(visible.getGrade())
                                 && visible.getStatus() == StudentStatus.ENROLLED,
                         "教师未读到正确学籍字段");
-                require(visible.getCampusCardNo() == null && visible.getUserId() == null,
-                        "教师不应获得一卡通号及登录账号");
+                require(("CARD-" + student).equals(visible.getCampusCardNo())
+                                && visible.getUserId() == null,
+                        "教师应获得一卡通号但不应获得登录账号");
                 require(teacherClient.findByStudentId(otherStudent) == null,
                         "教师不应看到其他教师的学生");
                 require(teacherClient.findByName("联调学生").size() == 1,
@@ -159,6 +160,11 @@ public final class StudentCourseEnrollmentTest {
                 require(teacherClient.findByStudentId(student).getStatus() == StudentStatus.SUSPENDED,
                         "查看学籍应读取最新状态，不能复用选课名单快照");
 
+                expectCourseRejected(() -> courseClient.selectCourse(student, secondClass),
+                        "休学学生不应新增选课");
+                try (Connection connection = DbHelper.getConnection()) {
+                    execute(connection, "UPDATE tblStudent SET status = '在读' WHERE studentId = ?", student);
+                }
                 courseClient.selectCourse(student, secondClass);
                 assertOnlyStudent(teacherClient, student);
                 courseClient.dropCourse(student, firstClass);
@@ -286,6 +292,15 @@ public final class StudentCourseEnrollmentTest {
             throw new AssertionError(message);
         } catch (CourseClientException expected) {
             require(StudentProtocol.STATUS_FORBIDDEN.equals(expected.getStatusCode()), message);
+        }
+    }
+
+    private static void expectCourseRejected(CheckedOperation operation, String message) throws Exception {
+        try {
+            operation.run();
+            throw new AssertionError(message);
+        } catch (CourseClientException expected) {
+            require(StudentProtocol.STATUS_BAD_REQUEST.equals(expected.getStatusCode()), message);
         }
     }
 
