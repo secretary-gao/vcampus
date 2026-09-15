@@ -612,3 +612,142 @@
     -fx-text-fill: white;
     -fx-background-radius: 4px;
 }
+
+.app-root.student-detail-dialog {
+    -fx-background-color: -vc-background;
+}
+
+.app-root.student-detail-dialog .header-panel {
+    -fx-padding: 0;
+    -fx-background-color: -vc-surface;
+}
+
+.app-root.student-detail-dialog .button-bar {
+    -fx-padding: 10px 18px 14px 18px;
+    -fx-background-color: -vc-surface;
+    -fx-border-color: -vc-border transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+}
+
+.app-root .student-detail-scroll {
+    -fx-background-color: -vc-background;
+    -fx-border-color: transparent;
+}
+
+.app-root .student-detail-scroll > .viewport {
+    -fx-background-color: -vc-background;
+}
+
+.app-root .student-detail-content {
+    -fx-padding: 24px 28px 26px 28px;
+    -fx-background-color: -vc-background;
+}
+
+.app-root .student-detail-heading {
+    -fx-padding: 0 0 5px 0;
+}
+
+.app-root .student-detail-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -vc-text;
+}
+
+.app-root .student-detail-subtitle {
+    -fx-font-size: 12px;
+    -fx-text-fill: -vc-text-muted;
+}
+
+.app-root .student-detail-identity {
+    -fx-padding: 15px 17px;
+    -fx-background-color: -vc-surface;
+    -fx-border-color: -vc-border;
+    -fx-border-radius: 9px;
+    -fx-background-radius: 9px;
+}
+
+.app-root .student-detail-field {
+    -fx-min-width: 300px;
+    -fx-padding: 1px 0;
+}
+
+.app-root .student-detail-field-label,
+.app-root .student-detail-metric-label {
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -vc-text-muted;
+}
+
+.app-root .student-detail-field-value {
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -vc-text;
+}
+
+.app-root .student-detail-section-title {
+    -fx-padding: 3px 0 0 1px;
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -vc-text;
+}
+
+.app-root .student-detail-metrics {
+    -fx-background-color: transparent;
+}
+
+.app-root .student-detail-metric {
+    -fx-min-width: 160px;
+    -fx-min-height: 86px;
+    -fx-padding: 13px 14px;
+    -fx-background-color: -vc-surface;
+    -fx-border-color: -vc-border;
+    -fx-border-radius: 9px;
+    -fx-background-radius: 9px;
+}
+
+.app-root .student-detail-metric-value {
+    -fx-font-size: 22px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -vc-text;
+}
+
+.app-root .student-detail-metric-unit {
+    -fx-padding: 0 0 2px 0;
+    -fx-font-size: 11px;
+    -fx-text-fill: -vc-text-muted;
+}
+
+.app-root .detail-metric-green { -fx-border-color: #9bc8b1; -fx-background-color: #f1f8f4; }
+.app-root .detail-metric-blue { -fx-border-color: #a9c5dc; -fx-background-color: #f2f7fb; }
+.app-root .detail-metric-red { -fx-border-color: #e1b5b2; -fx-background-color: #fff5f4; }
+.app-root .detail-metric-amber { -fx-border-color: #dec68e; -fx-background-color: #fffaf0; }
+.app-root .detail-metric-purple { -fx-border-color: #c8b9da; -fx-background-color: #faf7fd; }
+.app-root .detail-metric-teal { -fx-border-color: #9fcac5; -fx-background-color: #f1f9f8; }
+
+.app-root .student-detail-ok,
+.app-root .student-detail-warning {
+    -fx-padding: 13px 15px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+}
+
+.app-root .student-detail-ok {
+    -fx-background-color: -vc-primary-soft;
+    -fx-border-color: #b7d3c4;
+}
+
+.app-root .student-detail-warning {
+    -fx-background-color: -vc-warning-soft;
+    -fx-border-color: #e0c98f;
+}
+
+.app-root .student-detail-alert-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -vc-text;
+}
+
+.app-root .student-detail-alert-text {
+    -fx-font-size: 12px;
+    -fx-text-fill: -vc-text-secondary;
+}

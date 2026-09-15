@@ -684,7 +684,7 @@ public class StudentManagementFrame extends Application {
             batchStatus.disableProperty().bind(
                     javafx.beans.binding.Bindings.isEmpty(_table.getSelectionModel().getSelectedItems()));
             menu.getItems().add(batchStatus);
-            MenuItem overview = new MenuItem("查看学生全景档案");
+            MenuItem overview = new MenuItem("查看学生详细信息");
             overview.setOnAction(event -> showStudentOverview());
             overview.disableProperty().bind(
                     javafx.beans.binding.Bindings.isNull(_table.getSelectionModel().selectedItemProperty()));
@@ -699,41 +699,125 @@ public class StudentManagementFrame extends Application {
             setInlineStatus("请先选择一名学生", true);
             return;
         }
-        runOperation("正在读取跨模块摘要...", "跨模块摘要已加载", () ->
+        runOperation("正在读取学生详细信息...", "学生详细信息已加载", () ->
                 _studentClientSrv.loadOverview(selected.getStudentId()),
                 this::showStudentOverviewDialog);
     }
 
     private void showStudentOverviewDialog(StudentCampusOverview overview) {
-        StringBuilder message = new StringBuilder()
-                .append("学号：").append(overview.getStudentId())
-                .append("\n账号状态：").append(valueOrEmpty(overview.getAccountStatus()))
-                .append("\n\n选课记录：").append(overview.getSelectedCourseCount()).append(" 条")
-                .append("\n当前借阅：").append(overview.getActiveBorrowCount()).append(" 本")
-                .append("\n逾期借阅：").append(overview.getOverdueBorrowCount()).append(" 本")
-                .append("\n校园卡余额：").append(overview.getWalletBalance()).append(" 元")
-                .append("\n消费记录：").append(overview.getPurchaseCount()).append(" 条")
-                .append("\n待就诊预约：").append(overview.getPendingAppointmentCount()).append(" 条");
-        if (overview.getWarnings().isEmpty()) {
-            message.append("\n\n状态检查：正常");
-        } else {
-            message.append("\n\n跨模块预警：\n");
-            message.append(String.join("\n", overview.getWarnings()));
+        Student student = _students.stream()
+                .filter(value -> overview.getStudentId().equals(value.getStudentId()))
+                .findFirst().orElse(null);
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("查看学生详细信息");
+        dialog.setHeaderText(null);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.getDialogPane().getStyleClass().addAll("app-root", "student-detail-dialog");
+        dialog.getDialogPane().setMinWidth(720);
+        dialog.getDialogPane().setPrefWidth(820);
+        dialog.getDialogPane().setPrefHeight(620);
+
+        Label title = new Label(student == null ? "学生详细信息" : student.getName());
+        title.getStyleClass().add("student-detail-title");
+        Label subtitle = new Label(student == null ? overview.getStudentId()
+                : overview.getStudentId() + "  ·  " + valueOrEmpty(student.getMajor()));
+        subtitle.getStyleClass().add("student-detail-subtitle");
+        VBox heading = new VBox(3, title, subtitle);
+        heading.getStyleClass().add("student-detail-heading");
+
+        GridPane identity = new GridPane();
+        identity.setHgap(26);
+        identity.setVgap(11);
+        identity.getStyleClass().add("student-detail-identity");
+        addOverviewField(identity, 0, 0, "学号", overview.getStudentId());
+        addOverviewField(identity, 1, 0, "一卡通号", student == null ? null : student.getCampusCardNo());
+        addOverviewField(identity, 0, 1, "班级", student == null ? null : student.getClassName());
+        addOverviewField(identity, 1, 1, "年级", student == null ? null : student.getGrade());
+        addOverviewField(identity, 0, 2, "专业", student == null ? null : student.getMajor());
+        addOverviewField(identity, 1, 2, "账号状态", overview.getAccountStatus());
+        addOverviewField(identity, 0, 3, "学籍状态", student == null || student.getStatus() == null
+                ? null : student.getStatus().toString());
+        addOverviewField(identity, 1, 3, "入学日期", student == null || student.getEnrollmentDate() == null
+                ? null : DATE_FORMAT.format(student.getEnrollmentDate()));
+
+        Label sectionTitle = new Label("校园使用情况");
+        sectionTitle.getStyleClass().add("student-detail-section-title");
+        GridPane metrics = new GridPane();
+        metrics.setHgap(10);
+        metrics.setVgap(10);
+        metrics.getStyleClass().add("student-detail-metrics");
+        addMetric(metrics, 0, 0, "选课记录", String.valueOf(overview.getSelectedCourseCount()), "条", "detail-metric-green");
+        addMetric(metrics, 1, 0, "当前借阅", String.valueOf(overview.getActiveBorrowCount()), "本", "detail-metric-blue");
+        addMetric(metrics, 2, 0, "逾期借阅", String.valueOf(overview.getOverdueBorrowCount()), "本", "detail-metric-red");
+        addMetric(metrics, 3, 0, "校园卡余额", overview.getWalletBalance().toPlainString(), "元", "detail-metric-amber");
+        addMetric(metrics, 0, 1, "消费记录", String.valueOf(overview.getPurchaseCount()), "条", "detail-metric-purple");
+        addMetric(metrics, 1, 1, "待就诊预约", String.valueOf(overview.getPendingAppointmentCount()), "条", "detail-metric-teal");
+
+        VBox alertBox = new VBox(6);
+        alertBox.getStyleClass().add(overview.getWarnings().isEmpty()
+                ? "student-detail-ok" : "student-detail-warning");
+        Label alertTitle = new Label(overview.getWarnings().isEmpty() ? "状态检查正常" : "需要关注");
+        alertTitle.getStyleClass().add("student-detail-alert-title");
+        Label alertText = new Label(overview.getWarnings().isEmpty()
+                ? "当前没有发现跨模块异常记录。"
+                : String.join("\n", overview.getWarnings()));
+        alertText.setWrapText(true);
+        alertText.getStyleClass().add("student-detail-alert-text");
+        alertBox.getChildren().addAll(alertTitle, alertText);
+
+        VBox content = new VBox(16, heading, identity, sectionTitle, metrics, alertBox);
+        content.getStyleClass().add("student-detail-content");
+        ScrollPane scrollPane = new ScrollPane(content);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.getStyleClass().add("student-detail-scroll");
+        dialog.getDialogPane().setContent(scrollPane);
+        dialog.setOnShown(event -> attachStyleSheet(dialog.getDialogPane().getScene()));
+        if (_root != null && _root.getScene() != null) {
+            dialog.initOwner(_root.getScene().getWindow());
         }
-        Alert alert = new Alert(overview.getWarnings().isEmpty()
-                ? Alert.AlertType.INFORMATION : Alert.AlertType.WARNING,
-                message.toString(), ButtonType.OK);
-        alert.setTitle("学生全景档案");
-        alert.setHeaderText(selectedStudentTitle(overview.getStudentId()));
-        alert.getDialogPane().setMinWidth(440);
-        alert.showAndWait();
+        dialog.showAndWait();
+    }
+
+    private static void addOverviewField(GridPane grid, int column, int row,
+                                         String labelText, String value) {
+        VBox field = new VBox(3);
+        field.getStyleClass().add("student-detail-field");
+        Label label = new Label(labelText);
+        label.getStyleClass().add("student-detail-field-label");
+        Label content = new Label(valueOrEmpty(value));
+        content.setWrapText(true);
+        content.getStyleClass().add("student-detail-field-value");
+        field.getChildren().addAll(label, content);
+        grid.add(field, column, row);
+        GridPane.setColumnSpan(field, 1);
+    }
+
+    private static void addMetric(GridPane grid, int column, int row, String labelText,
+                                  String value, String unit, String styleClass) {
+        VBox card = new VBox(4);
+        card.getStyleClass().addAll("student-detail-metric", styleClass);
+        Label label = new Label(labelText);
+        label.getStyleClass().add("student-detail-metric-label");
+        HBox valueLine = new HBox(4);
+        valueLine.setAlignment(Pos.BASELINE_LEFT);
+        Label number = new Label(value);
+        number.getStyleClass().add("student-detail-metric-value");
+        Label suffix = new Label(unit);
+        suffix.getStyleClass().add("student-detail-metric-unit");
+        valueLine.getChildren().addAll(number, suffix);
+        card.getChildren().addAll(label, valueLine);
+        grid.add(card, column, row);
+        GridPane.setHgrow(card, Priority.ALWAYS);
+        GridPane.setFillWidth(card, true);
     }
 
     private String selectedStudentTitle(String studentId) {
         Student student = _students.stream()
                 .filter(value -> studentId.equals(value.getStudentId()))
                 .findFirst().orElse(null);
-        return student == null ? "学籍跨模块摘要" : student.getName() + " · " + studentId;
+        return student == null ? "学生详细信息" : student.getName() + " · " + studentId;
     }
 
     private void addTextColumn(String title, double width, Function<Student, String> getter) {
