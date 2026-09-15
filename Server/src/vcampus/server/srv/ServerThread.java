@@ -193,6 +193,7 @@ public class ServerThread implements Runnable {
         _handlerMap.put(StudentProtocol.ADD, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.UPDATE, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.DELETE, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.OVERVIEW, this::handleStudentRequest);
         _handlerMap.put(IConstant.MSG_USER_SET_STATUS, this::handleSetUserStatus);
         _handlerMap.put(IConstant.MSG_USER_LIST_PENDING, this::handleListPendingUsers);
         _handlerMap.put(IConstant.MSG_USER_RESET_PASSWORD, this::handleResetStudentPassword);
