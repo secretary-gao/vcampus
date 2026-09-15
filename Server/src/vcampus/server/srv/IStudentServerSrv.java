@@ -1,6 +1,8 @@
 package vcampus.server.srv;
 
+import vcampus.common.constant.StudentProtocol;
 import vcampus.common.vo.Student;
+import vcampus.common.vo.StudentCampusOverview;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -46,4 +48,9 @@ public interface IStudentServerSrv {
 
     void deleteStudent(String studentId)
             throws SQLException, IOException, StudentServiceException;
+
+    default StudentCampusOverview loadOverview(String studentId)
+            throws SQLException, IOException, StudentServiceException {
+        throw new StudentServiceException(StudentProtocol.STATUS_ERROR, "跨模块摘要暂不可用");
+    }
 }

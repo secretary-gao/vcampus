@@ -62,6 +62,10 @@ public class StudentRequestHandler {
                     _studentServerSrv.deleteStudent((String) request.getData());
                     yield "删除成功";
                 }
+                case StudentProtocol.OVERVIEW -> {
+                    requireAdmin(currentUser);
+                    yield _studentServerSrv.loadOverview((String) request.getData());
+                }
                 default -> throw new StudentServiceException(
                         StudentProtocol.STATUS_BAD_REQUEST, "未知的学籍操作：" + request.getName());
             };
@@ -208,6 +212,7 @@ public class StudentRequestHandler {
         }
         Student target = new Student();
         target.setStudentId(source.getStudentId());
+        target.setCampusCardNo(source.getCampusCardNo());
         target.setName(source.getName());
         target.setClassName(source.getClassName());
         target.setMajor(source.getMajor());

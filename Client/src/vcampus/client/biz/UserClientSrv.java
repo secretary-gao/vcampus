@@ -81,6 +81,15 @@ public class UserClientSrv implements IUserClientSrv {
         return sendAndReceive(request);
     }
 
+    @Override
+    public Message resetStudentPassword(String operatorUId, String targetUId)
+            throws IOException, ClassNotFoundException {
+        Object[] payload = new Object[] {operatorUId, targetUId};
+        Message request = new Message(System.currentTimeMillis(), IConstant.MSG_USER_RESET_PASSWORD,
+                MessageType.COMMAND, null, payload, operatorUId);
+        return sendAndReceive(request);
+    }
+
     /**
      * {@inheritDoc}
      */

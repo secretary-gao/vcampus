@@ -2,11 +2,13 @@ package vcampus.server.srv;
 
 import vcampus.common.constant.StudentProtocol;
 import vcampus.common.vo.Student;
+import vcampus.common.vo.StudentCampusOverview;
 import vcampus.common.vo.StudentStatus;
 import vcampus.common.util.MD5Util;
 import vcampus.common.vo.User;
 import vcampus.server.dao.UserDAO;
 import vcampus.server.dao.StudentDAO;
+import vcampus.server.dao.StudentCampusOverviewDAO;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -18,18 +20,25 @@ public class StudentServerSrv implements IStudentServerSrv {
 
     private final StudentDAO _studentDAO;
     private final UserDAO _userDAO;
+    private final StudentCampusOverviewDAO _overviewDAO;
 
     public StudentServerSrv() {
-        this(new StudentDAO(), new UserDAO());
+        this(new StudentDAO(), new UserDAO(), new StudentCampusOverviewDAO());
     }
 
     StudentServerSrv(StudentDAO studentDAO) {
-        this(studentDAO, new UserDAO());
+        this(studentDAO, new UserDAO(), new StudentCampusOverviewDAO());
     }
 
     StudentServerSrv(StudentDAO studentDAO, UserDAO userDAO) {
+        this(studentDAO, userDAO, new StudentCampusOverviewDAO());
+    }
+
+    StudentServerSrv(StudentDAO studentDAO, UserDAO userDAO,
+                     StudentCampusOverviewDAO overviewDAO) {
         this._studentDAO = studentDAO;
         this._userDAO = userDAO;
+        this._overviewDAO = overviewDAO;
     }
 
     @Override
@@ -92,12 +101,22 @@ public class StudentServerSrv implements IStudentServerSrv {
             throw conflict("一卡通号已存在：" + student.getCampusCardNo());
         }
         boolean accountCreated = ensureStudentAccount(student);
+        boolean inserted = false;
         try {
             ensureUserNotBound(student.getUserId(), student.getStudentId());
             if (!_studentDAO.insert(student)) {
                 throw new StudentServiceException(StudentProtocol.STATUS_ERROR, "新增学生失败");
             }
+            inserted = true;
+            syncAccountStatus(null, student);
         } catch (SQLException | IOException | StudentServiceException exception) {
+            if (inserted) {
+                try {
+                    _studentDAO.deleteByStudentId(student.getStudentId());
+                } catch (SQLException | IOException rollbackException) {
+                    exception.addSuppressed(rollbackException);
+                }
+            }
             if (accountCreated) {
                 try {
                     _userDAO.deleteByUId(student.getUserId());
@@ -142,7 +161,37 @@ public class StudentServerSrv implements IStudentServerSrv {
         if (!_studentDAO.update(originalId, student)) {
             throw conflict("该学生信息已被其他操作修改，请刷新后重试");
         }
+        syncAccountStatus(oldStudent, student);
         return _studentDAO.findByStudentId(student.getStudentId());
+    }
+
+    /** 根据学籍状态变化同步学生账号状态；普通编辑不会覆盖管理员手动禁用。 */
+    private void syncAccountStatus(Student oldStudent, Student newStudent)
+            throws SQLException, IOException, StudentServiceException {
+        StudentStatus oldStatus = oldStudent == null ? null : oldStudent.getStatus();
+        String targetStatus = accountStatusForTransition(oldStatus, newStudent.getStatus());
+        if (targetStatus == null) {
+            return;
+        }
+        if (!_userDAO.updateStatus(newStudent.getUserId(), targetStatus)) {
+            throw new StudentServiceException(StudentProtocol.STATUS_ERROR,
+                    "学籍已保存，但学生账号状态同步失败，请联系管理员处理");
+        }
+    }
+
+    /** 返回需要写入账号表的状态；没有需要联动时返回 null。 */
+    static String accountStatusForTransition(StudentStatus oldStatus, StudentStatus newStatus) {
+        if (newStatus == StudentStatus.GRADUATED || newStatus == StudentStatus.WITHDRAWN) {
+            if (oldStatus != newStatus) {
+                return User.STATUS_DISABLED;
+            }
+            return null;
+        }
+        if (newStatus == StudentStatus.ENROLLED
+                && (oldStatus == StudentStatus.GRADUATED || oldStatus == StudentStatus.WITHDRAWN)) {
+            return User.STATUS_NORMAL;
+        }
+        return null;
     }
 
     @Override
@@ -160,6 +209,16 @@ public class StudentServerSrv implements IStudentServerSrv {
             throw new StudentServiceException(StudentProtocol.STATUS_BAD_REQUEST,
                     "关联账号不存在或账号角色不是学生：" + userId);
         }
+    }
+
+    @Override
+    public StudentCampusOverview loadOverview(String studentId)
+            throws SQLException, IOException, StudentServiceException {
+        Student student = findByStudentId(requireText(studentId, "学号"));
+        if (student == null) {
+            throw notFound("学生不存在：" + studentId);
+        }
+        return _overviewDAO.load(student);
     }
 
     /**

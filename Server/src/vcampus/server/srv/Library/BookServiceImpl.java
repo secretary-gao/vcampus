@@ -4,6 +4,7 @@ import vcampus.common.vo.Library.Book;
 import vcampus.common.vo.Library.BorrowRecord;
 import vcampus.server.dao.Library.BookDAO;
 import vcampus.server.dao.Library.BorrowRecordDAO;
+import vcampus.server.srv.StudentStatusGuard;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -25,6 +26,9 @@ public class BookServiceImpl implements IBookService {
 
     @Override
     public boolean borrowBook(String userId, String bookId) throws SQLException, IOException {
+        if (!StudentStatusGuard.canUseStudentServices(userId)) {
+            return false;
+        }
         // 1. 检查图书是否存在
         Book book = bookDAO.getBookById(bookId);
         if (book == null) {

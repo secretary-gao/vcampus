@@ -35,8 +35,9 @@ public class StudentPermissionTest {
         require("teacher1".equals(service.lastTeacherUserId),
                 "教师列表没有按当前登录账号限制范围");
         Student publicStudent = ((List<Student>) teacherList.getData()).get(0);
-        require(publicStudent.getCampusCardNo() == null && publicStudent.getUserId() == null,
-                "教师响应泄露了一卡通号或关联账号");
+        require("CARD-001".equals(publicStudent.getCampusCardNo())
+                        && publicStudent.getUserId() == null,
+                "教师响应应提供学号/一卡通号但隐藏关联账号");
 
         Message unrelatedStudent = handler.handle(request(StudentProtocol.QUERY_BY_ID,
                 "2024000099", credentials("teacher1", "教师")));

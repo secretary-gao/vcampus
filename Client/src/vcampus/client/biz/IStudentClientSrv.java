@@ -1,6 +1,7 @@
 package vcampus.client.biz;
 
 import vcampus.common.vo.Student;
+import vcampus.common.vo.StudentCampusOverview;
 
 import java.io.IOException;
 import java.util.List;
@@ -36,5 +37,8 @@ public interface IStudentClientSrv {
     }
 
     void deleteStudent(String studentId)
+            throws IOException, ClassNotFoundException, StudentClientException;
+
+    StudentCampusOverview loadOverview(String studentId)
             throws IOException, ClassNotFoundException, StudentClientException;
 }

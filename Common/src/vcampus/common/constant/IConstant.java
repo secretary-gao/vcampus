@@ -73,6 +73,9 @@ public interface IConstant {
      */
     String MSG_USER_LIST_PENDING = "userListPending";
 
+    /** 消息名：管理员将学生密码重置为系统初始密码。 */
+    String MSG_USER_RESET_PASSWORD = "userResetPassword";
+
     /**
      * 消息名：学生角色自助注册请求（跟普通 {@link #MSG_REGISTER} 分开，
      * 因为学生注册除了写 tblUser，还要顺带写一条 tblStudent 学籍记录）。

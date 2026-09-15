@@ -16,7 +16,9 @@ import vcampus.common.vo.Doctor;
 import vcampus.common.vo.HospitalAdminReq;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
+import vcampus.common.vo.Student;
 import vcampus.common.vo.User;
+import vcampus.server.dao.StudentDAO;
 import vcampus.server.srv.Library.LibraryHandler;
 import vcampus.server.srv.Library.PaperHandler;
 
@@ -192,6 +194,7 @@ public class ServerThread implements Runnable {
         _handlerMap.put(StudentProtocol.DELETE, this::handleStudentRequest);
         _handlerMap.put(IConstant.MSG_USER_SET_STATUS, this::handleSetUserStatus);
         _handlerMap.put(IConstant.MSG_USER_LIST_PENDING, this::handleListPendingUsers);
+        _handlerMap.put(IConstant.MSG_USER_RESET_PASSWORD, this::handleResetStudentPassword);
         _handlerMap.put(IConstant.MSG_REGISTER_STUDENT, this::handleRegisterStudent);
         _handlerMap.put(IConstant.MSG_AI_ASK, this::handleAiAsk);
 
@@ -506,6 +509,25 @@ public class ServerThread implements Runnable {
         }
     }
 
+    private Message handleResetStudentPassword(Message request) {
+        try {
+            Object[] args = (Object[]) request.getData();
+            boolean ok = _userServerSrv.resetStudentPassword((String) args[0], (String) args[1]);
+            String data = ok ? "学生密码已重置为 123456" : "密码重置失败，请稍后重试";
+            return new Message(request.getUid(), IConstant.MSG_USER_RESET_PASSWORD, MessageType.DATA,
+                    ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR, data, "Server");
+        } catch (PermissionDeniedException e) {
+            return new Message(request.getUid(), IConstant.MSG_USER_RESET_PASSWORD, MessageType.DATA,
+                    IConstant.STATUS_FORBIDDEN, e.getMessage(), "Server");
+        } catch (IllegalArgumentException | ClassCastException e) {
+            return new Message(request.getUid(), IConstant.MSG_USER_RESET_PASSWORD, MessageType.DATA,
+                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_USER_RESET_PASSWORD, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
     /**
      * 处理 AI 问答请求。
      *
@@ -514,14 +536,36 @@ public class ServerThread implements Runnable {
      */
     private Message handleAiAsk(Message request) {
         try {
-            String question = (String) request.getData();
+            String question;
+            String context = "";
+            if (request.getData() instanceof Object[] values && values.length >= 1) {
+                question = (String) values[0];
+                if (values.length > 1 && values[1] instanceof User user) {
+                    Student profile = new StudentDAO().findByUserId(user.getUId());
+                    if (profile != null) {
+                        context = "当前用户是学生，姓名为" + profile.getName()
+                                + "，学号为" + profile.getStudentId()
+                                + "，专业为" + profile.getMajor()
+                                + "，年级为" + profile.getGrade()
+                                + "，学籍状态为" + profile.getStatus() + "。";
+                    } else {
+                        context = "当前登录用户角色为" + user.getURole() + "。";
+                    }
+                }
+            } else {
+                question = (String) request.getData();
+            }
+            if (!context.isEmpty()) {
+                question = "【系统上下文，仅用于回答当前问题，不要主动泄露账号、密码或一卡通号】"
+                        + context + "\n用户问题：" + question;
+            }
             String answer = _aiServerSrv.ask(question);
             return new Message(request.getUid(), IConstant.MSG_AI_ASK, MessageType.DATA,
                     IConstant.STATUS_SUCCESS, answer, "Server");
         } catch (IllegalArgumentException | ClassCastException e) {
             return new Message(request.getUid(), IConstant.MSG_AI_ASK, MessageType.DATA,
                     IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
-        } catch (IOException e) {
+        } catch (SQLException | IOException e) {
             return new Message(request.getUid(), IConstant.MSG_AI_ASK, MessageType.DATA,
                     IConstant.STATUS_ERROR, e.getMessage(), "Server");
         }

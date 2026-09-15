@@ -15,41 +15,62 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.DatePicker;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
+import javafx.scene.chart.BarChart;
+import javafx.scene.chart.CategoryAxis;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.PieChart;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.stage.Screen;
+import javafx.stage.FileChooser;
 import vcampus.client.biz.StudentClientException;
 import vcampus.client.biz.StudentClientSrv;
+import vcampus.client.biz.IUserClientSrv;
+import vcampus.client.biz.UserClientSrv;
+import vcampus.common.constant.IConstant;
+import vcampus.common.vo.Message;
 import vcampus.common.vo.Student;
+import vcampus.common.vo.StudentCampusOverview;
 import vcampus.common.vo.StudentStatus;
 import vcampus.common.vo.User;
 
 import java.net.URL;
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -64,6 +85,7 @@ public class StudentManagementFrame extends Application {
 
     private final User _currentUser;
     private final StudentClientSrv _studentClientSrv;
+    private final IUserClientSrv _userClientSrv = new UserClientSrv();
     private final ObservableList<Student> _students = FXCollections.observableArrayList();
     private final TableView<Student> _table = new TableView<>(_students);
 
@@ -77,9 +99,23 @@ public class StudentManagementFrame extends Application {
     private final DatePicker _enrollmentDatePicker = new DatePicker();
     private final ComboBox<StudentStatus> _statusBox = new ComboBox<>();
     private final ComboBox<String> _queryTypeBox = new ComboBox<>();
+    private final ComboBox<String> _statusFilterBox = new ComboBox<>();
     private final TextField _queryField = new TextField();
 
     private final Label _countLabel = new Label("共 0 条");
+    private final Label _totalStatLabel = new Label("0");
+    private final Label _enrolledStatLabel = new Label("0");
+    private final Label _suspendedStatLabel = new Label("0");
+    private final Label _graduatedStatLabel = new Label("0");
+    private final Label _withdrawnStatLabel = new Label("0");
+    private final Label _breakdownStatLabel = new Label("年级/专业分布：暂无");
+    private Label _statisticsDialogSubtitle;
+    private final Map<javafx.scene.chart.Chart, Label> _chartEmptyLabels = new HashMap<>();
+    private final PieChart _statusChart = new PieChart();
+    private final BarChart<String, Number> _gradeChart = new BarChart<>(
+            new CategoryAxis(), new NumberAxis());
+    private final BarChart<String, Number> _majorChart = new BarChart<>(
+            new CategoryAxis(), new NumberAxis());
     private final Label _editorModeLabel = new Label("新建学生");
     private final Label _statusLabel = new Label("就绪");
     private final Label _formErrorLabel = new Label();
@@ -87,11 +123,17 @@ public class StudentManagementFrame extends Application {
     private final Button _addButton = new Button("新增档案");
     private final Button _updateButton = new Button("保存修改");
     private final Button _deleteButton = new Button("删除记录");
+    private final Button _resetPasswordButton = new Button("重置密码");
+    private final Button _undoButton = new Button("撤回上一步");
     private final List<Button> _operationButtons = new ArrayList<>();
     private final Map<TextField, String> _fieldErrors = new LinkedHashMap<>();
     private final Map<String, Label> _detailValues = new LinkedHashMap<>();
     private boolean _operationRunning;
     private BorderPane _root;
+    private Dialog<ButtonType> _statisticsDialog;
+    private String _undoDescription;
+    private CheckedSupplier<Void> _undoOperation;
+    private Consumer<Void> _undoSuccess;
 
     public StudentManagementFrame() {
         this(null);
@@ -173,20 +215,26 @@ public class StudentManagementFrame extends Application {
         }
 
         _queryTypeBox.getItems().addAll("学号", "姓名");
-        if (isAdmin()) {
+        if (isAdmin() || isTeacher()) {
             _queryTypeBox.getItems().add(1, "一卡通号");
         }
         _queryTypeBox.setValue("学号");
         _queryTypeBox.setPrefWidth(120);
         _queryTypeBox.getStyleClass().add("query-type");
 
+        _statusFilterBox.getItems().setAll("全部状态", "在读", "休学", "毕业", "退学");
+        _statusFilterBox.setValue("全部状态");
+        _statusFilterBox.setPrefWidth(110);
+        _statusFilterBox.getStyleClass().add("query-type");
+
         updateQueryPrompt();
         _queryTypeBox.valueProperty().addListener(
                 (observable, oldValue, newValue) -> updateQueryPrompt());
+        _statusFilterBox.valueProperty().addListener(
+                (observable, oldValue, newValue) -> queryStudents(
+                        _queryTypeBox.getValue(), _queryField.getText()));
         _queryField.setPrefWidth(300);
-        _queryField.setAccessibleHelp(isAdmin()
-                ? "可按学号、一卡通号或姓名精确查询"
-                : "可按学号或姓名精确查询");
+        _queryField.setAccessibleHelp("可按学号、一卡通号或姓名包含关键词查询");
         HBox.setHgrow(_queryField, Priority.ALWAYS);
 
         Button queryButton = new Button("查询");
@@ -198,6 +246,7 @@ public class StudentManagementFrame extends Application {
         resetButton.getStyleClass().addAll("button", "secondary-button");
         resetButton.setOnAction(event -> {
             _queryField.clear();
+            _statusFilterBox.setValue("全部状态");
             refreshStudents();
         });
 
@@ -206,15 +255,31 @@ public class StudentManagementFrame extends Application {
         refreshButton.setTooltip(new Tooltip("重新读取数据库中的学生信息"));
         refreshButton.setOnAction(event -> refreshStudents());
 
+        Button exportButton = new Button("导出 CSV");
+        exportButton.getStyleClass().addAll("button", "quiet-button");
+        exportButton.setTooltip(new Tooltip("导出当前筛选结果；教师可见学号和一卡通号，不含账号"));
+        exportButton.setOnAction(event -> exportStudents());
+
+        Button importButton = new Button("批量导入");
+        importButton.getStyleClass().addAll("button", "quiet-button");
+        importButton.setTooltip(new Tooltip("导入管理员导出的完整学籍 CSV"));
+        importButton.setOnAction(event -> importStudents());
+
         _queryField.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ENTER && !_operationRunning) {
                 queryStudents(_queryTypeBox.getValue(), _queryField.getText());
             }
         });
-        _operationButtons.addAll(List.of(queryButton, resetButton, refreshButton));
+        _operationButtons.addAll(List.of(queryButton, resetButton, refreshButton, exportButton));
+        if (isAdmin()) {
+            _operationButtons.add(importButton);
+        }
 
-        HBox searchBar = new HBox(8, _queryTypeBox, _queryField,
-                queryButton, resetButton, refreshButton);
+        HBox searchBar = isAdmin()
+                ? new HBox(8, _queryTypeBox, _queryField, _statusFilterBox,
+                queryButton, resetButton, refreshButton, exportButton, importButton)
+                : new HBox(8, _queryTypeBox, _queryField, _statusFilterBox,
+                queryButton, resetButton, refreshButton, exportButton);
         searchBar.setAlignment(Pos.CENTER_LEFT);
         searchBar.getStyleClass().add("search-bar");
         return new VBox(titleRow, searchBar);
@@ -283,8 +348,8 @@ public class StudentManagementFrame extends Application {
         Label sectionTitle = new Label("学生列表");
         sectionTitle.getStyleClass().add("section-title");
         Label sectionHint = new Label(isAdmin()
-                ? "列表展示关键信息，选中学生后可在右侧查看并修改完整档案"
-                : "仅显示自己任教课程的学生及其公开学籍字段");
+                ? "点击列标题排序；列表展示关键信息，选中学生后可在右侧查看并修改完整档案"
+                : "点击列标题排序；仅显示自己任教课程的学生及其学号、一卡通号和公开学籍字段");
         sectionHint.getStyleClass().add("section-hint");
         VBox heading = new VBox(2, sectionTitle, sectionHint);
         heading.getStyleClass().add("section-heading");
@@ -293,6 +358,139 @@ public class StudentManagementFrame extends Application {
         section.getStyleClass().add("table-section");
         VBox.setVgrow(_table, Priority.ALWAYS);
         return section;
+    }
+
+    private VBox createStatisticsPanel() {
+        Label title = new Label("学籍统计图");
+        title.getStyleClass().add("statistics-dialog-title");
+        Label subtitle = new Label("统计范围：当前学生列表（已应用搜索和状态筛选）");
+        subtitle.getStyleClass().add("statistics-dialog-subtitle");
+        _statisticsDialogSubtitle = subtitle;
+        FlowPane summary = new FlowPane(8, 8,
+                statisticCard("当前结果", _totalStatLabel, "stat-total"),
+                statisticCard("在读", _enrolledStatLabel, "stat-enrolled"),
+                statisticCard("休学", _suspendedStatLabel, "stat-suspended"),
+                statisticCard("毕业", _graduatedStatLabel, "stat-muted"),
+                statisticCard("退学", _withdrawnStatLabel, "stat-muted"));
+        summary.setPrefWrapLength(900);
+        summary.getStyleClass().add("statistics-summary");
+        _breakdownStatLabel.getStyleClass().add("stat-breakdown");
+        _breakdownStatLabel.setWrapText(true);
+
+        configureStatisticsCharts();
+        GridPane charts = new GridPane();
+        charts.setHgap(12);
+        charts.setVgap(12);
+        ColumnConstraints chartLeft = new ColumnConstraints();
+        chartLeft.setPercentWidth(50);
+        chartLeft.setHgrow(Priority.ALWAYS);
+        chartLeft.setFillWidth(true);
+        ColumnConstraints chartRight = new ColumnConstraints();
+        chartRight.setPercentWidth(50);
+        chartRight.setHgrow(Priority.ALWAYS);
+        chartRight.setFillWidth(true);
+        charts.getColumnConstraints().addAll(chartLeft, chartRight);
+        VBox statusCard = chartCard("学籍状态", _statusChart);
+        VBox gradeCard = chartCard("年级分布", _gradeChart);
+        VBox majorCard = chartCard("专业排行", _majorChart);
+        charts.add(statusCard, 0, 0);
+        charts.add(gradeCard, 1, 0);
+        charts.add(majorCard, 0, 1, 2, 1);
+        for (Node card : List.of(statusCard, gradeCard, majorCard)) {
+            GridPane.setHgrow(card, Priority.ALWAYS);
+            GridPane.setFillWidth(card, true);
+        }
+        charts.getStyleClass().add("statistics-charts");
+        VBox content = new VBox(10, new VBox(2, title, subtitle), summary, charts,
+                _breakdownStatLabel);
+        content.getStyleClass().addAll("statistics-bar", "statistics-dialog-content");
+        return content;
+    }
+
+    private void showStatisticsDialog() {
+        if (_statisticsDialog == null) {
+            _statisticsDialog = new Dialog<>();
+            _statisticsDialog.setTitle("学籍统计图");
+            _statisticsDialog.setHeaderText(null);
+            _statisticsDialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+            ScrollPane statisticsScroll = new ScrollPane(createStatisticsPanel());
+            statisticsScroll.setFitToWidth(true);
+            statisticsScroll.setFitToHeight(true);
+            statisticsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+            statisticsScroll.getStyleClass().add("statistics-scroll");
+            _statisticsDialog.getDialogPane().setContent(statisticsScroll);
+            _statisticsDialog.getDialogPane().getStyleClass().addAll("app-root", "statistics-dialog");
+            _statisticsDialog.getDialogPane().setMinWidth(980);
+            _statisticsDialog.getDialogPane().setPrefWidth(1080);
+            _statisticsDialog.getDialogPane().setMinHeight(620);
+            _statisticsDialog.getDialogPane().setPrefHeight(720);
+            _statisticsDialog.setOnShown(event -> attachStyleSheet(
+                    _statisticsDialog.getDialogPane().getScene()));
+            if (_root != null && _root.getScene() != null) {
+                _statisticsDialog.initOwner(_root.getScene().getWindow());
+            }
+        }
+        updateStudentStatistics();
+        _statisticsDialog.showAndWait();
+    }
+
+    private void configureStatisticsCharts() {
+        _statusChart.setLegendVisible(true);
+        _statusChart.setLabelsVisible(true);
+        _statusChart.setAnimated(false);
+        _statusChart.setPrefSize(300, 225);
+        _statusChart.setMinSize(220, 210);
+        _statusChart.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        _statusChart.getStyleClass().add("student-status-chart");
+
+        configureBarChart(_gradeChart, "年级", 230);
+        configureBarChart(_majorChart, "专业", 280);
+    }
+
+    private static void configureBarChart(BarChart<String, Number> chart,
+                                          String categoryLabel, double width) {
+        chart.setLegendVisible(false);
+        chart.setAnimated(false);
+        chart.setHorizontalGridLinesVisible(true);
+        chart.setVerticalGridLinesVisible(false);
+        chart.setCategoryGap(8);
+        chart.setBarGap(2);
+        chart.setPrefSize(width, 225);
+        chart.setMinSize(220, 210);
+        chart.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        chart.getXAxis().setLabel(categoryLabel);
+        chart.getYAxis().setLabel("人数");
+        if (chart.getXAxis() instanceof CategoryAxis categoryAxis) {
+            categoryAxis.setTickLabelRotation(-25);
+        }
+        chart.getStyleClass().add("student-bar-chart");
+    }
+
+    private VBox chartCard(String title, javafx.scene.chart.Chart chart) {
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("chart-card-title");
+        Label emptyLabel = new Label("当前筛选暂无数据");
+        emptyLabel.getStyleClass().add("chart-empty-label");
+        emptyLabel.setVisible(true);
+        _chartEmptyLabels.put(chart, emptyLabel);
+        StackPane chartPane = new StackPane(chart, emptyLabel);
+        chartPane.setMinHeight(225);
+        chartPane.setPrefHeight(225);
+        VBox.setVgrow(chartPane, Priority.ALWAYS);
+        StackPane.setAlignment(emptyLabel, Pos.CENTER);
+        VBox card = new VBox(2, titleLabel, chartPane);
+        card.getStyleClass().add("chart-card");
+        HBox.setHgrow(card, Priority.ALWAYS);
+        return card;
+    }
+
+    private static VBox statisticCard(String title, Label value, String styleClass) {
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("stat-title");
+        value.getStyleClass().addAll("stat-value", styleClass);
+        VBox card = new VBox(1, titleLabel, value);
+        card.getStyleClass().add("stat-card");
+        return card;
     }
 
     private VBox createEditor() {
@@ -347,15 +545,22 @@ public class StudentManagementFrame extends Application {
         _deleteButton.setDisable(true);
         _deleteButton.setOnAction(event -> deleteStudent());
 
-        Button clearButton = new Button("新建档案");
+        _resetPasswordButton.setMaxWidth(Double.MAX_VALUE);
+        _resetPasswordButton.getStyleClass().addAll("button", "quiet-button");
+        _resetPasswordButton.setTooltip(new Tooltip("将所选学生密码重置为 123456"));
+        _resetPasswordButton.setDisable(true);
+        _resetPasswordButton.setOnAction(event -> resetStudentPassword());
+
+        Button clearButton = new Button("清空表单");
         clearButton.setMaxWidth(Double.MAX_VALUE);
         clearButton.getStyleClass().addAll("button", "quiet-button");
-        clearButton.setTooltip(new Tooltip("清空表单并进入新建模式"));
+        clearButton.setTooltip(new Tooltip("清空当前表单，取消正在编辑的学生"));
         clearButton.setOnAction(event -> {
             _table.getSelectionModel().clearSelection();
             clearForm();
         });
-        _operationButtons.addAll(List.of(_addButton, _updateButton, _deleteButton, clearButton));
+        _operationButtons.addAll(List.of(_addButton, _updateButton, _deleteButton,
+                _resetPasswordButton, clearButton));
 
         GridPane actions = new GridPane();
         actions.setHgap(8);
@@ -368,7 +573,8 @@ public class StudentManagementFrame extends Application {
         actions.add(_addButton, 0, 0);
         actions.add(_updateButton, 1, 0);
         actions.add(clearButton, 0, 1);
-        actions.add(_deleteButton, 1, 1);
+        actions.add(_resetPasswordButton, 1, 1);
+        actions.add(_deleteButton, 0, 2);
 
         VBox editor = new VBox(7, _editorModeLabel, editorHint, _formErrorLabel, form, actions);
         editor.getStyleClass().add("editor-panel");
@@ -381,12 +587,16 @@ public class StudentManagementFrame extends Application {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         _statusLabel.getStyleClass().add("status-message");
+        _undoButton.getStyleClass().addAll("button", "quiet-button", "undo-button");
+        _undoButton.setDisable(true);
+        _undoButton.setTooltip(new Tooltip("撤回最近一次学籍操作"));
+        _undoButton.setOnAction(event -> undoLastOperation());
         _progressIndicator.setMinSize(15, 15);
         _progressIndicator.setPrefSize(15, 15);
         _progressIndicator.setMaxSize(15, 15);
         _progressIndicator.setVisible(false);
         HBox statusBar = new HBox(8, connectionLabel, spacer,
-                _progressIndicator, _statusLabel);
+                _undoButton, _progressIndicator, _statusLabel);
         statusBar.setAlignment(Pos.CENTER_LEFT);
         statusBar.getStyleClass().add("status-bar");
         return statusBar;
@@ -425,6 +635,9 @@ public class StudentManagementFrame extends Application {
 
     private void configureTable() {
         addTextColumn("学号", 112, Student::getStudentId);
+        if (isTeacher()) {
+            addTextColumn("一卡通号", 120, Student::getCampusCardNo);
+        }
         addTextColumn("姓名", 88, Student::getName);
         addTextColumn("班级", 155, Student::getClassName);
         addTextColumn("专业", 175, Student::getMajor);
@@ -432,7 +645,17 @@ public class StudentManagementFrame extends Application {
         addStatusColumn();
 
         _table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        _table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
+        _table.getSelectionModel().setSelectionMode(
+                isAdmin() ? SelectionMode.MULTIPLE : SelectionMode.SINGLE);
+        _table.setRowFactory(table -> {
+            TableRow<Student> row = new TableRow<>();
+            row.setOnContextMenuRequested(event -> {
+                if (!row.isEmpty() && !_table.getSelectionModel().isSelected(row.getIndex())) {
+                    _table.getSelectionModel().clearAndSelect(row.getIndex());
+                }
+            });
+            return row;
+        });
         Label emptyTitle = new Label("未找到学生记录");
         emptyTitle.getStyleClass().add("empty-state-title");
         Label emptyHint = new Label("可修改查询条件后重试");
@@ -444,7 +667,73 @@ public class StudentManagementFrame extends Application {
         if (isAdmin()) {
             _table.getSelectionModel().selectedItemProperty().addListener(
                     (observable, oldValue, selected) -> fillForm(selected));
+            _table.getSelectionModel().getSelectedItems().addListener(
+                    (javafx.collections.ListChangeListener<Student>) change -> updateEditingButtons());
         }
+        configureTableContextMenu();
+    }
+
+    private void configureTableContextMenu() {
+        ContextMenu menu = new ContextMenu();
+        MenuItem statistics = new MenuItem(isTeacher() ? "查看当前名单统计图" : "查看统计图");
+        statistics.setOnAction(event -> showStatisticsDialog());
+        menu.getItems().add(statistics);
+        if (isAdmin()) {
+            MenuItem batchStatus = new MenuItem("批量修改状态…");
+            batchStatus.setOnAction(event -> promptBatchUpdateStatus());
+            batchStatus.disableProperty().bind(
+                    javafx.beans.binding.Bindings.isEmpty(_table.getSelectionModel().getSelectedItems()));
+            menu.getItems().add(batchStatus);
+            MenuItem overview = new MenuItem("查看学生全景档案");
+            overview.setOnAction(event -> showStudentOverview());
+            overview.disableProperty().bind(
+                    javafx.beans.binding.Bindings.isNull(_table.getSelectionModel().selectedItemProperty()));
+            menu.getItems().add(overview);
+        }
+        _table.setContextMenu(menu);
+    }
+
+    private void showStudentOverview() {
+        Student selected = _table.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            setInlineStatus("请先选择一名学生", true);
+            return;
+        }
+        runOperation("正在读取跨模块摘要...", "跨模块摘要已加载", () ->
+                _studentClientSrv.loadOverview(selected.getStudentId()),
+                this::showStudentOverviewDialog);
+    }
+
+    private void showStudentOverviewDialog(StudentCampusOverview overview) {
+        StringBuilder message = new StringBuilder()
+                .append("学号：").append(overview.getStudentId())
+                .append("\n账号状态：").append(valueOrEmpty(overview.getAccountStatus()))
+                .append("\n\n选课记录：").append(overview.getSelectedCourseCount()).append(" 条")
+                .append("\n当前借阅：").append(overview.getActiveBorrowCount()).append(" 本")
+                .append("\n逾期借阅：").append(overview.getOverdueBorrowCount()).append(" 本")
+                .append("\n校园卡余额：").append(overview.getWalletBalance()).append(" 元")
+                .append("\n消费记录：").append(overview.getPurchaseCount()).append(" 条")
+                .append("\n待就诊预约：").append(overview.getPendingAppointmentCount()).append(" 条");
+        if (overview.getWarnings().isEmpty()) {
+            message.append("\n\n状态检查：正常");
+        } else {
+            message.append("\n\n跨模块预警：\n");
+            message.append(String.join("\n", overview.getWarnings()));
+        }
+        Alert alert = new Alert(overview.getWarnings().isEmpty()
+                ? Alert.AlertType.INFORMATION : Alert.AlertType.WARNING,
+                message.toString(), ButtonType.OK);
+        alert.setTitle("学生全景档案");
+        alert.setHeaderText(selectedStudentTitle(overview.getStudentId()));
+        alert.getDialogPane().setMinWidth(440);
+        alert.showAndWait();
+    }
+
+    private String selectedStudentTitle(String studentId) {
+        Student student = _students.stream()
+                .filter(value -> studentId.equals(value.getStudentId()))
+                .findFirst().orElse(null);
+        return student == null ? "学籍跨模块摘要" : student.getName() + " · " + studentId;
     }
 
     private void addTextColumn(String title, double width, Function<Student, String> getter) {
@@ -515,8 +804,11 @@ public class StudentManagementFrame extends Application {
             refreshMyStudentInfo();
             return;
         }
+        String type = _queryTypeBox.getValue();
+        String keyword = _queryField.getText();
+        String status = _statusFilterBox.getValue();
         runOperation("正在刷新...", "已刷新学生列表",
-                _studentClientSrv::findAll,
+                () -> filterStudents(_studentClientSrv.findAll(), type, keyword, status),
                 (List<Student> students) -> _students.setAll(students));
     }
 
@@ -551,21 +843,266 @@ public class StudentManagementFrame extends Application {
             refreshMyStudentInfo();
             return;
         }
-        if (value == null || value.trim().isEmpty()) {
-            refreshStudents();
+        String status = _statusFilterBox.getValue();
+        runOperation("正在查询...", "查询完成", () -> {
+            return filterStudents(_studentClientSrv.findAll(), type, value, status);
+        }, (List<Student> students) -> _students.setAll(students));
+    }
+
+    private void exportStudents() {
+        if (_students.isEmpty()) {
+            setInlineStatus("当前没有可导出的学生记录", true);
             return;
         }
-        runOperation("正在查询...", "查询完成", () -> {
-            String keyword = value.trim();
-            if ("学号".equals(type)) {
-                Student student = _studentClientSrv.findByStudentId(keyword);
-                return student == null ? List.<Student>of() : List.of(student);
-            } else if ("一卡通号".equals(type)) {
-                Student student = _studentClientSrv.findByCampusCardNo(keyword);
-                return student == null ? List.<Student>of() : List.of(student);
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("导出学生学籍");
+        chooser.setInitialFileName("student-records.csv");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV 文件", "*.csv"));
+        File file = chooser.showSaveDialog(_root == null ? null : _root.getScene().getWindow());
+        if (file == null) {
+            return;
+        }
+        try {
+            StudentCsvExporter.write(file.toPath(), List.copyOf(_students), isAdmin());
+            setInlineStatus("已导出 " + _students.size() + " 条记录：" + file.getName(), false);
+        } catch (Exception exception) {
+            setInlineStatus("导出失败：" + exception.getMessage(), true);
+        }
+    }
+
+    private void importStudents() {
+        if (!isAdmin()) {
+            setInlineStatus("只有管理员可以批量导入学籍", true);
+            return;
+        }
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("批量导入学生学籍");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV 文件", "*.csv"));
+        File file = chooser.showOpenDialog(_root == null ? null : _root.getScene().getWindow());
+        if (file == null) {
+            return;
+        }
+        try {
+            StudentCsvImporter.ImportResult preview = StudentCsvImporter.read(file.toPath());
+            if (preview.fileError() != null) {
+                setInlineStatus("导入预览失败：" + preview.fileError(), true);
+                return;
             }
-            return _studentClientSrv.findByName(keyword);
-        }, (List<Student> students) -> _students.setAll(students));
+            int valid = (int) preview.rows().stream().filter(row -> row.student() != null).count();
+            int invalid = preview.rows().size() - valid;
+            StringBuilder text = new StringBuilder("文件：").append(file.getName())
+                    .append("\n可提交 ").append(valid).append(" 条");
+            if (invalid > 0) {
+                text.append("，格式错误 ").append(invalid).append(" 条");
+                preview.rows().stream().filter(row -> row.error() != null).limit(8)
+                        .forEach(row -> text.append("\n第").append(row.lineNumber())
+                                .append("行：").append(row.error()));
+            }
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, text.toString(),
+                    ButtonType.OK, ButtonType.CANCEL);
+            confirm.setTitle("导入预览");
+            confirm.setHeaderText("确认提交后才会写入学籍");
+            if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+                return;
+            }
+            runOperation("正在导入学籍...", "批量导入完成",
+                    () -> importRows(preview), summary -> {
+                        _students.addAll(summary.successes());
+                        showImportSummary(summary);
+                        if (!summary.successes().isEmpty()) {
+                            setUndo("撤回本次导入", () -> {
+                                for (Student added : summary.successes()) {
+                                    _studentClientSrv.deleteStudent(added.getStudentId());
+                                }
+                                return null;
+                            }, ignored -> refreshStudents());
+                        }
+                    });
+        } catch (Exception exception) {
+            setInlineStatus("导入预览失败：" + exception.getMessage(), true);
+        }
+    }
+
+    private ImportSummary importRows(StudentCsvImporter.ImportResult result) {
+        List<Student> successes = new ArrayList<>();
+        List<String> failures = new ArrayList<>();
+        for (StudentCsvImporter.Row row : result.rows()) {
+            if (row.error() != null) {
+                failures.add("第" + row.lineNumber() + "行：" + row.error());
+                continue;
+            }
+            try {
+                successes.add(_studentClientSrv.addStudent(row.student()));
+            } catch (Exception exception) {
+                failures.add("第" + row.lineNumber() + "行：" + userMessage(exception));
+            }
+        }
+        return new ImportSummary(successes, failures);
+    }
+
+    private void promptBatchUpdateStatus() {
+        if (!isAdmin()) return;
+        List<Student> selected = new ArrayList<>(_table.getSelectionModel().getSelectedItems());
+        if (selected.isEmpty()) {
+            setInlineStatus("请先多选需要修改的学生", true);
+            return;
+        }
+        ChoiceDialog<StudentStatus> dialog = new ChoiceDialog<>(null,
+                StudentStatus.values());
+        dialog.setTitle("批量修改学籍状态");
+        dialog.setHeaderText("已选择 " + selected.size() + " 条学籍\n当前状态："
+                + summarizeStatuses(selected));
+        dialog.setContentText("目标状态：");
+        dialog.showAndWait().ifPresent(this::batchUpdateStatus);
+    }
+
+    private static String summarizeStatuses(List<Student> students) {
+        Map<StudentStatus, Long> counts = students.stream()
+                .collect(java.util.stream.Collectors.groupingBy(Student::getStatus,
+                        java.util.LinkedHashMap::new, java.util.stream.Collectors.counting()));
+        return counts.entrySet().stream()
+                .map(entry -> String.valueOf(entry.getKey()) + " " + entry.getValue() + " 人")
+                .collect(java.util.stream.Collectors.joining("、"));
+    }
+
+    private void batchUpdateStatus(StudentStatus target) {
+        if (!isAdmin()) {
+            return;
+        }
+        List<Student> selected = new ArrayList<>(_table.getSelectionModel().getSelectedItems());
+        if (selected.isEmpty()) {
+            setInlineStatus("请先多选需要修改的学生", true);
+            return;
+        }
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "确定将选中的 " + selected.size() + " 条学籍改为“" + target + "”吗？",
+                ButtonType.OK, ButtonType.CANCEL);
+        confirm.setTitle("批量修改学籍状态");
+        if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return;
+        }
+        runOperation("正在批量修改...", "批量修改完成", () -> {
+            List<Student> successes = new ArrayList<>();
+            List<String> failures = new ArrayList<>();
+            List<Student> before = selected.stream()
+                    .map(StudentManagementFrame::copyStudent).toList();
+            for (Student selectedStudent : selected) {
+                Student changed = copyStudent(selectedStudent);
+                changed.setStatus(target);
+                try {
+                    successes.add(_studentClientSrv.updateStudent(
+                            selectedStudent.getStudentId(), changed));
+                } catch (Exception exception) {
+                    failures.add(selectedStudent.getStudentId() + "：" + userMessage(exception));
+                }
+            }
+            return new BatchUpdateSummary(successes, failures, before);
+        }, summary -> {
+            for (Student updated : summary.successes()) {
+                int index = findStudentIndex(updated.getStudentId());
+                if (index >= 0) {
+                    _students.set(index, updated);
+                }
+            }
+            if (!summary.failures().isEmpty()) {
+                showBatchFailureSummary(summary.failures());
+            }
+            if (!summary.successes().isEmpty()) {
+                setUndo("撤回批量状态修改", () -> {
+                    for (Student previous : summary.before()) {
+                        Student current = _studentClientSrv.findByStudentId(previous.getStudentId());
+                        if (current != null) {
+                            _studentClientSrv.updateStudent(current.getStudentId(), previous);
+                        }
+                    }
+                    return null;
+                }, ignored -> refreshStudents());
+            }
+        });
+    }
+
+    private int findStudentIndex(String studentId) {
+        for (int index = 0; index < _students.size(); index++) {
+            if (studentId.equals(_students.get(index).getStudentId())) return index;
+        }
+        return -1;
+    }
+
+    private static Student copyStudent(Student source) {
+        Student target = new Student();
+        target.setStudentId(source.getStudentId());
+        target.setCampusCardNo(source.getCampusCardNo());
+        target.setUserId(source.getUserId());
+        target.setName(source.getName());
+        target.setClassName(source.getClassName());
+        target.setMajor(source.getMajor());
+        target.setGrade(source.getGrade());
+        target.setEnrollmentDate(source.getEnrollmentDate());
+        target.setStatus(source.getStatus());
+        target.setVersion(source.getVersion());
+        target.setUpdatedAt(source.getUpdatedAt());
+        return target;
+    }
+
+    private void showBatchFailureSummary(List<String> failures) {
+        Alert alert = new Alert(Alert.AlertType.WARNING,
+                "部分记录未修改：\n" + String.join("\n", failures), ButtonType.OK);
+        alert.setTitle("批量修改结果");
+        alert.setHeaderText(null);
+        alert.showAndWait();
+    }
+
+    private record BatchUpdateSummary(List<Student> successes, List<String> failures,
+                                      List<Student> before) {
+    }
+
+    private void showImportSummary(ImportSummary summary) {
+        StringBuilder message = new StringBuilder("成功导入 ")
+                .append(summary.successes().size()).append(" 条");
+        if (!summary.failures().isEmpty()) {
+            message.append("，失败 ").append(summary.failures().size()).append(" 条");
+            int limit = Math.min(summary.failures().size(), 12);
+            message.append("\n\n").append(String.join("\n", summary.failures().subList(0, limit)));
+            if (summary.failures().size() > limit) {
+                message.append("\n……其余错误请修正后重新导入");
+            }
+        }
+        Alert alert = new Alert(summary.failures().isEmpty()
+                ? Alert.AlertType.INFORMATION : Alert.AlertType.WARNING, message.toString(), ButtonType.OK);
+        alert.setTitle("批量导入结果");
+        alert.setHeaderText(null);
+        alert.showAndWait();
+    }
+
+    private record ImportSummary(List<Student> successes, List<String> failures) {
+    }
+
+    /** 在服务端已授权的列表上做包含匹配和状态筛选。 */
+    private static List<Student> filterStudents(List<Student> students, String type,
+                                                String value, String status) {
+        String keyword = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        return students.stream()
+                .filter(student -> "全部状态".equals(status)
+                        || (student.getStatus() != null
+                        && student.getStatus().toString().equals(status)))
+                .filter(student -> keyword.isEmpty()
+                        || searchableValue(student, type).toLowerCase(Locale.ROOT)
+                        .contains(keyword))
+                .toList();
+    }
+
+    private static String searchableValue(Student student, String type) {
+        if ("一卡通号".equals(type)) {
+            return valueOrEmpty(student.getCampusCardNo());
+        }
+        if ("姓名".equals(type)) {
+            return valueOrEmpty(student.getName());
+        }
+        return valueOrEmpty(student.getStudentId());
+    }
+
+    private static String valueOrEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private void addStudent() {
@@ -582,6 +1119,10 @@ public class StudentManagementFrame extends Application {
             _students.add(saved);
             _table.getSelectionModel().clearSelection();
             clearForm();
+            setUndo("撤回新增档案", () -> {
+                _studentClientSrv.deleteStudent(saved.getStudentId());
+                return null;
+            }, ignored -> refreshStudents());
         });
     }
 
@@ -599,6 +1140,7 @@ public class StudentManagementFrame extends Application {
             return;
         }
         Student formStudent = readForm(selected);
+        Student before = copyStudent(selected);
         boolean studentIdChanged = !selected.getStudentId().equals(formStudent.getStudentId());
         if (studentIdChanged && !confirmStudentIdChange(
                 selected.getStudentId(), formStudent.getStudentId())) {
@@ -609,6 +1151,10 @@ public class StudentManagementFrame extends Application {
             int index = _students.indexOf(selected);
             _students.set(index, updated);
             _table.getSelectionModel().select(index);
+            setUndo("撤回“" + updated.getName() + "”的修改", () -> {
+                _studentClientSrv.updateStudent(updated.getStudentId(), before);
+                return null;
+            }, ignored -> refreshStudents());
         });
     }
 
@@ -636,8 +1182,42 @@ public class StudentManagementFrame extends Application {
             _studentClientSrv.deleteStudent(selected.getStudentId());
             return null;
         }, ignored -> {
+            Student snapshot = copyStudent(selected);
             _students.remove(selected);
             clearForm();
+            setUndo("恢复“" + snapshot.getName() + "”的学籍", () -> {
+                _studentClientSrv.addStudent(snapshot);
+                return null;
+            }, ignoredValue -> refreshStudents());
+        });
+    }
+
+    private void resetStudentPassword() {
+        if (!isAdmin()) {
+            setInlineStatus("只有管理员可以重置学生密码", true);
+            return;
+        }
+        Student selected = _table.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            setInlineStatus("请先从列表中选择一条学生记录", true);
+            return;
+        }
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "确定将“" + selected.getName() + "”的密码重置为 123456 吗？",
+                ButtonType.OK, ButtonType.CANCEL);
+        confirm.setTitle("确认重置密码");
+        confirm.setHeaderText("重置后请提醒学生及时修改密码");
+        if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return;
+        }
+        runOperation("正在重置密码...", "学生密码已重置为 123456", () -> {
+            Message response = _userClientSrv.resetStudentPassword(
+                    _currentUser.getUId(), selected.getUserId());
+            if (!IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
+                throw new IllegalStateException(String.valueOf(response.getData()));
+            }
+            return null;
+        }, ignored -> {
         });
     }
 
@@ -668,6 +1248,7 @@ public class StudentManagementFrame extends Application {
         _addButton.setDisable(editing);
         _updateButton.setDisable(!editing);
         _deleteButton.setDisable(!editing);
+        _resetPasswordButton.setDisable(!editing);
         _editorModeLabel.setText(editing
                 ? "编辑学生  ·  " + student.getStudentId() : "新建学生");
 
@@ -751,7 +1332,9 @@ public class StudentManagementFrame extends Application {
         _progressIndicator.setVisible(busy);
         _table.setDisable(busy);
         _queryTypeBox.setDisable(busy);
+        _statusFilterBox.setDisable(busy);
         _queryField.setDisable(busy);
+        _undoButton.setDisable(busy || _undoOperation == null);
         for (Button button : _operationButtons) {
             button.setDisable(busy);
         }
@@ -771,17 +1354,46 @@ public class StudentManagementFrame extends Application {
         }
     }
 
+    private void setUndo(String description, CheckedSupplier<Void> operation,
+                         Consumer<Void> onSuccess) {
+        _undoDescription = description;
+        _undoOperation = operation;
+        _undoSuccess = onSuccess;
+        _undoButton.setText(description);
+        _undoButton.setDisable(false);
+    }
+
+    private void undoLastOperation() {
+        if (_undoOperation == null || _operationRunning) {
+            return;
+        }
+        CheckedSupplier<Void> operation = _undoOperation;
+        Consumer<Void> success = _undoSuccess;
+        clearUndo();
+        runOperation("正在撤回...", "已撤回上一步操作", operation, success);
+    }
+
+    private void clearUndo() {
+        _undoDescription = null;
+        _undoOperation = null;
+        _undoSuccess = null;
+        _undoButton.setText("撤回上一步");
+        _undoButton.setDisable(true);
+    }
+
     private void updateEditingButtons() {
         if (!isAdmin()) {
             _addButton.setDisable(true);
             _updateButton.setDisable(true);
             _deleteButton.setDisable(true);
+            _resetPasswordButton.setDisable(true);
             return;
         }
         boolean editing = _table.getSelectionModel().getSelectedItem() != null;
         _addButton.setDisable(_operationRunning || editing);
         _updateButton.setDisable(_operationRunning || !editing);
         _deleteButton.setDisable(_operationRunning || !editing);
+        _resetPasswordButton.setDisable(_operationRunning || !editing);
     }
 
     private List<Control> formControls() {
@@ -793,7 +1405,86 @@ public class StudentManagementFrame extends Application {
     private void updateCount() {
         if (!isStudent()) {
             _countLabel.setText("共 " + _students.size() + " 条");
+            updateStudentStatistics();
         }
+    }
+
+    private void updateStudentStatistics() {
+        int enrolled = 0;
+        int suspended = 0;
+        int graduated = 0;
+        int withdrawn = 0;
+        for (Student student : _students) {
+            if (student.getStatus() == StudentStatus.ENROLLED) enrolled++;
+            else if (student.getStatus() == StudentStatus.SUSPENDED) suspended++;
+            else if (student.getStatus() == StudentStatus.GRADUATED) graduated++;
+            else if (student.getStatus() == StudentStatus.WITHDRAWN) withdrawn++;
+        }
+        _totalStatLabel.setText(String.valueOf(_students.size()));
+        _enrolledStatLabel.setText(String.valueOf(enrolled));
+        _suspendedStatLabel.setText(String.valueOf(suspended));
+        _graduatedStatLabel.setText(String.valueOf(graduated));
+        _withdrawnStatLabel.setText(String.valueOf(withdrawn));
+        Map<String, Long> grades = _students.stream().filter(student -> student.getGrade() != null)
+                .collect(java.util.stream.Collectors.groupingBy(Student::getGrade,
+                        java.util.LinkedHashMap::new, java.util.stream.Collectors.counting()));
+        Map<String, Long> majors = _students.stream().filter(student -> student.getMajor() != null)
+                .collect(java.util.stream.Collectors.groupingBy(Student::getMajor,
+                        java.util.LinkedHashMap::new, java.util.stream.Collectors.counting()));
+        _breakdownStatLabel.setText("年级：" + compactBreakdown(grades)
+                + "　专业：" + compactBreakdown(majors));
+        if (_statisticsDialogSubtitle != null) {
+            _statisticsDialogSubtitle.setText("统计范围：当前学生列表，共 " + _students.size()
+                    + " 条（已应用搜索和状态筛选） · 更新于 "
+                    + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
+        }
+        updateStatisticsCharts(grades, majors, enrolled, suspended, graduated, withdrawn);
+    }
+
+    private void updateStatisticsCharts(Map<String, Long> grades, Map<String, Long> majors,
+                                        int enrolled, int suspended, int graduated,
+                                        int withdrawn) {
+        _statusChart.getData().setAll(
+                pieData("在读", enrolled), pieData("休学", suspended),
+                pieData("毕业", graduated), pieData("退学", withdrawn));
+        _gradeChart.getData().setAll(barData(grades));
+        _majorChart.getData().setAll(barData(majors));
+        setChartEmpty(_statusChart, enrolled + suspended + graduated + withdrawn == 0);
+        setChartEmpty(_gradeChart, grades.isEmpty());
+        setChartEmpty(_majorChart, majors.isEmpty());
+    }
+
+    private void setChartEmpty(javafx.scene.chart.Chart chart, boolean empty) {
+        Label label = _chartEmptyLabels.get(chart);
+        if (label != null) {
+            label.setVisible(empty);
+            label.setManaged(empty);
+        }
+        chart.setOpacity(empty ? 0.15 : 1.0);
+    }
+
+    private static PieChart.Data pieData(String name, int value) {
+        return new PieChart.Data(name + "  " + value, value);
+    }
+
+    private static javafx.scene.chart.XYChart.Series<String, Number> barData(
+            Map<String, Long> values) {
+        javafx.scene.chart.XYChart.Series<String, Number> series =
+                new javafx.scene.chart.XYChart.Series<>();
+        values.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed()
+                        .thenComparing(Map.Entry.comparingByKey()))
+                .limit(5)
+                .forEach(entry -> series.getData().add(
+                        new javafx.scene.chart.XYChart.Data<>(entry.getKey(), entry.getValue())));
+        return series;
+    }
+
+    private static String compactBreakdown(Map<String, Long> values) {
+        if (values.isEmpty()) return "暂无";
+        return values.entrySet().stream().limit(3)
+                .map(entry -> entry.getKey() + "(" + entry.getValue() + ")")
+                .collect(java.util.stream.Collectors.joining("、"));
     }
 
     private boolean isStudent() {
@@ -824,9 +1515,9 @@ public class StudentManagementFrame extends Application {
     private void updateQueryPrompt() {
         String type = _queryTypeBox.getValue();
         _queryField.setPromptText(switch (type == null ? "" : type) {
-            case "一卡通号" -> "输入完整一卡通号";
-            case "姓名" -> "输入学生姓名";
-            default -> "输入完整学号";
+            case "一卡通号" -> "输入一卡通号关键词";
+            case "姓名" -> "输入姓名关键词";
+            default -> "输入学号关键词";
         });
     }
 
@@ -966,6 +1657,9 @@ public class StudentManagementFrame extends Application {
 
     private static String userMessage(Throwable exception) {
         if (exception instanceof StudentClientException) {
+            return exception.getMessage();
+        }
+        if (exception instanceof IllegalArgumentException || exception instanceof IllegalStateException) {
             return exception.getMessage();
         }
         return "无法连接服务器，请确认服务器已启动后重试";

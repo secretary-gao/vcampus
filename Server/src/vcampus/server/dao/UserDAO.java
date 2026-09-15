@@ -10,6 +10,7 @@
 package vcampus.server.dao;
 
 import vcampus.common.vo.User;
+import vcampus.common.util.MD5Util;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -173,6 +174,17 @@ public class UserDAO {
             pstmt.setString(1, status);
             pstmt.setString(2, uId);
 
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /** 将账号密码重置为系统约定的初始密码。 */
+    public boolean resetPassword(String uId) throws SQLException, IOException {
+        String sql = "UPDATE tblUser SET uPwd = ? WHERE uId = ? AND uRole = '学生'";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, MD5Util.md5("123456"));
+            pstmt.setString(2, uId);
             return pstmt.executeUpdate() > 0;
         }
     }

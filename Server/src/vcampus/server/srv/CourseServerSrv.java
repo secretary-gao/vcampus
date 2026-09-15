@@ -16,6 +16,8 @@ import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.CourseRequirementGroup;
 import vcampus.common.vo.CourseDashboardStats;
 import vcampus.common.vo.SelectCourse;
+import vcampus.common.vo.Student;
+import vcampus.common.vo.StudentStatus;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
 import vcampus.server.dao.CourseDAO;
@@ -25,6 +27,7 @@ import vcampus.server.dao.CourseDashboardDAO;
 import vcampus.server.dao.CourseStudentDAO;
 import vcampus.server.dao.DbHelper;
 import vcampus.server.dao.SelectCourseDAO;
+import vcampus.server.dao.StudentDAO;
 import vcampus.server.dao.TeacherCourseEnrollmentDAO;
 import vcampus.server.dao.TeachingClassDAO;
 
@@ -66,6 +69,7 @@ public class CourseServerSrv implements ICourseServerSrv {
 
     /** 登录用户与正式学号映射查询。 */
     private final CourseStudentDAO _courseStudentDAO = new CourseStudentDAO();
+    private final StudentDAO _studentDAO = new StudentDAO();
 
     /** 教师课程名单查询。 */
     private final TeacherCourseEnrollmentDAO _teacherEnrollmentDAO =
@@ -431,6 +435,10 @@ public class CourseServerSrv implements ICourseServerSrv {
             try {
                 if (!_selectCourseDAO.lockStudent(conn, normalizedStudentId)) {
                     throw new CourseServiceException("学生不存在：" + normalizedStudentId);
+                }
+                Student student = _studentDAO.findByStudentId(normalizedStudentId);
+                if (student != null && student.getStatus() != StudentStatus.ENROLLED) {
+                    throw new CourseServiceException(StudentStatusGuard.denialMessage("选课"));
                 }
                 TeachingClass teachingClass = resolveTeachingClass(conn, normalizedClassId, true);
                 String normalizedCourseId = teachingClass.getCourseId();

@@ -63,6 +63,10 @@ public class StoreServerSrv implements IStoreServerSrv {
     @Override
     public PurchaseRecord purchaseGoods(String userId, String goodsId, int quantity)
             throws ShopException, SQLException, IOException {
+        if (!StudentStatusGuard.canUseStudentServices(userId)) {
+            throw new ShopException(IConstant.STATUS_CONFLICT,
+                    StudentStatusGuard.denialMessage("使用校园卡消费"));
+        }
         if (quantity <= 0) {
             throw new ShopException(IConstant.STATUS_CONFLICT, "购买数量必须为正整数");
         }
@@ -194,6 +198,10 @@ public class StoreServerSrv implements IStoreServerSrv {
         }
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new ShopException(IConstant.STATUS_CONFLICT, "充值金额必须为正数");
+        }
+        if (!StudentStatusGuard.canUseStudentServices(userId)) {
+            throw new ShopException(IConstant.STATUS_CONFLICT,
+                    StudentStatusGuard.denialMessage("校园卡充值"));
         }
         _walletDAO.recharge(userId, amount);
         return queryBalance(userId);

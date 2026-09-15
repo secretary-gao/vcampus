@@ -260,6 +260,172 @@
     -fx-font-size: 11px;
 }
 
+.app-root .statistics-bar {
+    -fx-padding: 9px 0 4px 0;
+    -fx-alignment: center-left;
+}
+
+.app-root .statistics-dialog-content {
+    -fx-padding: 18px 20px 14px 20px;
+    -fx-background-color: -vc-background;
+}
+
+.app-root .statistics-scroll {
+    -fx-background-color: -vc-background;
+    -fx-border-color: transparent;
+}
+
+.app-root .statistics-scroll > .viewport {
+    -fx-background-color: -vc-background;
+}
+
+.app-root .statistics-dialog-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -vc-text;
+}
+
+.app-root .statistics-dialog-subtitle {
+    -fx-font-size: 11px;
+    -fx-text-fill: -vc-text-muted;
+}
+
+.app-root.statistics-dialog {
+    -fx-background-color: -vc-background;
+}
+
+.app-root.statistics-dialog .header-panel {
+    -fx-background-color: -vc-surface;
+    -fx-padding: 0;
+}
+
+.app-root.statistics-dialog .button-bar {
+    -fx-background-color: -vc-surface;
+    -fx-padding: 8px 16px 12px 16px;
+}
+
+.app-root .statistics-summary {
+    -fx-alignment: center-left;
+}
+
+.app-root .statistics-charts {
+    -fx-alignment: center-left;
+}
+
+.app-root .chart-card {
+    -fx-min-height: 260px;
+    -fx-padding: 8px 10px 5px 10px;
+    -fx-background-color: -vc-surface-subtle;
+    -fx-border-color: -vc-border;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+
+.app-root .chart-card-title {
+    -fx-text-fill: -vc-text-secondary;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+}
+
+.app-root .student-status-chart,
+.app-root .student-bar-chart {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.app-root .student-status-chart .chart-legend {
+    -fx-background-color: transparent;
+    -fx-padding: 2px 0 0 0;
+}
+
+.app-root .student-status-chart .chart-legend-item {
+    -fx-text-fill: -vc-text-secondary;
+    -fx-font-size: 10px;
+}
+
+.app-root .student-status-chart .data0.chart-pie {
+    -fx-pie-color: #3f876c;
+}
+
+.app-root .student-status-chart .data1.chart-pie {
+    -fx-pie-color: #c28a36;
+}
+
+.app-root .student-status-chart .data2.chart-pie {
+    -fx-pie-color: #7d8b98;
+}
+
+.app-root .student-status-chart .data3.chart-pie {
+    -fx-pie-color: #b65a5a;
+}
+
+.app-root .student-bar-chart .axis-label,
+.app-root .student-bar-chart .tick-label {
+    -fx-text-fill: -vc-text-muted;
+    -fx-font-size: 9px;
+}
+
+.app-root .student-bar-chart .chart-plot-background {
+    -fx-background-color: transparent;
+}
+
+.app-root .student-bar-chart .chart-vertical-grid-lines,
+.app-root .student-bar-chart .chart-horizontal-grid-lines {
+    -fx-stroke: #dfe7e2;
+}
+
+.app-root .student-bar-chart .default-color0.chart-bar {
+    -fx-bar-fill: -vc-primary;
+}
+
+.app-root .stat-breakdown {
+    -fx-max-width: 360px;
+    -fx-padding: 0 0 0 6px;
+    -fx-text-fill: -vc-text-muted;
+    -fx-font-size: 10px;
+}
+
+.app-root .chart-empty-label {
+    -fx-text-fill: -vc-text-muted;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+.app-root .undo-button {
+    -fx-border-color: #d6c18c;
+    -fx-text-fill: #775915;
+    -fx-background-color: #fbf2dc;
+}
+
+.app-root .batch-operation-bar {
+    -fx-padding: 7px 0 0 0;
+}
+
+.app-root .stat-card {
+    -fx-min-width: 84px;
+    -fx-padding: 6px 10px;
+    -fx-background-color: -vc-surface-subtle;
+    -fx-border-color: -vc-border;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+}
+
+.app-root .stat-title {
+    -fx-text-fill: -vc-text-muted;
+    -fx-font-size: 10px;
+}
+
+.app-root .stat-value {
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -vc-text;
+}
+
+.app-root .stat-value.stat-total,
+.app-root .stat-value.stat-enrolled {
+    -fx-text-fill: -vc-primary;
+}
+
 .app-root .field-hint {
     -fx-padding: 8px 10px;
     -fx-background-color: -vc-primary-soft;

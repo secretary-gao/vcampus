@@ -79,6 +79,10 @@ public interface IUserClientSrv {
      */
     Message listPendingUsers(String operatorUId) throws IOException, ClassNotFoundException;
 
+    /** 将指定学生账号的密码重置为 123456，仅管理员可操作。 */
+    Message resetStudentPassword(String operatorUId, String targetUId)
+            throws IOException, ClassNotFoundException;
+
     /**
      * 兼容旧客户端的学生注册请求。当前服务端会拒绝该请求，学生账号只能由
      * 管理员新增学籍档案时自动创建。

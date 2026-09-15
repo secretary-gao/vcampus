@@ -4,6 +4,7 @@ import vcampus.common.constant.StudentProtocol;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.Student;
+import vcampus.common.vo.StudentCampusOverview;
 import vcampus.common.vo.StudentUpdateRequest;
 import vcampus.common.vo.User;
 
@@ -96,6 +97,12 @@ public class StudentClientSrv implements IStudentClientSrv {
     public void deleteStudent(String studentId)
             throws IOException, ClassNotFoundException, StudentClientException {
         request(StudentProtocol.DELETE, studentId);
+    }
+
+    @Override
+    public StudentCampusOverview loadOverview(String studentId)
+            throws IOException, ClassNotFoundException, StudentClientException {
+        return (StudentCampusOverview) request(StudentProtocol.OVERVIEW, studentId).getData();
     }
 
     private Message request(String name, Object data)
