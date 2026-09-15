@@ -98,6 +98,10 @@ public class StoreServerSrv implements IStoreServerSrv {
         if (userId == null || userId.isBlank()) {
             throw new ShopException(IConstant.STATUS_CONFLICT, "未登录或用户信息缺失");
         }
+        if (!StudentStatusGuard.canUseStudentServices(userId)) {
+            throw new ShopException(IConstant.STATUS_CONFLICT,
+                    StudentStatusGuard.denialMessage("使用校园卡消费"));
+        }
 
         // 1) 合并购物车条目：同一商品多次加入合并数量；按商品编号排序，保证后续加锁顺序一致
         Map<String, Integer> merged = new TreeMap<>();
