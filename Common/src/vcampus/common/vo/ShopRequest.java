@@ -11,6 +11,7 @@ package vcampus.common.vo;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 虚拟商店模块的请求载体，用于把客户端发起的各类商店业务参数打包进
@@ -19,7 +20,9 @@ import java.math.BigDecimal;
  *
  * <p>不同操作只用到其中部分字段，例如：查询商品用 {@code _keyword}/{@code _category}；
  * 购买商品用 {@code _userId}/{@code _goodsId}/{@code _quantity}；查询购买记录用
- * {@code _userId}；新增/修改商品用 {@code _goods}；删除商品用 {@code _goodsId}。</p>
+ * {@code _userId}；新增/修改商品用 {@code _goods}；删除商品用 {@code _goodsId}；
+ * 校园卡充值用 {@code _userId}/{@code _amount}；购物车结算用
+ * {@code _userId}/{@code _items}（一次可含多个商品）。</p>
  */
 public class ShopRequest implements Serializable {
 
@@ -46,6 +49,9 @@ public class ShopRequest implements Serializable {
 
     /** 充值金额（校园卡充值）。 */
     private BigDecimal _amount;
+
+    /** 购物车结算的商品条目（一次结算可含多个商品）。 */
+    private List<CartItem> _items;
 
     /**
      * 无参构造方法。
@@ -177,5 +183,23 @@ public class ShopRequest implements Serializable {
      */
     public void setAmount(BigDecimal amount) {
         this._amount = amount;
+    }
+
+    /**
+     * 获取购物车结算条目。
+     *
+     * @return 购物车条目列表
+     */
+    public List<CartItem> getItems() {
+        return _items;
+    }
+
+    /**
+     * 设置购物车结算条目。
+     *
+     * @param items 购物车条目列表
+     */
+    public void setItems(List<CartItem> items) {
+        this._items = items;
     }
 }

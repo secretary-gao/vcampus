@@ -9,11 +9,13 @@
  */
 package vcampus.client.biz;
 
+import vcampus.common.vo.CartItem;
 import vcampus.common.vo.Goods;
 import vcampus.common.vo.Message;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 客户端商店业务服务接口，对应共享说明书中"虚拟商店模块"的 IStoreClientSrv。
@@ -105,4 +107,25 @@ public interface IStoreClientSrv {
      * @throws ClassNotFoundException 反序列化响应对象失败
      */
     Message recharge(String userId, BigDecimal amount) throws IOException, ClassNotFoundException;
+
+    /**
+     * 发起"购物车结算"请求：把购物车中的多个商品作为一个订单提交给服务器。
+     *
+     * @param userId 下单人ID
+     * @param items  购物车条目（商品编号 + 数量）
+     * @return 服务器返回的响应消息（成功时 data 为生成的 {@link vcampus.common.vo.Order}）
+     * @throws IOException            网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message checkout(String userId, List<CartItem> items) throws IOException, ClassNotFoundException;
+
+    /**
+     * 发起"查询订单（含明细）"请求。
+     *
+     * @param userId 下单人ID；为空串或 {@code null} 表示查询全部订单（管理员）
+     * @return 服务器返回的响应消息（成功时 data 为 {@code List<Order>}）
+     * @throws IOException            网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message queryOrders(String userId) throws IOException, ClassNotFoundException;
 }

@@ -9,17 +9,20 @@
  */
 package vcampus.client.biz;
 
+import vcampus.common.vo.CartItem;
 import vcampus.common.vo.Goods;
 import vcampus.common.vo.Message;
+import vcampus.common.vo.Order;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * {@link StoreClientSrv} 的端到端验证程序：不涉及界面，直接通过 Socket
  * 向服务器依次发起"查询商品 → 购买商品 → 查询购买记录 → 新增商品 → 删除商品
- * → 修改商品"请求，打印服务器返回的响应，用于确认"客户端 → Socket → 服务器
- * → 数据库"整条链路是否打通。
+ * → 修改商品 → 购物车结算 → 查询订单"请求，打印服务器返回的响应，用于确认
+ * "客户端 → Socket → 服务器 → 数据库"整条链路是否打通。
  *
  * <p>运行前请先启动 {@code vcampus.server.srv.Server}。</p>
  */
@@ -83,6 +86,55 @@ public class StoreClientSrvTest {
             Goods update = new Goods("ST001", "客户端测试商品-改", "测试类别", new BigDecimal("29.90"), 20);
             Message u = storeClientSrv.updateGoods(update);
             System.out.println("修改响应：statusCode=" + u.getStatusCode() + ", data=" + u.getData());
+
+            System.out.println("=== 11. 购物车结算前的余额 ===");
+            Message b3 = storeClientSrv.queryBalance(testUser);
+            System.out.println("结算前余额：statusCode=" + b3.getStatusCode() + ", 余额=" + b3.getData());
+
+            System.out.println("=== 12. 测试购物车结算（一单多商品：G004×2 + G005×3）===");
+            List<CartItem> cart = new ArrayList<>();
+            cart.add(new CartItem("G004", 2));
+            cart.add(new CartItem("G005", 3));
+            Message co = storeClientSrv.checkout(testUser, cart);
+            System.out.println("结算响应：statusCode=" + co.getStatusCode());
+            if (co.getData() instanceof Order order) {
+                System.out.println("生成的订单：" + order);
+                for (vcampus.common.vo.PurchaseRecord item : order.getItems()) {
+                    System.out.println("    明细：" + item.getGoodsName() + " × " + item.getQuantity()
+                            + " = " + item.getTotalPrice().toPlainString());
+                }
+            } else {
+                System.out.println("结算返回数据：" + co.getData());
+            }
+
+            System.out.println("=== 13. 结算后再查余额（应扣减整单金额）===");
+            Message b4 = storeClientSrv.queryBalance(testUser);
+            System.out.println("结算后余额：statusCode=" + b4.getStatusCode() + ", 余额=" + b4.getData());
+
+            System.out.println("=== 14. 测试查询订单（含明细）===");
+            Message oq = storeClientSrv.queryOrders(testUser);
+            System.out.println("订单查询响应：statusCode=" + oq.getStatusCode());
+            if (oq.getData() instanceof List<?> orders) {
+                System.out.println("订单数=" + orders.size());
+                for (Object obj : orders) {
+                    if (obj instanceof Order order) {
+                        System.out.println("    订单 " + order.getOrderId() + "：" + order.getItemCount()
+                                + " 种 / " + order.getTotalQuantity() + " 件，共 "
+                                + order.getTotalAmount().toPlainString() + " 元");
+                    }
+                }
+            }
+
+            System.out.println("=== 15. 测试库存不足的结算（G006 买 9999 件，应整单失败）===");
+            List<CartItem> badCart = new ArrayList<>();
+            badCart.add(new CartItem("G004", 1));
+            badCart.add(new CartItem("G006", 9999));
+            Message bad = storeClientSrv.checkout(testUser, badCart);
+            System.out.println("结算响应：statusCode=" + bad.getStatusCode() + ", data=" + bad.getData());
+
+            System.out.println("=== 16. 清理：删除本次测试新增的商品 ST001（应删除成功）===");
+            Message clean = storeClientSrv.deleteGoods("ST001");
+            System.out.println("删除ST001响应：statusCode=" + clean.getStatusCode() + ", data=" + clean.getData());
 
             System.out.println();
             System.out.println("=== 商店模块 Socket 端到端自测完成 ===");
