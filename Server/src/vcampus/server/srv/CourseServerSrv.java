@@ -842,18 +842,18 @@ public class CourseServerSrv implements ICourseServerSrv {
 
     private int periodFor(java.time.LocalTime time) {
         int minutes = time.getHour() * 60 + time.getMinute();
-        if (minutes < 525) return 1;
-        if (minutes < 575) return 2;
-        if (minutes < 675) return 3;
-        if (minutes < 725) return 4;
-        if (minutes < 775) return 5;
-        if (minutes < 875) return 6;
-        if (minutes < 925) return 7;
-        if (minutes < 1025) return 8;
-        if (minutes < 1075) return 9;
-        if (minutes < 1125) return 10;
-        if (minutes < 1175) return 11;
-        if (minutes < 1225) return 12;
+        if (minutes < 530) return 1;
+        if (minutes < 590) return 2;
+        if (minutes < 640) return 3;
+        if (minutes < 690) return 4;
+        if (minutes < 840) return 5;
+        if (minutes < 890) return 6;
+        if (minutes < 950) return 7;
+        if (minutes < 1000) return 8;
+        if (minutes < 1050) return 9;
+        if (minutes < 1140) return 10;
+        if (minutes < 1190) return 11;
+        if (minutes < 1240) return 12;
         return 13;
     }
 

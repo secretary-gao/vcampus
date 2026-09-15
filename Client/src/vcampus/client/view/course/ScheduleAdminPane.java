@@ -182,7 +182,7 @@ public class ScheduleAdminPane extends VBox {
         TextField start = field("HH:mm");
         TextField end = field("HH:mm");
         start.setText("08:00");
-        end.setText("09:40");
+        end.setText("09:35");
         weekStart.setText("1");
         weekEnd.setText("16");
         startPeriod.setText("1");

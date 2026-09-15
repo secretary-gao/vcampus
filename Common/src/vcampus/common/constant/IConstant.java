@@ -61,6 +61,9 @@ public interface IConstant {
     /** 消息名：登出请求，对应 {@link vcampus.common.vo.Message#getName()}。 */
     String MSG_LOGOUT = "logout";
 
+    //医院模块新增常量
+    String MSG_HOSPITAL_GET_OCCUPIED_TIME = "hospital_get_occupied_time";
+
     /**
      * 消息名：管理员禁用/启用账号请求，对应说明书"管理员可注销/禁用账号"。
      * 请求 data 约定为 {@code Object[]{operatorUId, targetUId, newStatus}}。

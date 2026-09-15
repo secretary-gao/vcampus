@@ -45,13 +45,20 @@ public class HospitalServerSrv implements IHospitalServerSrv {
     if(appointTime.before(now)){
         throw new IOException("无法选择过去的时间");
     }
-    //②校验：同一用户该时间已经预约
-    boolean repeat = _appointDAO.existSameTimeAppointment(appoint.getUserId(), appoint.getAppointmentTime());
-    if(repeat){
-        throw new IOException("该时段该医生已有预约");
+    //②校验：同一个用户，同一时间不能重复预约（原有逻辑保留）
+    boolean userRepeat = _appointDAO.existSameTimeAppointment(appoint.getUserId(), appoint.getAppointmentTime());
+    if(userRepeat){
+        throw new IOException("该时段您已经有预约");
     }
+    //=====【新增】③校验：该医生该时间已经存在待就诊预约（已取消不算占用）=====
+    boolean doctorOccupied = _appointDAO.existDoctorTimeOccupied(appoint.getDoctorId(), appointTime);
+    if(doctorOccupied){
+        throw new IOException("该医生此时间段已经存在待就诊预约，无法预约");
+    }
+
     return _appointDAO.insert(appoint);
 }
+
 
 
    @Override
@@ -130,6 +137,10 @@ public boolean deleteCancelAppointment(String appointId) throws SQLException, IO
     return _appointDAO.deleteById(appointId);
 }
 
+@Override
+public List<java.sql.Timestamp> getDoctorOccupiedTime(String doctorId) throws SQLException, IOException {
+    return _appointDAO.getOccupiedAppointTimeByDoctor(doctorId);
+}
 
 
 

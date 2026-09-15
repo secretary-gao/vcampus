@@ -81,4 +81,4 @@ INSERT IGNORE INTO tblWallet (userId, balance) VALUES
 ('09010101', 200.00),
 ('09010102', 150.00),
 ('09010103', 300.00),
-('admin', 500.00);
+('admin001', 500.00);

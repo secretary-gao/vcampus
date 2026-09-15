@@ -244,18 +244,22 @@ public class BookManagePanel extends VBox {
         TableColumn<Book, String> nameCol = new TableColumn<>("书名");
         nameCol.setCellValueFactory(new PropertyValueFactory<>("bookName"));
         nameCol.setPrefWidth(200);
+        nameCol.setStyle("-fx-alignment: center;");
 
         TableColumn<Book, String> authorCol = new TableColumn<>("作者");
         authorCol.setCellValueFactory(new PropertyValueFactory<>("author"));
         authorCol.setPrefWidth(120);
+        authorCol.setStyle("-fx-alignment: center;");
 
         TableColumn<Book, String> isbnCol = new TableColumn<>("ISBN");
         isbnCol.setCellValueFactory(new PropertyValueFactory<>("isbn"));
         isbnCol.setPrefWidth(150);
+        isbnCol.setStyle("-fx-alignment: center;");
 
         TableColumn<Book, String> categoryCol = new TableColumn<>("分类");
         categoryCol.setCellValueFactory(new PropertyValueFactory<>("category"));
         categoryCol.setPrefWidth(100);
+        categoryCol.setStyle("-fx-alignment: center;");
 
         TableColumn<Book, Integer> totalCol = new TableColumn<>("馆藏总数");
         totalCol.setCellValueFactory(new PropertyValueFactory<>("totalCount"));

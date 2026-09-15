@@ -33,13 +33,13 @@ public class CourseScheduleDAOTest {
                     COURSE_ID, "排课 DAO 测试", "测试教师", 2, 20, 0)), "准备测试课程");
             CourseSchedule schedule = new CourseSchedule(
                     SCHEDULE_ID, COURSE_ID, "教一-101", 1,
-                    LocalTime.of(8, 0), LocalTime.of(9, 40));
+                    LocalTime.of(8, 0), LocalTime.of(9, 35));
             require(scheduleDAO.insertSchedule(schedule), "插入排课");
 
             CourseSchedule queried = scheduleDAO.findById(SCHEDULE_ID);
             require(queried != null
                             && LocalTime.of(8, 0).equals(queried.getStartTime())
-                            && LocalTime.of(9, 40).equals(queried.getEndTime()),
+                            && LocalTime.of(9, 35).equals(queried.getEndTime()),
                     "TIME 与 LocalTime 双向映射");
             require(scheduleDAO.findAll().stream()
                     .anyMatch(s -> SCHEDULE_ID.equals(s.getScheduleId())), "findAll 查询排课");
