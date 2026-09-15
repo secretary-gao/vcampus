@@ -132,6 +132,8 @@
 }
 .metric-label { -fx-text-fill: #718096; -fx-font-size: 11px; }
 .metric-value { -fx-text-fill: #2f7540; -fx-font-size: 19px; -fx-font-weight: bold; }
+.dashboard-popular-chart .default-color0.chart-bar { -fx-bar-fill: #d6a52a; }
+.dashboard-popular-chart .default-color0.chart-bar:hover { -fx-bar-fill: #c9951d; }
 
 .teacher-course-list {
     -fx-background-color: #f6faf3;
