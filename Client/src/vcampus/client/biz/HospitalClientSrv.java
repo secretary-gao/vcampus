@@ -328,5 +328,27 @@ public class HospitalClientSrv {
         }
     }
 
-
+/** 查询全部健康教育文章 */
+public Message queryAllHealthArticle() throws IOException, ClassNotFoundException {
+    Socket socket = null;
+    ObjectOutputStream out = null;
+    ObjectInputStream in = null;
+    try {
+        socket = new Socket(IConstant.SERVER_HOST, IConstant.SERVER_PORT);
+        out = new ObjectOutputStream(socket.getOutputStream());
+        in = new ObjectInputStream(socket.getInputStream());
+        Message req = new Message();
+        req.setUid(System.currentTimeMillis());
+        req.setName(IConstant.MSG_HOSPITAL_QUERY_HEALTH_ARTICLE);
+        req.setType(MessageType.DATA);
+        req.setSender("Client");
+        out.writeObject(req);
+        out.flush();
+        return (Message) in.readObject();
+    } finally {
+        if (in != null) in.close();
+        if (out != null) out.close();
+        if (socket != null) socket.close();
+    }
+}
 }

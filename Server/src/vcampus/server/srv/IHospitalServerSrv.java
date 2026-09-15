@@ -1,6 +1,8 @@
 package vcampus.server.srv;
 import vcampus.common.vo.Appointment;
 import vcampus.common.vo.Doctor;
+import vcampus.common.vo.HealthArticle;
+
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
@@ -45,7 +47,7 @@ public interface IHospitalServerSrv {
 boolean deleteCancelAppointment(String appointId) throws SQLException, IOException;
 
 List<java.sql.Timestamp> getDoctorOccupiedTime(String doctorId) throws SQLException, IOException;
-
+List<HealthArticle> queryAllHealthArticle() throws SQLException,IOException;
 
     // 管理员维护医生
     boolean addDoctor(Doctor doctor) throws SQLException, IOException;

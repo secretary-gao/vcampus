@@ -10,8 +10,11 @@
 package vcampus.server.srv;
 import vcampus.common.vo.Appointment;
 import vcampus.common.vo.Doctor;
+import vcampus.common.vo.HealthArticle;
 import vcampus.server.dao.AppointmentDAO;
 import vcampus.server.dao.DoctorDAO;
+import vcampus.server.dao.HealthArticleDAO;
+
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
@@ -142,6 +145,12 @@ public List<java.sql.Timestamp> getDoctorOccupiedTime(String doctorId) throws SQ
     return _appointDAO.getOccupiedAppointTimeByDoctor(doctorId);
 }
 
+private final HealthArticleDAO healthArticleDAO = new HealthArticleDAO();
+
+@Override
+public List<HealthArticle> queryAllHealthArticle() throws SQLException,IOException {
+    return healthArticleDAO.findAll();
+}
 
 
 

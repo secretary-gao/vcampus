@@ -1,7 +1,7 @@
 /*
  * HospitalFrame
  *
- * Version 3.0 表格UI美化，模仿学籍界面；角色动态主题配色；前端时段禁用
+ * Version 3.1 新增【健康教育】数据库文章浏览功能；表格UI美化；角色动态主题配色；前端时段禁用
  *
  * 2026-09-14
  *
@@ -12,6 +12,7 @@ import vcampus.client.biz.HospitalClientSrv;
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Appointment;
 import vcampus.common.vo.Doctor;
+import vcampus.common.vo.HealthArticle;
 import vcampus.common.vo.Message;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -57,6 +58,9 @@ public class HospitalFrame extends VBox {
     private Button btnAddDoctor;
     private Button btnUpdateDoctor;
     private Button btnDeleteDoctor;
+    //=====新增 健康教育按钮=====
+    private Button btnHealthArticle;
+
     private StackPane _contentPane;
     //====【新增】记录当前激活导航按钮，用于高亮
     private Button _activeNavButton;
@@ -67,6 +71,7 @@ public class HospitalFrame extends VBox {
     private Label lblAdminGroupTitle;
     private boolean userGroupExpanded = true;
     private boolean adminGroupExpanded = true;
+
     // ---------------------- 面板控件（TableView） ----------------------
     private VBox panelQueryAllDoctor;
     private TableView<Doctor> tableAllDoctor;
@@ -76,7 +81,6 @@ public class HospitalFrame extends VBox {
     private VBox panelAddAppoint;
     //预约挂号页面新增控件
     private TableView<Doctor> tvAppointDoctor;
-    //====【新增】预约挂号选中医生提示Label
     private Label lblSelectedDoctorTip;
     private DatePicker dpAppointDate;
     private ComboBox<String> cbAppointTime;
@@ -87,9 +91,9 @@ public class HospitalFrame extends VBox {
     private final ObservableList<String> allTimeOptions;
 
     private VBox panelMyAppoint;
-    private TableView<Appointment> tableAllMyAppoint; //我的预约：全部记录
+    private TableView<Appointment> tableAllMyAppoint;
     private VBox panelCancelAppoint;
-    private TableView<Appointment> tableMyAppoint;     //取消预约：仅待就诊
+    private TableView<Appointment> tableMyAppoint;
     private Button btnCancelSelectedAppoint;
     private VBox panelQueryAllAppoint;
     private TableView<Appointment> tableAllAppoint;
@@ -107,6 +111,12 @@ public class HospitalFrame extends VBox {
     private TableView<Doctor> tvDelDoctor;
     private Button btnDeleteSelectedDoctor;
 
+    //====================健康教育页面控件====================
+    private VBox panelHealthArticle;
+    private ListView<HealthArticle> lvArticleList;
+    private TextArea taArticleContent;
+    private ObservableList<HealthArticle> obsArticleList;
+
     public HospitalFrame(String loginUserId, String loginUserRole) {
         this._loginUserId = loginUserId;
         this._loginUserRole = loginUserRole;
@@ -117,24 +127,25 @@ public class HospitalFrame extends VBox {
                 "08:30", "09:00", "09:30", "10:00", "10:30",
                 "14:00", "14:30", "15:00", "15:30"
         );
+        obsArticleList = FXCollections.observableArrayList();
 
-        // 根据角色分配主题色，和MainFrame保持一致
+        // 根据角色分配主题色
         switch (_loginUserRole) {
             case "管理员":
                 themePrimaryColor = "#94b55a";   // 主色：参考图浅绿黄
                 themeHoverColor = "#7f9f4d";     // 悬浮：深一点
-                themeActiveColor = "#6b8a40";    // 选中高亮：再深一点
+                themeActiveColor = "#6b8a40";
                 break;
             case "教师":
                 themePrimaryColor = "#94b55a";   // 主色：参考图浅绿黄
                 themeHoverColor = "#7f9f4d";     // 悬浮：深一点
-                themeActiveColor = "#6b8a40";    // 选中高亮：再深一点
+                themeActiveColor = "#6b8a40";
                 break;
             case "学生":
             default:
-                themePrimaryColor = "#94b55a";   // 主色：参考图浅绿黄
+                themePrimaryColor = "#77b55a";   // 主色：参考图浅绿
                 themeHoverColor = "#7f9f4d";     // 悬浮：深一点
-                themeActiveColor = "#6b8a40";    // 选中高亮：再深一点
+                themeActiveColor = "#6b8a40";
                 break;
         }
         setSpacing(0);
@@ -222,7 +233,8 @@ public class HospitalFrame extends VBox {
         btnAddAppoint = new Button("预约挂号");
         btnMyAppoint = new Button("我的预约记录");
         btnCancelAppoint = new Button("取消预约");
-        vboxUserGroup.getChildren().addAll(btnQueryAllDoctor, btnQueryByDept, btnAddAppoint, btnMyAppoint, btnCancelAppoint);
+        btnHealthArticle = new Button("健康教育");
+        vboxUserGroup.getChildren().addAll(btnQueryAllDoctor, btnQueryByDept, btnAddAppoint, btnMyAppoint, btnCancelAppoint, btnHealthArticle);
 
         Separator sep2 = new Separator();
         sep2.setPadding(new Insets(8, 0, 8, 0));
@@ -249,7 +261,7 @@ public class HospitalFrame extends VBox {
         });
 
         Button[] btns = {
-                btnQueryAllDoctor, btnQueryByDept, btnAddAppoint, btnMyAppoint, btnCancelAppoint,
+                btnQueryAllDoctor, btnQueryByDept, btnAddAppoint, btnMyAppoint, btnCancelAppoint, btnHealthArticle,
                 btnQueryAllAppoint, btnAddDoctor, btnUpdateDoctor, btnDeleteDoctor
         };
         for (Button b : btns) {
@@ -281,6 +293,7 @@ public class HospitalFrame extends VBox {
         btnAddAppoint.setOnAction(e -> switchPanel(panelAddAppoint, btnAddAppoint));
         btnMyAppoint.setOnAction(e -> switchPanel(panelMyAppoint, btnMyAppoint));
         btnCancelAppoint.setOnAction(e -> switchPanel(panelCancelAppoint, btnCancelAppoint));
+        btnHealthArticle.setOnAction(e -> switchPanel(panelHealthArticle, btnHealthArticle));
         btnQueryAllAppoint.setOnAction(e -> switchPanel(panelQueryAllAppoint, btnQueryAllAppoint));
         btnAddDoctor.setOnAction(e -> switchPanel(panelAddDoctor, btnAddDoctor));
         btnUpdateDoctor.setOnAction(e -> switchPanel(panelUpdateDoctor, btnUpdateDoctor));
@@ -322,6 +335,8 @@ public class HospitalFrame extends VBox {
             loadCancelAbleAppointment();
         }else if(panel == panelDeleteDoctor){
             loadCanDeleteDoctorTable();
+        }else if(panel == panelHealthArticle){
+            loadHealthArticleList();
         }
     }
 
@@ -829,6 +844,70 @@ public class HospitalFrame extends VBox {
         btnDeleteSelectedDoctor.setOnAction(e -> doDeleteSelectedDoctor());
         panelDeleteDoctor.getChildren().addAll(labA4, tipDel, tvDelDoctor, btnDeleteSelectedDoctor);
         VBox.setVgrow(panelDeleteDoctor, Priority.ALWAYS);
+
+        //====================初始化健康教育面板====================
+        panelHealthArticle = new VBox(10);
+        panelHealthArticle.setAlignment(Pos.TOP_LEFT);
+        panelHealthArticle.setMaxWidth(Double.MAX_VALUE);
+        Label labHealth = new Label("📖 健康教育科普阅读");
+        labHealth.setFont(Font.font("System", FontWeight.BOLD,17));
+        labHealth.setTextFill(Color.web(themePrimaryColor));
+
+        lvArticleList = new ListView<>();
+        lvArticleList.setItems(obsArticleList);
+        lvArticleList.setCellFactory(param -> new ListCell<HealthArticle>(){
+            @Override
+            protected void updateItem(HealthArticle item, boolean empty) {
+                super.updateItem(item, empty);
+                if(empty || item == null){
+                    setText(null);
+                }else{
+                    setText(item.getTitle());
+                }
+            }
+        });
+        taArticleContent = new TextArea();
+        taArticleContent.setEditable(false);
+        taArticleContent.setWrapText(true);
+        taArticleContent.setStyle("-fx-font-size:14px;");
+        taArticleContent.setPromptText("请在左侧选择一篇文章阅读");
+
+        SplitPane splitPane = new SplitPane();
+        splitPane.getItems().addAll(lvArticleList, taArticleContent);
+        splitPane.setDividerPositions(0.27);
+        VBox.setVgrow(splitPane, Priority.ALWAYS);
+
+        //选中列表项渲染正文
+        lvArticleList.getSelectionModel().selectedItemProperty().addListener((obs,old,newVal)->{
+            if(newVal != null){
+                taArticleContent.setText(newVal.getContent());
+            }
+        });
+
+        panelHealthArticle.getChildren().addAll(labHealth, splitPane);
+        VBox.setVgrow(panelHealthArticle, Priority.ALWAYS);
+    }
+
+    //网络加载健康教育文章
+    private void loadHealthArticleList(){
+        new Thread(()->{
+            try {
+                Message resp = _hospitalSrv.queryAllHealthArticle();
+                Platform.runLater(()->{
+                    if(IConstant.STATUS_SUCCESS.equals(resp.getStatusCode())){
+                        List<HealthArticle> list = (List<HealthArticle>) resp.getData();
+                        obsArticleList.clear();
+                        obsArticleList.addAll(list);
+                        taArticleContent.clear();
+                        lvArticleList.getSelectionModel().clearSelection();
+                    }else{
+                        showAlert(Alert.AlertType.ERROR,"加载文章失败",String.valueOf(resp.getData()));
+                    }
+                });
+            }catch (Exception e){
+                Platform.runLater(()->showAlert(Alert.AlertType.ERROR,"网络异常","获取健康教育文章失败"));
+            }
+        }).start();
     }
 
     private String fieldStyle() {
