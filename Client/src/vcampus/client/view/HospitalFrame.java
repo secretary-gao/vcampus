@@ -1,9 +1,9 @@
 /*
  * HospitalFrame
  *
- * Version 3.1 新增【健康教育】数据库文章浏览功能；表格UI美化；角色动态主题配色；前端时段禁用
+ * Version 3.3 新增：擅长领域、健康教育、就诊叫号；表格UI美化；角色动态主题配色；前端时段禁用
  *
- * 2026-09-14
+ * 2026-09-16
  *
  * Copyright (c) 2026 Vcampus Team
  */
@@ -13,7 +13,9 @@ import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Appointment;
 import vcampus.common.vo.Doctor;
 import vcampus.common.vo.HealthArticle;
+import vcampus.common.vo.Medicine;
 import vcampus.common.vo.Message;
+import vcampus.common.vo.Prescription;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -29,7 +31,6 @@ import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Stop;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import javafx.scene.text.Text;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,6 +40,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 import javafx.scene.image.ImageView;
 import javafx.scene.Cursor;
+import javafx.scene.shape.Rectangle;
+
 
 public class HospitalFrame extends VBox {
     private final String _loginUserId;
@@ -58,34 +61,36 @@ public class HospitalFrame extends VBox {
     private Button btnAddDoctor;
     private Button btnUpdateDoctor;
     private Button btnDeleteDoctor;
-    //=====新增 健康教育按钮=====
     private Button btnHealthArticle;
+    //====新增：就诊叫号按钮====
+    private Button btnDoctorCallNo;
+    //====药房取药新增控件====
+private Button btnPharmacyTake;
+private VBox panelPharmacyTake;
+
 
     private StackPane _contentPane;
-    //====【新增】记录当前激活导航按钮，用于高亮
     private Button _activeNavButton;
-    //====【新增：分组折叠】分组容器
-    private VBox vboxUserGroup;    // 用户操作分组按钮容器
-    private VBox vboxAdminGroup;   // 管理员操作分组按钮容器
+    private VBox vboxUserGroup;
+    private VBox vboxAdminGroup;
     private Label lblUserGroupTitle;
     private Label lblAdminGroupTitle;
     private boolean userGroupExpanded = true;
     private boolean adminGroupExpanded = true;
 
-    // ---------------------- 面板控件（TableView） ----------------------
+    //面板控件
     private VBox panelQueryAllDoctor;
     private TableView<Doctor> tableAllDoctor;
     private VBox panelQueryDept;
     private TextField tfDept;
     private TableView<Doctor> tableDeptDoctor;
     private VBox panelAddAppoint;
-    //预约挂号页面新增控件
     private TableView<Doctor> tvAppointDoctor;
     private Label lblSelectedDoctorTip;
     private DatePicker dpAppointDate;
     private ComboBox<String> cbAppointTime;
     private Button btnSubmitAppoint;
-    //========【前端预约时段禁用新增成员变量】========
+
     private Map<LocalDate, Set<String>> dateDisableTimeMap;
     private Set<String> currentDisableSet;
     private final ObservableList<String> allTimeOptions;
@@ -97,30 +102,48 @@ public class HospitalFrame extends VBox {
     private Button btnCancelSelectedAppoint;
     private VBox panelQueryAllAppoint;
     private TableView<Appointment> tableAllAppoint;
+
     private VBox panelAddDoctor;
     private TextField tfAddDocId;
     private TextField tfAddDocName;
     private TextField tfAddDocDept;
     private TextField tfAddDocTitle;
+    private TextField tfAddDocSkill;
+
     private VBox panelUpdateDoctor;
     private TextField tfUpdDocId;
     private TextField tfUpdDocName;
     private TextField tfUpdDocDept;
     private TextField tfUpdDocTitle;
+    private TextField tfUpdDocSkill;
+
     private VBox panelDeleteDoctor;
     private TableView<Doctor> tvDelDoctor;
     private Button btnDeleteSelectedDoctor;
 
-    //====================健康教育页面控件====================
+    //健康教育
     private VBox panelHealthArticle;
     private ListView<HealthArticle> lvArticleList;
     private TextArea taArticleContent;
     private ObservableList<HealthArticle> obsArticleList;
 
+    //====就诊叫号页面====
+    private VBox panelDoctorCallNo;
+    private TableView<Appointment> tvDoctorPendingAppoint;
+    private Label _labUserBalance;
+    private Button btnRecharge;
+    private Label labTotalAmount;
+    private FlowPane _prescriptionCards;
+
+    //====管理员：药品库存管理====
+private Button btnAdminMedicineStock;
+private VBox panelAdminMedicineStock;
+private TableView<Medicine> tvAdminMedicine;
+
+
     public HospitalFrame(String loginUserId, String loginUserRole) {
         this._loginUserId = loginUserId;
         this._loginUserRole = loginUserRole;
-        //========初始化预约时段禁用相关集合========
         dateDisableTimeMap = new HashMap<>();
         currentDisableSet = new HashSet<>();
         allTimeOptions = FXCollections.observableArrayList(
@@ -129,22 +152,21 @@ public class HospitalFrame extends VBox {
         );
         obsArticleList = FXCollections.observableArrayList();
 
-        // 根据角色分配主题色
         switch (_loginUserRole) {
             case "管理员":
-                themePrimaryColor = "#94b55a";   // 主色：参考图浅绿黄
-                themeHoverColor = "#7f9f4d";     // 悬浮：深一点
+                themePrimaryColor = "#94b55a";
+                themeHoverColor = "#7f9f4d";
                 themeActiveColor = "#6b8a40";
                 break;
             case "教师":
-                themePrimaryColor = "#94b55a";   // 主色：参考图浅绿黄
-                themeHoverColor = "#7f9f4d";     // 悬浮：深一点
+                themePrimaryColor = "#94b55a";
+                themeHoverColor = "#7f9f4d";
                 themeActiveColor = "#6b8a40";
                 break;
             case "学生":
             default:
-                themePrimaryColor = "#77b55a";   // 主色：参考图浅绿
-                themeHoverColor = "#7f9f4d";     // 悬浮：深一点
+                themePrimaryColor = "#77b55a";
+                themeHoverColor = "#7f9f4d";
                 themeActiveColor = "#6b8a40";
                 break;
         }
@@ -234,7 +256,9 @@ public class HospitalFrame extends VBox {
         btnMyAppoint = new Button("我的预约记录");
         btnCancelAppoint = new Button("取消预约");
         btnHealthArticle = new Button("健康教育");
-        vboxUserGroup.getChildren().addAll(btnQueryAllDoctor, btnQueryByDept, btnAddAppoint, btnMyAppoint, btnCancelAppoint, btnHealthArticle);
+        btnDoctorCallNo = new Button("就诊叫号");
+        btnPharmacyTake = new Button("药房取药");
+        vboxUserGroup.getChildren().addAll(btnQueryAllDoctor, btnQueryByDept, btnAddAppoint, btnMyAppoint, btnCancelAppoint, btnHealthArticle,btnDoctorCallNo,btnPharmacyTake);
 
         Separator sep2 = new Separator();
         sep2.setPadding(new Insets(8, 0, 8, 0));
@@ -247,7 +271,9 @@ public class HospitalFrame extends VBox {
         btnAddDoctor = new Button("新增医生");
         btnUpdateDoctor = new Button("修改医生");
         btnDeleteDoctor = new Button("删除医生");
-        vboxAdminGroup.getChildren().addAll(btnQueryAllAppoint, btnAddDoctor, btnUpdateDoctor, btnDeleteDoctor);
+        btnAdminMedicineStock = new Button("药品库存管理");
+        vboxAdminGroup.getChildren().addAll(btnQueryAllAppoint, btnAddDoctor, btnUpdateDoctor, btnDeleteDoctor, btnAdminMedicineStock);
+
 
         lblUserGroupTitle.setOnMouseClicked(e->{
             userGroupExpanded = !userGroupExpanded;
@@ -260,10 +286,12 @@ public class HospitalFrame extends VBox {
             lblAdminGroupTitle.setText(adminGroupExpanded ? "▼ 管理员操作" : "▶ 管理员操作");
         });
 
-        Button[] btns = {
-                btnQueryAllDoctor, btnQueryByDept, btnAddAppoint, btnMyAppoint, btnCancelAppoint, btnHealthArticle,
-                btnQueryAllAppoint, btnAddDoctor, btnUpdateDoctor, btnDeleteDoctor
-        };
+       Button[] btns = {
+        btnQueryAllDoctor, btnQueryByDept, btnAddAppoint, btnMyAppoint, btnCancelAppoint, btnHealthArticle,btnDoctorCallNo,btnPharmacyTake,
+        btnQueryAllAppoint, btnAddDoctor, btnUpdateDoctor, btnDeleteDoctor, btnAdminMedicineStock
+};
+
+
         for (Button b : btns) {
             b.setMaxWidth(Double.MAX_VALUE);
             b.setPrefHeight(34);
@@ -294,10 +322,13 @@ public class HospitalFrame extends VBox {
         btnMyAppoint.setOnAction(e -> switchPanel(panelMyAppoint, btnMyAppoint));
         btnCancelAppoint.setOnAction(e -> switchPanel(panelCancelAppoint, btnCancelAppoint));
         btnHealthArticle.setOnAction(e -> switchPanel(panelHealthArticle, btnHealthArticle));
+        btnDoctorCallNo.setOnAction(e -> switchPanel(panelDoctorCallNo, btnDoctorCallNo));
         btnQueryAllAppoint.setOnAction(e -> switchPanel(panelQueryAllAppoint, btnQueryAllAppoint));
         btnAddDoctor.setOnAction(e -> switchPanel(panelAddDoctor, btnAddDoctor));
         btnUpdateDoctor.setOnAction(e -> switchPanel(panelUpdateDoctor, btnUpdateDoctor));
         btnDeleteDoctor.setOnAction(e -> switchPanel(panelDeleteDoctor, btnDeleteDoctor));
+        btnPharmacyTake.setOnAction(e -> switchPanel(panelPharmacyTake, btnPharmacyTake));
+        btnAdminMedicineStock.setOnAction(e -> switchPanel(panelAdminMedicineStock, btnAdminMedicineStock));
 
         side.getChildren().addAll(
                 title, sep1,
@@ -337,7 +368,16 @@ public class HospitalFrame extends VBox {
             loadCanDeleteDoctorTable();
         }else if(panel == panelHealthArticle){
             loadHealthArticleList();
+        }else if(panel == panelDoctorCallNo){
+            loadDoctorPendingAppointList();
         }
+        else if(panel == panelPharmacyTake){
+            loadMyNoTakePrescription();
+        }
+        else if(panel == panelAdminMedicineStock){
+            loadAdminMedicineStockList();
+        }
+
     }
 
     private VBox wrapCard(VBox inner) {
@@ -354,7 +394,6 @@ public class HospitalFrame extends VBox {
         return card;
     }
 
-    // =====================表格美化工具方法【模仿学籍界面】=====================
     private void styleTable(TableView<?> tableView) {
         tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         tableView.setPlaceholder(buildTablePlaceholder());
@@ -400,7 +439,6 @@ public class HospitalFrame extends VBox {
             }
         };
     }
-    // ======================================================================
 
     private void initAllPanels() {
         // ========== 1. 查询全部医生 ==========
@@ -424,7 +462,11 @@ public class HospitalFrame extends VBox {
         TableColumn<Doctor, String> colTitle = new TableColumn<>("职称");
         colTitle.setCellValueFactory(new PropertyValueFactory<>("title"));
         colTitle.setMinWidth(80);
-        tableAllDoctor.getColumns().addAll(colDocId, colName, colDept, colTitle);
+        TableColumn<Doctor,String> colSkillAll = new TableColumn<>("擅长领域");
+        colSkillAll.setCellValueFactory(new PropertyValueFactory<>("skill"));
+        colSkillAll.setPrefWidth(220);
+
+        tableAllDoctor.getColumns().addAll(colDocId, colName, colDept, colTitle, colSkillAll);
         styleTable(tableAllDoctor);
 
         tableAllDoctor.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
@@ -433,6 +475,7 @@ public class HospitalFrame extends VBox {
                 tfUpdDocName.setText(newVal.getName());
                 tfUpdDocDept.setText(newVal.getDepartment());
                 tfUpdDocTitle.setText(newVal.getTitle());
+                tfUpdDocSkill.setText(newVal.getSkill() == null ? "" : newVal.getSkill());
             }
         });
         panelQueryAllDoctor.getChildren().addAll(lab1, tableAllDoctor);
@@ -466,9 +509,12 @@ public class HospitalFrame extends VBox {
         TableColumn<Doctor, String> c4 = new TableColumn<>("职称");
         c4.setCellValueFactory(new PropertyValueFactory<>("title"));
         c4.setMinWidth(80);
-        tableDeptDoctor.getColumns().addAll(c1, c2, c3, c4);
-        styleTable(tableDeptDoctor);
+        TableColumn<Doctor,String> colSkillDept = new TableColumn<>("擅长领域");
+        colSkillDept.setCellValueFactory(new PropertyValueFactory<>("skill"));
+        colSkillDept.setPrefWidth(210);
 
+        tableDeptDoctor.getColumns().addAll(c1, c2, c3, c4, colSkillDept);
+        styleTable(tableDeptDoctor);
         panelQueryDept.getChildren().addAll(lab2, tfDept, btnQDept, tableDeptDoctor);
         VBox.setVgrow(panelQueryDept, Priority.ALWAYS);
 
@@ -499,7 +545,11 @@ public class HospitalFrame extends VBox {
         TableColumn<Doctor, String> colATitle = new TableColumn<>("职称");
         colATitle.setCellValueFactory(new PropertyValueFactory<>("title"));
         colATitle.setMinWidth(80);
-        tvAppointDoctor.getColumns().addAll(colADocId, colAName, colADept, colATitle);
+        TableColumn<Doctor,String> colAppSkill = new TableColumn<>("擅长领域");
+        colAppSkill.setCellValueFactory(new PropertyValueFactory<>("skill"));
+        colAppSkill.setPrefWidth(200);
+
+        tvAppointDoctor.getColumns().addAll(colADocId, colAName, colADept, colATitle, colAppSkill);
         styleTable(tvAppointDoctor);
 
         tvAppointDoctor.getSelectionModel().selectedItemProperty().addListener((obs, oldDoc, newDoc) -> {
@@ -774,10 +824,15 @@ public class HospitalFrame extends VBox {
         tfAddDocTitle.setPromptText("职称");
         tfAddDocTitle.setStyle(fieldStyle());
         tfAddDocTitle.setMaxWidth(Double.MAX_VALUE);
+        tfAddDocSkill = new TextField();
+        tfAddDocSkill.setPromptText("擅长领域");
+        tfAddDocSkill.setStyle(fieldStyle());
+        tfAddDocSkill.setMaxWidth(Double.MAX_VALUE);
+
         Button btnAddDoc = new Button("提交新增");
         btnAddDoc.setStyle("-fx-background-color:"+themePrimaryColor+"; -fx-text-fill:white; -fx-background-radius:5;");
         btnAddDoc.setOnAction(e -> actionAddDoctor());
-        panelAddDoctor.getChildren().addAll(labA2, tfAddDocId, tfAddDocName, tfAddDocDept, tfAddDocTitle, btnAddDoc);
+        panelAddDoctor.getChildren().addAll(labA2, tfAddDocId, tfAddDocName, tfAddDocDept, tfAddDocTitle, tfAddDocSkill, btnAddDoc);
         VBox.setVgrow(panelAddDoctor, Priority.ALWAYS);
 
         // ==========管理员修改医生 ==========
@@ -806,10 +861,15 @@ public class HospitalFrame extends VBox {
         tfUpdDocTitle.setPromptText("新职称");
         tfUpdDocTitle.setStyle(fieldStyle());
         tfUpdDocTitle.setMaxWidth(Double.MAX_VALUE);
+        tfUpdDocSkill = new TextField();
+        tfUpdDocSkill.setPromptText("擅长领域");
+        tfUpdDocSkill.setStyle(fieldStyle());
+        tfUpdDocSkill.setMaxWidth(Double.MAX_VALUE);
+
         Button btnUpdDoc = new Button("提交修改");
         btnUpdDoc.setStyle("-fx-background-color:"+themePrimaryColor+"; -fx-text-fill:white; -fx-background-radius:5;");
         btnUpdDoc.setOnAction(e -> actionUpdateDoctor());
-        panelUpdateDoctor.getChildren().addAll(labA3, tipUpdate, tfUpdDocId, tfUpdDocName, tfUpdDocDept, tfUpdDocTitle, btnUpdDoc);
+        panelUpdateDoctor.getChildren().addAll(labA3, tipUpdate, tfUpdDocId, tfUpdDocName, tfUpdDocDept, tfUpdDocTitle, tfUpdDocSkill, btnUpdDoc);
         VBox.setVgrow(panelUpdateDoctor, Priority.ALWAYS);
 
         // ==========管理员删除医生 ==========
@@ -836,7 +896,11 @@ public class HospitalFrame extends VBox {
         TableColumn<Doctor, String> colDTitle = new TableColumn<>("职称");
         colDTitle.setCellValueFactory(new PropertyValueFactory<>("title"));
         colDTitle.setMinWidth(80);
-        tvDelDoctor.getColumns().addAll(colDDocId, colDName, colDDept, colDTitle);
+        TableColumn<Doctor,String> colSkillDel = new TableColumn<>("擅长领域");
+        colSkillDel.setCellValueFactory(new PropertyValueFactory<>("skill"));
+        colSkillDel.setPrefWidth(210);
+
+        tvDelDoctor.getColumns().addAll(colDDocId, colDName, colDDept, colDTitle, colSkillDel);
         styleTable(tvDelDoctor);
 
         btnDeleteSelectedDoctor = new Button("删除选中医生");
@@ -845,14 +909,13 @@ public class HospitalFrame extends VBox {
         panelDeleteDoctor.getChildren().addAll(labA4, tipDel, tvDelDoctor, btnDeleteSelectedDoctor);
         VBox.setVgrow(panelDeleteDoctor, Priority.ALWAYS);
 
-        //====================初始化健康教育面板====================
+        //====================健康教育面板====================
         panelHealthArticle = new VBox(10);
         panelHealthArticle.setAlignment(Pos.TOP_LEFT);
         panelHealthArticle.setMaxWidth(Double.MAX_VALUE);
         Label labHealth = new Label("📖 健康教育科普阅读");
         labHealth.setFont(Font.font("System", FontWeight.BOLD,17));
         labHealth.setTextFill(Color.web(themePrimaryColor));
-
         lvArticleList = new ListView<>();
         lvArticleList.setItems(obsArticleList);
         lvArticleList.setCellFactory(param -> new ListCell<HealthArticle>(){
@@ -877,7 +940,6 @@ public class HospitalFrame extends VBox {
         splitPane.setDividerPositions(0.27);
         VBox.setVgrow(splitPane, Priority.ALWAYS);
 
-        //选中列表项渲染正文
         lvArticleList.getSelectionModel().selectedItemProperty().addListener((obs,old,newVal)->{
             if(newVal != null){
                 taArticleContent.setText(newVal.getContent());
@@ -886,9 +948,433 @@ public class HospitalFrame extends VBox {
 
         panelHealthArticle.getChildren().addAll(labHealth, splitPane);
         VBox.setVgrow(panelHealthArticle, Priority.ALWAYS);
+
+        //=====================【新增】就诊叫号：医生查看自己待就诊预约=====================
+        panelDoctorCallNo = new VBox(10);
+        panelDoctorCallNo.setAlignment(Pos.TOP_LEFT);
+        panelDoctorCallNo.setMaxWidth(Double.MAX_VALUE);
+        Label labCall = new Label("🏥就诊叫号 — 我的待就诊患者");
+        labCall.setFont(Font.font("System", FontWeight.BOLD,17));
+        labCall.setTextFill(Color.web(themePrimaryColor));
+        Label tipCall = new Label("说明：只有登录账号ID等于医生编号，才可以看到自己待就诊记录，点击【完成就诊】将记录更新为已就诊");
+        tipCall.setFont(Font.font("System",12));
+        tipCall.setTextFill(Color.web("#555555"));
+
+        tvDoctorPendingAppoint = new TableView<>();
+        VBox.setVgrow(tvDoctorPendingAppoint, Priority.ALWAYS);
+
+        TableColumn<Appointment,String> colAppId = new TableColumn<>("预约编号");
+        colAppId.setCellValueFactory(new PropertyValueFactory<>("appointmentId"));
+        colAppId.setMinWidth(110);
+        TableColumn<Appointment,String> colUserId = new TableColumn<>("就诊用户ID");
+        colUserId.setCellValueFactory(new PropertyValueFactory<>("userId"));
+        colUserId.setMinWidth(100);
+        TableColumn<Appointment,Date> colAppTime = new TableColumn<>("预约时间");
+        colAppTime.setCellValueFactory(new PropertyValueFactory<>("appointmentTime"));
+        colAppTime.setMinWidth(160);
+        TableColumn<Appointment,String> colStatusCall = new TableColumn<>("状态");
+        colStatusCall.setCellValueFactory(new PropertyValueFactory<>("status"));
+        colStatusCall.setMinWidth(90);
+        colStatusCall.setCellFactory(col -> createAppointStatusCell());
+
+        TableColumn<Appointment,Void> colOptFinish = new TableColumn<>("操作");
+colOptFinish.setMinWidth(200);
+colOptFinish.setCellFactory(param -> new TableCell<Appointment, Void>(){
+    @Override
+    protected void updateItem(Void item, boolean empty) {
+        super.updateItem(item, empty);
+        if(empty){
+            setGraphic(null);
+        }else{
+            Appointment apt = getTableView().getItems().get(getIndex());
+            if("待就诊".equals(apt.getStatus())){
+                HBox box = new HBox(8);
+                Button btnPres = new Button("开药");
+                btnPres.setStyle("-fx-background-color:#2980b9;-fx-text-fill:white;-fx-background-radius:4;");
+                btnPres.setOnAction(e->{
+                    openPrescriptionDialog(apt.getAppointmentId(), apt.getUserId(), _loginUserId);
+                });
+
+                Button btnFinish = new Button("完成就诊");
+                btnFinish.setStyle("-fx-background-color:#27ae60;-fx-text-fill:white;-fx-background-radius:4;");
+                btnFinish.setOnAction(e->{
+                    String appointId = apt.getAppointmentId();
+                    doFinishAppoint(appointId,_loginUserId);
+                });
+                box.getChildren().addAll(btnPres, btnFinish);
+                setGraphic(box);
+            }else{
+                setGraphic(null);
+            }
+        }
+    }
+});
+
+
+
+        tvDoctorPendingAppoint.getColumns().addAll(colAppId,colUserId,colAppTime,colStatusCall,colOptFinish);
+        styleTable(tvDoctorPendingAppoint);
+
+        panelDoctorCallNo.getChildren().addAll(labCall,tipCall,tvDoctorPendingAppoint);
+        VBox.setVgrow(panelDoctorCallNo, Priority.ALWAYS);
+
+        //====================药房取药 用户页面【卡片版+充值+支付】====================
+        panelPharmacyTake = new VBox(10);
+        panelPharmacyTake.setAlignment(Pos.TOP_LEFT);
+        panelPharmacyTake.setMaxWidth(Double.MAX_VALUE);
+
+        //顶部栏：余额 + 充值按钮 + 合计
+        HBox topBar = new HBox(15);
+        topBar.setAlignment(Pos.CENTER_LEFT);
+        _labUserBalance = new Label("校园卡余额：--");
+        _labUserBalance.setFont(Font.font("System", FontWeight.BOLD, 14));
+        btnRecharge = new Button("💳充值");
+        btnRecharge.setStyle("-fx-background-color:#2980b9;-fx-text-fill:white;-fx-background-radius:6;");
+        btnRecharge.setOnAction(e -> {
+            TextInputDialog dialog = new TextInputDialog("0.00");
+            dialog.setTitle("校园卡充值");
+            dialog.setHeaderText("请输入充值金额");
+            Optional<String> res = dialog.showAndWait();
+            if (res.isPresent()) {
+                try {
+                    double money = Double.parseDouble(res.get().trim());
+                    if (money <= 0) {
+                        showAlert(Alert.AlertType.WARNING, "提示", "充值金额必须大于0");
+                        return;
+                    }
+                    new Thread(() -> {
+                        try {
+                            Message msg = _hospitalSrv.memRecharge(_loginUserId, money);
+                            Platform.runLater(() -> {
+                                if (IConstant.STATUS_SUCCESS.equals(msg.getStatusCode())) {
+                                    showAlert(Alert.AlertType.INFORMATION, "成功", "充值成功");
+                                    loadMyNoTakePrescription();
+                                } else {
+                                    showAlert(Alert.AlertType.ERROR, "失败", String.valueOf(msg.getData()));
+                                }
+                            });
+                        } catch (Exception ex) {
+                            Platform.runLater(() -> showAlert(Alert.AlertType.ERROR, "异常", "充值网络异常"));
+                        }
+                    }).start();
+                } catch (NumberFormatException ex) {
+                    showAlert(Alert.AlertType.WARNING, "输入错误", "请输入合法数字金额");
+                }
+            }
+        });
+        labTotalAmount = new Label("处方合计：¥ 0.00");
+        labTotalAmount.setFont(Font.font("System", FontWeight.BOLD, 14));
+        topBar.getChildren().addAll(_labUserBalance, btnRecharge, labTotalAmount);
+
+        Label labPharm = new Label("💊药房取药 — 待缴费处方");
+        labPharm.setFont(Font.font("System", FontWeight.BOLD, 17));
+        labPharm.setTextFill(Color.web(themePrimaryColor));
+        Label tipPharm = new Label("医生开具的处方，先充值，支付药费后完成取药（校园卡为内存模拟，服务重启余额重置）");
+        tipPharm.setFont(Font.font("System", 12));
+        tipPharm.setTextFill(Color.web("#555555"));
+
+        //卡片FlowPane，模仿商店商品卡片
+        _prescriptionCards = new FlowPane(16, 16);
+        _prescriptionCards.setPadding(new Insets(12));
+        ScrollPane scrollCards = new ScrollPane(_prescriptionCards);
+        scrollCards.setFitToWidth(true);
+        scrollCards.setStyle("-fx-background-color:transparent;");
+
+        panelPharmacyTake.getChildren().addAll(labPharm, tipPharm, topBar, scrollCards);
+        VBox.setVgrow(scrollCards, Priority.ALWAYS);
+
+       //====================管理员：药品库存管理面板====================
+panelAdminMedicineStock = new VBox(12);
+panelAdminMedicineStock.setAlignment(Pos.TOP_LEFT);
+panelAdminMedicineStock.setMaxWidth(Double.MAX_VALUE);
+Label labAdminMed = new Label("录入药品 (管理员)");
+labAdminMed.setFont(Font.font("System", FontWeight.BOLD,17));
+labAdminMed.setTextFill(Color.web(themePrimaryColor));
+
+// ========= 表单区域 =========
+GridPane formPane = new GridPane();
+formPane.setHgap(10);
+formPane.setVgap(8);
+formPane.setPadding(new Insets(10,10,10,0));
+
+TextField tfMedId = new TextField();
+tfMedId.setPromptText("药品编号");
+TextField tfMedName = new TextField();
+tfMedName.setPromptText("药品名称");
+TextField tfPrice = new TextField();
+tfPrice.setPromptText("单价");
+TextField tfStock = new TextField();
+tfStock.setPromptText("库存");
+
+formPane.add(new Label("编号"),0,0);
+formPane.add(tfMedId,1,0);
+formPane.add(new Label("名称"),0,1);
+formPane.add(tfMedName,1,1);
+formPane.add(new Label("单价"),0,2);
+formPane.add(tfPrice,1,2);
+formPane.add(new Label("库存"),0,3);
+formPane.add(tfStock,1,3);
+
+
+// 按钮行
+HBox btnFormBox = new HBox(10);
+Button btnAddMed = new Button("新增");
+Button btnUpdateMed = new Button("修改");
+Button btnDeleteMed = new Button("删除");
+Button btnClearForm = new Button("清空表单");
+btnFormBox.getChildren().addAll(btnAddMed,btnUpdateMed,btnDeleteMed,btnClearForm);
+
+// ========= 表格区域 =========
+tvAdminMedicine = new TableView<>();
+VBox.setVgrow(tvAdminMedicine, Priority.ALWAYS);
+
+TableColumn<Medicine,String> colMedId = new TableColumn<>("药品编号");
+colMedId.setCellValueFactory(new PropertyValueFactory<>("medicineId"));
+colMedId.setMinWidth(110);
+TableColumn<Medicine,String> colMedName = new TableColumn<>("药品名称");
+colMedName.setCellValueFactory(new PropertyValueFactory<>("medicineName"));
+colMedName.setMinWidth(160);
+TableColumn<Medicine,Number> colPrice = new TableColumn<>("单价");
+colPrice.setCellValueFactory(new PropertyValueFactory<>("price"));
+colPrice.setMinWidth(110);
+TableColumn<Medicine,Number> colStock = new TableColumn<>("当前库存");
+colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
+colStock.setMinWidth(100);
+
+tvAdminMedicine.getColumns().addAll(colMedId,colMedName,colPrice,colStock);
+styleTable(tvAdminMedicine);
+
+// 点击表格行，回填表单
+tvAdminMedicine.getSelectionModel().selectedItemProperty().addListener((obs,oldVal,newVal)->{
+    if(newVal != null){
+        tfMedId.setText(newVal.getMedicineId());
+        tfMedName.setText(newVal.getMedicineName());
+        tfDept.setText(newVal.getDepartment());
+        tfPrice.setText(String.valueOf(newVal.getPrice()));
+        tfStock.setText(String.valueOf(newVal.getStock()));
+    }
+});
+
+// ========= 表单按钮事件 =========
+// 清空表单
+btnClearForm.setOnAction(e->{
+    tfMedId.clear();
+    tfMedName.clear();
+    tfDept.clear();
+    tfPrice.clear();
+    tfStock.clear();
+    tvAdminMedicine.getSelectionModel().clearSelection();
+});
+
+//新增药品
+btnAddMed.setOnAction(e->{
+    String medId = tfMedId.getText().trim();
+    String medName = tfMedName.getText().trim();
+    String dept = tfDept.getText().trim();
+    double price;
+    int stock;
+    try{
+        price = Double.parseDouble(tfPrice.getText().trim());
+        stock = Integer.parseInt(tfStock.getText().trim());
+        if(medId.isBlank() || medName.isBlank() || dept.isBlank() || price<0 || stock<0){
+            showAlert(Alert.AlertType.WARNING,"输入校验","编号/名称/科室不能为空，单价库存不能负数");
+            return;
+        }
+    }catch (Exception ex){
+        showAlert(Alert.AlertType.WARNING,"输入错误","单价必须是小数，库存必须是整数");
+        return;
+    }
+    Medicine newMed = new Medicine();
+    new Thread(()->{
+        try {
+            Message msg=_hospitalSrv.adminAddMedicine(newMed);
+            Platform.runLater(()->{
+                if(IConstant.STATUS_SUCCESS.equals(msg.getStatusCode())){
+                    showAlert(Alert.AlertType.INFORMATION,"成功","新增药品完成");
+                    loadAdminMedicineStockList();
+                    btnClearForm.fire();
+                }else{
+                    showAlert(Alert.AlertType.WARNING,"失败",String.valueOf(msg.getData()));
+                }
+            });
+        }catch (Exception ex){
+            Platform.runLater(()->showAlert(Alert.AlertType.ERROR,"网络异常","新增药品失败"));
+        }
+    }).start();
+});
+
+//修改药品
+btnUpdateMed.setOnAction(e->{
+    String medId = tfMedId.getText().trim();
+    String medName = tfMedName.getText().trim();
+    String dept = tfDept.getText().trim();
+    double price;
+    int stock;
+    try{
+        price = Double.parseDouble(tfPrice.getText().trim());
+        stock = Integer.parseInt(tfStock.getText().trim());
+        if(medId.isBlank() || medName.isBlank() || dept.isBlank() || price<0 || stock<0){
+            showAlert(Alert.AlertType.WARNING,"输入校验","编号/名称/科室不能为空，单价库存不能负数");
+            return;
+        }
+    }catch (Exception ex){
+        showAlert(Alert.AlertType.WARNING,"输入错误","单价必须是小数，库存必须是整数");
+        return;
+    }
+    Medicine updateMed = new Medicine();
+    new Thread(()->{
+        try {
+            Message msg=_hospitalSrv.adminUpdateMedicine(updateMed);
+            Platform.runLater(()->{
+                if(IConstant.STATUS_SUCCESS.equals(msg.getStatusCode())){
+                    showAlert(Alert.AlertType.INFORMATION,"成功","修改药品完成");
+                    loadAdminMedicineStockList();
+                    btnClearForm.fire();
+                }else{
+                    showAlert(Alert.AlertType.WARNING,"失败",String.valueOf(msg.getData()));
+                }
+            });
+        }catch (Exception ex){
+            Platform.runLater(()->showAlert(Alert.AlertType.ERROR,"网络异常","修改药品失败"));
+        }
+    }).start();
+});
+
+//删除药品
+btnDeleteMed.setOnAction(e->{
+    String medId = tfMedId.getText().trim();
+    if(medId.isBlank()){
+        showAlert(Alert.AlertType.WARNING,"提示","请先选中表格药品或者填写药品编号");
+        return;
+    }
+    Optional<ButtonType> res = new Alert(Alert.AlertType.CONFIRMATION).showAndWait();
+    if(res.isPresent() && res.get() == ButtonType.OK){
+        new Thread(()->{
+            try {
+                Message msg=_hospitalSrv.adminDeleteMedicine(medId);
+                Platform.runLater(()->{
+                    if(IConstant.STATUS_SUCCESS.equals(msg.getStatusCode())){
+                        showAlert(Alert.AlertType.INFORMATION,"成功","删除药品完成");
+                        loadAdminMedicineStockList();
+                        btnClearForm.fire();
+                    }else{
+                        showAlert(Alert.AlertType.WARNING,"失败",String.valueOf(msg.getData()));
+                    }
+                });
+            }catch (Exception ex){
+                Platform.runLater(()->showAlert(Alert.AlertType.ERROR,"网络异常","删除药品失败"));
+            }
+        }).start();
+    }
+});
+
+panelAdminMedicineStock.getChildren().addAll(labAdminMed, formPane, btnFormBox, tvAdminMedicine);
+VBox.setVgrow(panelAdminMedicineStock, Priority.ALWAYS);
+
+    }
+        /** 加载当前登录用户未取药处方，渲染卡片，同时刷新余额 */
+    private void loadMyNoTakePrescription(){
+        new Thread(()->{
+            try {
+                //1 获取内存模拟余额
+                Message balMsg = _hospitalSrv.getMemBalance(_loginUserId);
+                double balance = 0.0;
+                if(IConstant.STATUS_SUCCESS.equals(balMsg.getStatusCode())){
+                    balance = (Double) balMsg.getData();
+                }
+                //2 查询未缴费处方
+                Message resp = _hospitalSrv.queryUserNoTakePres(_loginUserId);
+                List<Prescription> list = null;
+                if(IConstant.STATUS_SUCCESS.equals(resp.getStatusCode())){
+                    list = (List<Prescription>) resp.getData();
+                }
+                double totalAll = 0.0;
+                if(list != null){
+                    for(Prescription p : list){
+                        if(p.getSubTotal() != null){
+                            totalAll += p.getSubTotal();
+                        }
+                    }
+                }
+                double finalBal = balance;
+                double finalTotal = totalAll;
+                List<Prescription> finalList = list;
+                Platform.runLater(()->{
+                    _labUserBalance.setText("校园卡余额：¥ " + String.format("%.2f", finalBal));
+                    labTotalAmount.setText("处方合计：¥ " + String.format("%.2f", finalTotal));
+                    _prescriptionCards.getChildren().clear();
+                    if(finalList == null || finalList.isEmpty()){
+                        showAlert(Alert.AlertType.INFORMATION, "提示", "暂无待缴费处方");
+                        return;
+                    }
+                    //循环渲染卡片，模仿商店
+for(Prescription pres : finalList){
+    VBox card = new VBox(8);
+    card.setPrefWidth(220);
+    card.setPadding(new Insets(12));
+    card.setStyle("-fx-background-color:#ffffff;-fx-background-radius:10;"
+            + "-fx-border-color:#dce4ec;-fx-border-width:1px;"
+            + "-fx-effect: dropshadow(gaussian,rgba(0,0,0,0.04),6,0,0,2);");
+
+    // ==========这里重点：替换原来的Rectangle色块，调用图片加载方法 ==========
+    StackPane medicineImage = buildMedicineImage(pres.getMedicineId());
+
+    Label labMedName = new Label(pres.getMedicineName());
+    labMedName.setFont(Font.font("System", FontWeight.BOLD, 14));
+    labMedName.setWrapText(true);
+    Label labNum = new Label("开药数量：" + pres.getMedicineNum());
+    double sub = pres.getSubTotal() != null ? pres.getSubTotal() : 0.0;
+    Label labSub = new Label("小计：¥ " + String.format("%.2f", sub));
+    labSub.setFont(Font.font("System", FontWeight.BOLD, 13));
+
+    HBox btnBox = new HBox();
+    btnBox.setAlignment(Pos.CENTER);
+    Button btnPayTake = new Button("💰支付并取药");
+    btnPayTake.setStyle("-fx-background-color:#27ae60;-fx-text-fill:white;-fx-background-radius:5;");
+    btnPayTake.setOnAction(e -> doPayAndTakePrescription(pres.getPresId(), sub));
+    btnBox.getChildren().add(btnPayTake);
+
+    // 加入卡片，注意：第一个是medicineImage
+    card.getChildren().addAll(medicineImage, labMedName, labNum, labSub, btnPayTake);
+    _prescriptionCards.getChildren().add(card);
+}
+
+                });
+            } catch (Exception e){
+                Platform.runLater(()->showAlert(Alert.AlertType.ERROR, "网络异常", "加载处方出错：" + e.getMessage()));
+            }
+        }).start();
     }
 
-    //网络加载健康教育文章
+    /** 支付并取药（内存模拟余额，支付成功才标记已取药） */
+    private void doPayAndTakePrescription(String presId, double totalMoney){
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("确认支付药费");
+        confirm.setContentText("确认支付药费 ¥" + String.format("%.2f", totalMoney) + "，支付成功标记处方为已取药");
+        Optional<ButtonType> res = confirm.showAndWait();
+        if(res.isEmpty() || res.get() != ButtonType.OK){
+            return;
+        }
+        new Thread(()->{
+            try {
+                Message resp = _hospitalSrv.memPayPrescription(presId, _loginUserId, totalMoney);
+                Platform.runLater(()->{
+                    if(IConstant.STATUS_SUCCESS.equals(resp.getStatusCode())){
+                        showAlert(Alert.AlertType.INFORMATION, "成功", String.valueOf(resp.getData()));
+                        loadMyNoTakePrescription();
+                    } else {
+                        showAlert(Alert.AlertType.WARNING, "操作失败", String.valueOf(resp.getData()));
+                    }
+                });
+            } catch (Exception e){
+                Platform.runLater(()->showAlert(Alert.AlertType.ERROR, "异常", e.getMessage()));
+            }
+        }).start();
+    }
+
+
+
+
     private void loadHealthArticleList(){
         new Thread(()->{
             try {
@@ -910,6 +1396,189 @@ public class HospitalFrame extends VBox {
         }).start();
     }
 
+    /**
+     * 加载当前医生待就诊预约列表
+     */
+    private void loadDoctorPendingAppointList(){
+        new Thread(()->{
+            try {
+                Message resp = _hospitalSrv.queryDoctorPendingAppoint(_loginUserId);
+                Platform.runLater(()->{
+                    if(IConstant.STATUS_SUCCESS.equals(resp.getStatusCode())){
+                        List<Appointment> list = (List<Appointment>) resp.getData();
+                        tvDoctorPendingAppoint.getItems().clear();
+                        tvDoctorPendingAppoint.getItems().addAll(list);
+                        if(list.isEmpty()){
+                            showAlert(Alert.AlertType.INFORMATION,"提示","当前暂无待就诊患者");
+                        }
+                    }else{
+                        showAlert(Alert.AlertType.ERROR,"获取待就诊记录失败",String.valueOf(resp.getData()));
+                    }
+                });
+            }catch (Exception e){
+                Platform.runLater(()->showAlert(Alert.AlertType.ERROR,"网络异常","查询待就诊记录异常"));
+            }
+        }).start();
+    }
+
+    /**
+ * 开药弹窗，展示库存，库存0禁用
+ * @param appointId 预约id
+ * @param userId 用户id
+ * @param doctorId 当前医生登录id
+ */
+private void openPrescriptionDialog(String appointId,String userId,String doctorId){
+    Dialog<List<Prescription>> dialog = new Dialog<>();
+    dialog.setTitle("开具处方");
+    dialog.setHeaderText("请选择需要开具的药品，并填写数量（灰色=库存为0，不可选）");
+    dialog.setResizable(true);
+    dialog.getDialogPane().setPrefWidth(600);
+    dialog.getDialogPane().setPrefHeight(480);
+
+    VBox vBoxContent = new VBox(12);
+    vBoxContent.setPadding(new Insets(15));
+    vBoxContent.setPrefWidth(570);
+    vBoxContent.setPrefHeight(430);
+
+    new Thread(()->{
+        try {
+            Message resp = _hospitalSrv.queryAllMedicine();
+            Platform.runLater(()->{
+                if(IConstant.STATUS_SUCCESS.equals(resp.getStatusCode())){
+                    List<Medicine> medList = (List<Medicine>) resp.getData();
+                    for(Medicine m : medList){
+                        HBox row = new HBox(12);
+                        row.setPrefWidth(500);
+                        CheckBox cbMed = new CheckBox(m.getMedicineName()+" | 库存："+m.getStock()+" | ¥"+m.getPrice());
+                        cbMed.setPrefWidth(380);
+                        if(m.getStock() <=0){
+                            cbMed.setDisable(true);
+                        }
+                        TextField tfNum = new TextField("1");
+                        tfNum.setPrefWidth(80);
+                        tfNum.setPromptText("数量");
+                        if(m.getStock() <=0){
+                            tfNum.setDisable(true);
+                        }
+                        cbMed.setUserData(m);
+                        row.getChildren().addAll(cbMed,new Label("数量:"),tfNum);
+                        vBoxContent.getChildren().add(row);
+                    }
+                }
+            });
+        }catch (Exception ex){
+            Platform.runLater(()->showAlert(Alert.AlertType.ERROR,"错误","获取药品列表失败"));
+        }
+    }).start();
+
+    dialog.getDialogPane().setContent(vBoxContent);
+    dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK,ButtonType.CANCEL);
+
+    Optional<List<Prescription>> result = dialog.showAndWait();
+    if(result.isPresent()){
+        List<Prescription> presOutList = new ArrayList<>();
+        for(var node : vBoxContent.getChildren()){
+            if(node instanceof HBox rowBox){
+                CheckBox cb = (CheckBox) rowBox.getChildren().get(0);
+                TextField tfNum = (TextField) rowBox.getChildren().get(2);
+                if(cb.isSelected() && !cb.isDisabled()){
+                    Medicine med = (Medicine) cb.getUserData();
+                    int num;
+                    try{
+                        num = Integer.parseInt(tfNum.getText().trim());
+                        if(num <=0) continue;
+                    }catch (Exception e){
+                        continue;
+                    }
+                    Prescription p = new Prescription();
+                    p.setAppointId(appointId);
+                    p.setDoctorId(doctorId);
+                    p.setUserId(userId);
+                    p.setMedicineId(med.getMedicineId());
+                    p.setMedicineName(med.getMedicineName());
+                    p.setMedicineNum(num);
+                    presOutList.add(p);
+                }
+            }
+        }
+        if(presOutList.isEmpty()){
+            showAlert(Alert.AlertType.WARNING,"提示","没有勾选有效的药品，处方放弃保存");
+            return;
+        }
+        new Thread(()->{
+            try {
+                Message resp = _hospitalSrv.savePrescriptionBatch(presOutList);
+                Platform.runLater(()->{
+                    if(IConstant.STATUS_SUCCESS.equals(resp.getStatusCode())){
+                        showAlert(Alert.AlertType.INFORMATION,"开药成功",String.valueOf(resp.getData()));
+                        loadDoctorPendingAppointList();
+                    }else{
+                        showAlert(Alert.AlertType.WARNING,"开药失败",String.valueOf(resp.getData()));
+                    }
+                });
+            }catch (Exception e){
+                Platform.runLater(()->showAlert(Alert.AlertType.ERROR,"异常",e.getMessage()));
+            }
+        }).start();
+    }
+}
+
+/** 用户确认取药 */
+private void doTakeMedicine(String presId,String userId){
+    Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+    confirm.setTitle("确认取药");
+    confirm.setContentText("确认完成取药？确认后该处方标记为已取药");
+    Optional<ButtonType> res = confirm.showAndWait();
+    if(res.isEmpty() || res.get()!=ButtonType.OK){
+        return;
+    }
+    new Thread(()->{
+        try {
+            Message resp = _hospitalSrv.takeMedicine(presId,userId);
+            Platform.runLater(()->{
+                if(IConstant.STATUS_SUCCESS.equals(resp.getStatusCode())){
+                    showAlert(Alert.AlertType.INFORMATION,"成功",String.valueOf(resp.getData()));
+                    loadMyNoTakePrescription();
+                }else{
+                    showAlert(Alert.AlertType.WARNING,"操作失败",String.valueOf(resp.getData()));
+                }
+            });
+        }catch (Exception e){
+            Platform.runLater(()->showAlert(Alert.AlertType.ERROR,"异常",e.getMessage()));
+        }
+    }).start();
+}
+
+    /**
+     * 执行完成就诊，待就诊改为已就诊
+     * @param appointId 预约编号
+     * @param doctorId 当前登录医生ID
+     */
+    private void doFinishAppoint(String appointId,String doctorId){
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("确认完成就诊");
+        confirm.setContentText("确认将该条记录设置为【已就诊】？");
+        Optional<ButtonType> res = confirm.showAndWait();
+        if(res.isEmpty() || res.get()!=ButtonType.OK){
+            return;
+        }
+        new Thread(()->{
+            try {
+                Message resp = _hospitalSrv.finishAppointment(appointId,doctorId);
+                Platform.runLater(()->{
+                    if(IConstant.STATUS_SUCCESS.equals(resp.getStatusCode())){
+                        showAlert(Alert.AlertType.INFORMATION,"成功",String.valueOf(resp.getData()));
+                        loadDoctorPendingAppointList();
+                    }else{
+                        showAlert(Alert.AlertType.WARNING,"操作失败",String.valueOf(resp.getData()));
+                    }
+                });
+            }catch (Exception e){
+                Platform.runLater(()->showAlert(Alert.AlertType.ERROR,"异常",e.getMessage()));
+            }
+        }).start();
+    }
+
     private String fieldStyle() {
         return "-fx-background-radius:6;"
                 + "-fx-border-radius:6;"
@@ -920,7 +1589,6 @@ public class HospitalFrame extends VBox {
                 + "-fx-font-size:14px;";
     }
 
-    //==================== 预约挂号提交 ====================
     private void doSubmitAppoint(){
         Doctor selectedDoc = tvAppointDoctor.getSelectionModel().getSelectedItem();
         LocalDate selectDate = dpAppointDate.getValue();
@@ -1181,8 +1849,10 @@ public class HospitalFrame extends VBox {
         String name = tfAddDocName.getText().trim();
         String dept = tfAddDocDept.getText().trim();
         String title = tfAddDocTitle.getText().trim();
+        String skill = tfAddDocSkill.getText().trim();
+
         if (id.isBlank() || name.isBlank() || dept.isBlank() || title.isBlank()) {
-            showAlert(Alert.AlertType.WARNING, "提示", "全部字段不能为空");
+            showAlert(Alert.AlertType.WARNING, "提示", "医生ID、姓名、科室、职称不能为空");
             return;
         }
         Doctor doc = new Doctor();
@@ -1190,12 +1860,15 @@ public class HospitalFrame extends VBox {
         doc.setName(name);
         doc.setDepartment(dept);
         doc.setTitle(title);
+        doc.setSkill(skill);
+
         new Thread(() -> {
             try {
                 Message resp = _hospitalSrv.addDoctor(_loginUserId, doc);
                 Platform.runLater(() -> {
                     if (IConstant.STATUS_SUCCESS.equals(resp.getStatusCode())) {
                         showAlert(Alert.AlertType.INFORMATION, "成功", String.valueOf(resp.getData()));
+                        actionQueryAllDoctor();
                     } else {
                         showAlert(Alert.AlertType.ERROR, "业务失败", String.valueOf(resp.getData()));
                     }
@@ -1211,6 +1884,8 @@ public class HospitalFrame extends VBox {
         String name = tfUpdDocName.getText().trim();
         String dept = tfUpdDocDept.getText().trim();
         String title = tfUpdDocTitle.getText().trim();
+        String skill = tfUpdDocSkill.getText().trim();
+
         if (id.isBlank()) {
             showAlert(Alert.AlertType.WARNING, "提示", "医生ID不能为空");
             return;
@@ -1220,12 +1895,15 @@ public class HospitalFrame extends VBox {
         doc.setName(name);
         doc.setDepartment(dept);
         doc.setTitle(title);
+        doc.setSkill(skill);
+
         new Thread(() -> {
             try {
                 Message resp = _hospitalSrv.updateDoctor(_loginUserId, doc);
                 Platform.runLater(() -> {
                     if (IConstant.STATUS_SUCCESS.equals(resp.getStatusCode())) {
                         showAlert(Alert.AlertType.INFORMATION, "成功", String.valueOf(resp.getData()));
+                        actionQueryAllDoctor();
                     } else {
                         showAlert(Alert.AlertType.ERROR, "业务失败", String.valueOf(resp.getData()));
                     }
@@ -1236,7 +1914,7 @@ public class HospitalFrame extends VBox {
         }).start();
     }
 
-    private void actionDeleteDoctor() {}
+      private void actionDeleteDoctor() {}
 
     private void showAlert(Alert.AlertType alertType, String title, String content) {
         Alert alert = new Alert(alertType);
@@ -1245,4 +1923,102 @@ public class HospitalFrame extends VBox {
         alert.setContentText(content);
         alert.showAndWait();
     }
+    /**加载管理员药品库存列表*/
+private void loadAdminMedicineStockList(){
+    new Thread(()->{
+        try {
+            Message resp = _hospitalSrv.adminQueryAllMedicine();
+            Platform.runLater(()->{
+                if(IConstant.STATUS_SUCCESS.equals(resp.getStatusCode())){
+                    List<Medicine> list = (List<Medicine>) resp.getData();
+                    tvAdminMedicine.getItems().clear();
+                    tvAdminMedicine.getItems().addAll(list);
+                }else{
+                    showAlert(Alert.AlertType.ERROR,"加载失败",String.valueOf(resp.getData()));
+                }
+            });
+        }catch (Exception e){
+            Platform.runLater(()->showAlert(Alert.AlertType.ERROR,"网络异常","加载药品列表出错"));
+        }
+    }).start();
+}
+
+/**弹出修改库存弹窗*/
+private void openEditStockDialog(String medId,String medName,int oldStock){
+    TextInputDialog dialog=new TextInputDialog(String.valueOf(oldStock));
+    dialog.setTitle("修改药品库存");
+    dialog.setHeaderText("药品："+medName+"("+medId+")");
+    dialog.setContentText("请输入新库存(≥0的整数)：");
+    Optional<String> res=dialog.showAndWait();
+    if(res.isEmpty()){
+        return;
+    }
+    String inputStr=res.get().trim();
+    int newStock;
+    try{
+        newStock=Integer.parseInt(inputStr);
+        if(newStock<0){
+            showAlert(Alert.AlertType.WARNING,"输入错误","库存不能是负数！");
+            return;
+        }
+    }catch (NumberFormatException ex){
+        showAlert(Alert.AlertType.WARNING,"输入错误","请输入合法整数数字");
+        return;
+    }
+    //提交修改
+    new Thread(()->{
+        try {
+            Message msg=_hospitalSrv.adminUpdateMedicineStock(medId,newStock);
+            Platform.runLater(()->{
+                if(IConstant.STATUS_SUCCESS.equals(msg.getStatusCode())){
+                    showAlert(Alert.AlertType.INFORMATION,"成功","库存修改完成");
+                    loadAdminMedicineStockList();
+                }else{
+                    showAlert(Alert.AlertType.WARNING,"失败",String.valueOf(msg.getData()));
+                }
+            });
+        }catch (Exception e){
+            Platform.runLater(()->showAlert(Alert.AlertType.ERROR,"异常","修改库存网络异常"));
+        }
+    }).start();
+}
+    /** 根据药品编号构建药品图片容器，加载失败显示占位色块 */
+    private StackPane buildMedicineImage(String medicineId) {
+        StackPane imgHolder = new StackPane();
+        imgHolder.setPrefSize(180,180);
+        imgHolder.setMinSize(180,180);
+        imgHolder.setMaxSize(180,180);
+        // 默认占位背景色
+        String bgColor = "#73b8e8";
+        imgHolder.setStyle("-fx-background-radius:10; -fx-background-color:"+bgColor+";");
+        Rectangle clip = new Rectangle(180,180);
+        clip.setArcWidth(12);
+        clip.setArcHeight(12);
+        imgHolder.setClip(clip);
+        //占位emoji
+        Label emojiLabel = new Label("💊");
+        emojiLabel.setFont(Font.font("System",48));
+        imgHolder.getChildren().add(emojiLabel);
+
+        // 后台线程加载图片，路径 /vcampus/client/view/assets/hospital/M001.jpg
+        String resPath = "/vcampus/client/view/assets/hospital/"+medicineId+".jpg";
+        new Thread(() -> {
+            var url = getClass().getResource(resPath);
+            if(url != null){
+                Image image = new Image(url.toExternalForm(),180,180,true,true,false);
+                if(!image.isError()){
+                    ImageView iv = new ImageView(image);
+                    iv.setFitWidth(180);
+                    iv.setFitHeight(180);
+                    iv.setPreserveRatio(true);
+                    Platform.runLater(()->{
+                        imgHolder.setStyle(""); //清除占位背景
+                        imgHolder.getChildren().setAll(iv);
+                    });
+                }
+            }
+        }).start();
+        return imgHolder;
+    }
+
 }

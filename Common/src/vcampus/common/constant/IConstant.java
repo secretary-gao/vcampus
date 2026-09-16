@@ -179,6 +179,27 @@ public interface IConstant {
     String MSG_HOSPITAL_DELETE_CANCEL_APPOINT = "HOSPITAL_DELETE_CANCEL_APPOINT";
     //==================== 健康教育模块 ====================
     String MSG_HOSPITAL_QUERY_HEALTH_ARTICLE = "hospital_query_health_article";
+    //=====就诊叫号（医生查看待就诊、完成就诊）=====
+    String MSG_HOSPITAL_DOCTOR_GET_MY_PENDING_APPOINT = "hospital_doctor_get_my_pending_appoint";
+    String MSG_HOSPITAL_FINISH_APPOINT = "hospital_finish_appoint";
+    //====药房开药处方模块====
+String MSG_HOSPITAL_QUERY_ALL_MEDICINE = "hospital_query_all_medicine";
+String MSG_HOSPITAL_SAVE_PRESCRIPTION = "hospital_save_prescription";
+String MSG_HOSPITAL_QUERY_PRES_BY_APPOINT = "hospital_query_pres_by_appoint";
+//====药房取药功能====
+String MSG_HOSPITAL_USER_QUERY_MY_PRES = "hospital_user_query_my_pres";
+String MSG_HOSPITAL_TAKE_MEDICINE = "hospital_take_medicine";
+//药房内存模拟充值支付（内存余额，不修改数据库表）
+String MSG_HOSPITAL_GET_MEM_BALANCE="hospital_get_mem_balance";
+String MSG_HOSPITAL_MEM_RECHARGE="hospital_mem_recharge";
+String MSG_HOSPITAL_MEM_PAY_PRES="hospital_mem_pay_pres";
+//管理员药品库存管理
+String MSG_HOSPITAL_ADMIN_QUERY_ALL_MED="hospital_admin_query_all_med";
+String MSG_HOSPITAL_ADMIN_UPDATE_STOCK="hospital_admin_update_stock";
+String MSG_HOSPITAL_ADMIN_ADD_MED="hospital_admin_add_med";
+String MSG_HOSPITAL_ADMIN_UPDATE_MED="hospital_admin_update_med";
+String MSG_HOSPITAL_ADMIN_DELETE_MED="hospital_admin_delete_med";
+
 
 
     // 医院业务自定义状态码

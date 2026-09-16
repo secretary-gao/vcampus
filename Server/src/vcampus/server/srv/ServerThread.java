@@ -15,8 +15,10 @@ import vcampus.common.vo.Appointment;
 import vcampus.common.vo.Doctor;
 import vcampus.common.vo.HealthArticle;
 import vcampus.common.vo.HospitalAdminReq;
+import vcampus.common.vo.Medicine;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
+import vcampus.common.vo.Prescription;
 import vcampus.common.vo.Student;
 import vcampus.common.vo.User;
 import vcampus.server.srv.Library.LibraryHandler;
@@ -214,6 +216,21 @@ public class ServerThread implements Runnable {
         //新增：查询可安全删除医生
         _handlerMap.put(IConstant.MSG_HOSPITAL_QUERY_CAN_DELETE_DOCTOR, this::handleQueryCanDeleteDoctor);
         _handlerMap.put(IConstant.MSG_HOSPITAL_DELETE_CANCEL_APPOINT, this::handleDeleteCancelAppoint);
+        _handlerMap.put(IConstant.MSG_HOSPITAL_DOCTOR_GET_MY_PENDING_APPOINT,this::handleDoctorGetPendingAppoint);
+        _handlerMap.put(IConstant.MSG_HOSPITAL_FINISH_APPOINT,this::handleFinishAppoint);
+        _handlerMap.put(IConstant.MSG_HOSPITAL_QUERY_ALL_MEDICINE,this::handleQueryAllMedicine);
+_handlerMap.put(IConstant.MSG_HOSPITAL_SAVE_PRESCRIPTION,this::handleSavePrescription);
+_handlerMap.put(IConstant.MSG_HOSPITAL_QUERY_PRES_BY_APPOINT,this::handleQueryPresByAppoint);
+_handlerMap.put(IConstant.MSG_HOSPITAL_USER_QUERY_MY_PRES,this::handleQueryUserMyPres);
+_handlerMap.put(IConstant.MSG_HOSPITAL_TAKE_MEDICINE,this::handleTakeMedicine);
+_handlerMap.put(IConstant.MSG_HOSPITAL_GET_MEM_BALANCE,this::handleGetMemBalance);
+_handlerMap.put(IConstant.MSG_HOSPITAL_MEM_RECHARGE,this::handleMemRecharge);
+_handlerMap.put(IConstant.MSG_HOSPITAL_MEM_PAY_PRES,this::handleMemPayPres);
+_handlerMap.put(IConstant.MSG_HOSPITAL_ADMIN_QUERY_ALL_MED,this::handleAdminQueryAllMed);
+_handlerMap.put(IConstant.MSG_HOSPITAL_ADMIN_UPDATE_STOCK,this::handleAdminUpdateStock);
+_handlerMap.put(IConstant.MSG_HOSPITAL_ADMIN_ADD_MED,this::handleAdminAddMed);
+_handlerMap.put(IConstant.MSG_HOSPITAL_ADMIN_UPDATE_MED,this::handleAdminUpdateMed);
+_handlerMap.put(IConstant.MSG_HOSPITAL_ADMIN_DELETE_MED,this::handleAdminDeleteMed);
     }
 
     /**
@@ -618,6 +635,334 @@ private Message handleQueryHealthArticle(Message request) {
     return resp;
 }
 
+/**
+ * 医生获取自己待就诊预约
+ */
+private Message handleDoctorGetPendingAppoint(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_DOCTOR_GET_MY_PENDING_APPOINT);
+    resp.setSender("Server");
+    try {
+        String doctorId = (String) request.getData();
+        List<Appointment> list = _hospitalSrv.queryDoctorPendingAppoint(doctorId);
+        resp.setStatusCode(IConstant.STATUS_SUCCESS);
+        resp.setData(list);
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("获取待就诊记录失败："+e.getMessage());
+    }
+    return resp;
+}
+
+/**
+ * 完成就诊，待就诊改为已就诊
+ */
+private Message handleFinishAppoint(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_FINISH_APPOINT);
+    resp.setSender("Server");
+    try {
+        Object[] payload = (Object[]) request.getData();
+        String appointId = (String) payload[0];
+        String doctorId = (String) payload[1];
+        boolean ok = _hospitalSrv.finishAppointment(appointId,doctorId);
+        if(ok){
+            resp.setStatusCode(IConstant.STATUS_SUCCESS);
+            resp.setData("完成就诊成功，记录已更新为【已就诊】");
+        }else{
+            resp.setStatusCode(IConstant.STATUS_ERROR);
+            resp.setData("操作失败：记录不属于该医生或状态不是待就诊");
+        }
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("服务器异常："+e.getMessage());
+    }
+    return resp;
+}
+
+private Message handleQueryAllMedicine(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_QUERY_ALL_MEDICINE);
+    resp.setSender("Server");
+    try {
+        List<Medicine> list = _hospitalSrv.queryAllMedicine();
+        resp.setStatusCode(IConstant.STATUS_SUCCESS);
+        resp.setData(list);
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("获取药品列表失败："+e.getMessage());
+    }
+    return resp;
+}
+
+private Message handleSavePrescription(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_SAVE_PRESCRIPTION);
+    resp.setSender("Server");
+    try {
+        List<Prescription> presList = (List<Prescription>) request.getData();
+        int cnt = _hospitalSrv.savePrescriptionBatch(presList);
+        if(cnt>0){
+            resp.setStatusCode(IConstant.STATUS_SUCCESS);
+            resp.setData("成功开具"+cnt+"条药品处方");
+        }else{
+            resp.setStatusCode(IConstant.STATUS_BAD_REQUEST);
+            resp.setData("未选择任何药品");
+        }
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("保存处方异常："+e.getMessage());
+    }
+    return resp;
+}
+
+private Message handleQueryPresByAppoint(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_QUERY_PRES_BY_APPOINT);
+    resp.setSender("Server");
+    try {
+        String appointId = (String)request.getData();
+        List<Prescription> list = _hospitalSrv.queryPrescriptionByAppointId(appointId);
+        resp.setStatusCode(IConstant.STATUS_SUCCESS);
+        resp.setData(list);
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("查询处方失败："+e.getMessage());
+    }
+    return resp;
+}
+/** 用户查询自己未取药处方 */
+private Message handleQueryUserMyPres(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_USER_QUERY_MY_PRES);
+    resp.setSender("Server");
+    try {
+        String userId = (String) request.getData();
+        List<Prescription> list = _hospitalSrv.queryUserNoTakePres(userId);
+        resp.setStatusCode(IConstant.STATUS_SUCCESS);
+        resp.setData(list);
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("查询我的处方失败："+e.getMessage());
+    }
+    return resp;
+}
+
+/** 用户确认取药 */
+private Message handleTakeMedicine(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_TAKE_MEDICINE);
+    resp.setSender("Server");
+    try {
+        Object[] arr = (Object[]) request.getData();
+        String presId = (String) arr[0];
+        String userId = (String) arr[1];
+        boolean ok = _hospitalSrv.takeMedicine(presId,userId);
+        if(ok){
+            resp.setStatusCode(IConstant.STATUS_SUCCESS);
+            resp.setData("确认取药成功");
+        }else{
+            resp.setStatusCode(IConstant.STATUS_ERROR);
+            resp.setData("取药失败：记录不存在或者已经取过药");
+        }
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("服务器异常："+e.getMessage());
+    }
+    return resp;
+}
+private Message handleGetMemBalance(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_GET_MEM_BALANCE);
+    resp.setSender("Server");
+    try {
+        String userId=(String)request.getData();
+        double bal=_hospitalSrv.getMemBalance(userId);
+        resp.setStatusCode(IConstant.STATUS_SUCCESS);
+        resp.setData(bal);
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("获取余额失败");
+    }
+    return resp;
+}
+
+private Message handleMemRecharge(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_MEM_RECHARGE);
+    resp.setSender("Server");
+    try {
+        Object[] arr=(Object[])request.getData();
+        String uid=(String)arr[0];
+        Double moneyObj=(Double) arr[1];
+        double money = moneyObj.doubleValue();
+        boolean ok=_hospitalSrv.memRecharge(uid,money);
+        if(ok){
+            resp.setStatusCode(IConstant.STATUS_SUCCESS);
+            resp.setData("充值成功");
+        }else{
+            resp.setStatusCode(IConstant.STATUS_ERROR);
+            resp.setData("充值金额必须大于0");
+        }
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("充值异常："+e.getMessage());
+    }
+    return resp;
+}
+
+
+private Message handleMemPayPres(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_MEM_PAY_PRES);
+    resp.setSender("Server");
+    try {
+        Object[] arr=(Object[])request.getData();
+        String presId=(String)arr[0];
+        String uid=(String)arr[1];
+        Double totalObj = (Double) arr[2];
+        double total= totalObj.doubleValue();
+        boolean ok=_hospitalSrv.memPayPrescription(presId,uid,total);
+        if(ok){
+            resp.setStatusCode(IConstant.STATUS_SUCCESS);
+            resp.setData("支付完成，已取药");
+        }else{
+            resp.setStatusCode(IConstant.STATUS_ERROR);
+            resp.setData("余额不足或者处方状态异常");
+        }
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("支付异常："+e.getMessage());
+    }
+    return resp;
+}
+private Message handleAdminQueryAllMed(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_ADMIN_QUERY_ALL_MED);
+    resp.setSender("Server");
+    try {
+        List<Medicine> list = _hospitalSrv.adminQueryAllMedicine();
+        resp.setStatusCode(IConstant.STATUS_SUCCESS);
+        resp.setData(list);
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("查询药品库存失败："+e.getMessage());
+    }
+    return resp;
+}
+
+private Message handleAdminUpdateStock(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_ADMIN_UPDATE_STOCK);
+    resp.setSender("Server");
+    try {
+        Object[] arr = (Object[]) request.getData();
+        String medId = (String) arr[0];
+        Integer newStock = (Integer) arr[1];
+        boolean ok = _hospitalSrv.adminUpdateMedicineStock(medId,newStock);
+        if(ok){
+            resp.setStatusCode(IConstant.STATUS_SUCCESS);
+            resp.setData("库存修改成功");
+        }else{
+            resp.setStatusCode(IConstant.STATUS_ERROR);
+            resp.setData("修改失败，库存不能为负数");
+        }
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("服务器异常："+e.getMessage());
+    }
+    return resp;
+}
+private Message handleAdminAddMed(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_ADMIN_ADD_MED);
+    resp.setSender("Server");
+    try {
+        Medicine med = (Medicine) request.getData();
+        boolean ok = _hospitalSrv.adminAddMedicine(med);
+        if(ok){
+            resp.setStatusCode(IConstant.STATUS_SUCCESS);
+            resp.setData("新增药品成功");
+        }else{
+            resp.setStatusCode(IConstant.STATUS_ERROR);
+            resp.setData("新增失败，编号可能重复");
+        }
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("服务器异常："+e.getMessage());
+    }
+    return resp;
+}
+private Message handleAdminUpdateMed(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_ADMIN_UPDATE_MED);
+    resp.setSender("Server");
+    try {
+        Medicine med = (Medicine) request.getData();
+        boolean ok = _hospitalSrv.adminUpdateMedicine(med);
+        if(ok){
+            resp.setStatusCode(IConstant.STATUS_SUCCESS);
+            resp.setData("修改药品成功");
+        }else{
+            resp.setStatusCode(IConstant.STATUS_ERROR);
+            resp.setData("修改失败");
+        }
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("服务器异常："+e.getMessage());
+    }
+    return resp;
+}
+private Message handleAdminDeleteMed(Message request) {
+    Message resp = new Message();
+    resp.setUid(request.getUid());
+    resp.setName(IConstant.MSG_HOSPITAL_ADMIN_DELETE_MED);
+    resp.setSender("Server");
+    try {
+        String medId = (String) request.getData();
+        boolean ok = _hospitalSrv.adminDeleteMedicine(medId);
+        if(ok){
+            resp.setStatusCode(IConstant.STATUS_SUCCESS);
+            resp.setData("删除药品成功");
+        }else{
+            resp.setStatusCode(IConstant.STATUS_ERROR);
+            resp.setData("删除失败");
+        }
+    }catch (Exception e){
+        e.printStackTrace();
+        resp.setStatusCode(IConstant.STATUS_ERROR);
+        resp.setData("服务器异常："+e.getMessage());
+    }
+    return resp;
+}
 
 
 }

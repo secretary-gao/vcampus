@@ -30,7 +30,7 @@ public class DoctorDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public List<Doctor> selectAll() throws SQLException, IOException {
-        String sql = "SELECT doctorId, name, department, title FROM tbldoctor";
+        String sql = "SELECT doctorId, name, department, title, skill FROM tbldoctor";
         List<Doctor> list = new ArrayList<>();
         try (Connection conn = DbHelper.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -50,7 +50,7 @@ public class DoctorDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public List<Doctor> selectByDepartment(String department) throws SQLException, IOException {
-        String sql = "SELECT doctorId, name, department, title FROM tbldoctor WHERE department = ?";
+        String sql = "SELECT doctorId, name, department, title, skill FROM tbldoctor WHERE department = ?";
         List<Doctor> list = new ArrayList<>();
         try (Connection conn = DbHelper.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -72,7 +72,7 @@ public class DoctorDAO {
      * @throws IOException  数据库配置文件读取异常
      */
     public Doctor findById(String doctorId) throws SQLException, IOException {
-        String sql = "SELECT doctorId, name, department, title FROM tbldoctor WHERE doctorId = ?";
+        String sql = "SELECT doctorId, name, department, title, skill FROM tbldoctor WHERE doctorId = ?";
         try (Connection conn = DbHelper.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, doctorId);
@@ -84,7 +84,6 @@ public class DoctorDAO {
         }
         return null;
     }
-
     /**
      * 新增医生
      * @param doctor
@@ -93,17 +92,17 @@ public class DoctorDAO {
      * @throws IOException
      */
     public boolean insert(Doctor doctor) throws SQLException, IOException{
-        String sql = "INSERT INTO tbldoctor(doctorId,name,department,title) VALUES (?,?,?,?)";
+        String sql = "INSERT INTO tbldoctor(doctorId,name,department,title,skill) VALUES (?,?,?,?,?)";
         try(Connection conn = DbHelper.getConnection();
             PreparedStatement pstmt = conn.prepareStatement(sql)){
             pstmt.setString(1,doctor.getDoctorId());
             pstmt.setString(2,doctor.getName());
             pstmt.setString(3,doctor.getDepartment());
             pstmt.setString(4,doctor.getTitle());
+            pstmt.setString(5,doctor.getSkill());
             return pstmt.executeUpdate()>0;
         }
     }
-
     /**
      * 修改医生信息
      * @param doctor
@@ -112,17 +111,17 @@ public class DoctorDAO {
      * @throws IOException
      */
     public boolean update(Doctor doctor) throws SQLException, IOException{
-        String sql = "UPDATE tbldoctor SET name=?,department=?,title=? WHERE doctorId=?";
+        String sql = "UPDATE tbldoctor SET name=?,department=?,title=?,skill=? WHERE doctorId=?";
         try(Connection conn = DbHelper.getConnection();
             PreparedStatement pstmt = conn.prepareStatement(sql)){
             pstmt.setString(1,doctor.getName());
             pstmt.setString(2,doctor.getDepartment());
             pstmt.setString(3,doctor.getTitle());
-            pstmt.setString(4,doctor.getDoctorId());
+            pstmt.setString(4,doctor.getSkill());
+            pstmt.setString(5,doctor.getDoctorId());
             return pstmt.executeUpdate()>0;
         }
     }
-
     /**
      * 删除医生
      * @param doctorId
@@ -138,7 +137,6 @@ public class DoctorDAO {
             return pstmt.executeUpdate()>0;
         }
     }
-
     /**
      * 将结果集当前行映射为 Doctor 对象。
      *
@@ -152,9 +150,9 @@ public class DoctorDAO {
         doctor.setName(rs.getString("name"));
         doctor.setDepartment(rs.getString("department"));
         doctor.setTitle(rs.getString("title"));
+        doctor.setSkill(rs.getString("skill"));
         return doctor;
     }
-
     /**
  * 查询所有不存在待就诊预约的医生（允许管理员安全删除）
  */
@@ -165,7 +163,7 @@ public class DoctorDAO {
 public List<Doctor> selectCanDeleteDoctor() throws SQLException, IOException {
     List<Doctor> doctorList = new ArrayList<>();
     // 去掉 AND a.status='待就诊'，只要存在任意一条预约记录就排除
-    String sql = "SELECT d.doctorId, d.name, d.department, d.title " +
+    String sql = "SELECT d.doctorId, d.name, d.department, d.title, d.skill " +
             "FROM tbldoctor d " +
             "WHERE NOT EXISTS (" +
             "    SELECT 1 FROM tblappointment a " +
@@ -180,13 +178,10 @@ public List<Doctor> selectCanDeleteDoctor() throws SQLException, IOException {
             doctor.setName(rs.getString("name"));
             doctor.setDepartment(rs.getString("department"));
             doctor.setTitle(rs.getString("title"));
+            doctor.setSkill(rs.getString("skill"));
             doctorList.add(doctor);
         }
     }
     return doctorList;
 }
-
-
 }
-
-
