@@ -34,6 +34,7 @@ public class AutoSchedulePane extends VBox {
     private final Label _summary = new Label("尚未生成方案");
     private final Spinner<Integer> _weekStart = new Spinner<>(1, 30, 1);
     private final Spinner<Integer> _weekEnd = new Spinner<>(1, 30, 16);
+    private final Button _validate = new Button("检查冲突");
     private final Button _apply = new Button("应用方案");
     private List<TeachingClass> _unscheduled = List.of();
     private Map<String, TeachingClass> _classes = Map.of();
@@ -93,11 +94,14 @@ public class AutoSchedulePane extends VBox {
         Button cancel = new Button("取消预览");
         cancel.getStyleClass().add("secondary");
         cancel.setOnAction(event -> clearPreview());
+        _validate.getStyleClass().add("secondary");
+        _validate.setDisable(true);
+        _validate.setOnAction(event -> validatePlan());
         _apply.getStyleClass().add("success");
         _apply.setDisable(true);
         _apply.setOnAction(event -> apply());
         HBox controls = new HBox(9, new Label("周次"), _weekStart,
-                new Label("至"), _weekEnd, loadDemo, preview, cancel, _apply);
+                new Label("至"), _weekEnd, loadDemo, preview, _validate, cancel, _apply);
         controls.setAlignment(Pos.CENTER_LEFT);
         controls.getStyleClass().add("tool-bar-card");
 
@@ -138,7 +142,23 @@ public class AutoSchedulePane extends VBox {
                     + " · 未安排 " + plan.getUnassignedTeachingClassIds().size());
             _apply.setDisable(plan.getAssignments().isEmpty()
                     || !plan.getUnassignedTeachingClassIds().isEmpty());
+            _validate.setDisable(_apply.isDisabled());
             _status.setText(_apply.isDisabled() ? "未找到完整可行方案" : "预览已生成，数据库尚未改变");
+        });
+    }
+
+    private void validatePlan() {
+        if (_plan == null || _plan.getAssignments().isEmpty()) return;
+        _status.setText("正在检查方案与全部已有排课的冲突…");
+        CourseViewSupport.runAsync(this, () -> _client.validateAutoSchedule(_plan), count -> {
+            _status.setText("冲突检查通过，方案可以应用");
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("排课方案检查");
+            alert.setHeaderText("检查通过");
+            alert.setContentText("已检查 " + count
+                    + " 个教学班：方案内部无冲突，且与全部已有课程排课无冲突。");
+            CourseViewSupport.styleDialog(alert.getDialogPane());
+            alert.showAndWait();
         });
     }
 
@@ -177,6 +197,7 @@ public class AutoSchedulePane extends VBox {
         _plan = null;
         _previewTable.getItems().clear();
         _summary.setText("尚未生成方案");
+        _validate.setDisable(true);
         _apply.setDisable(true);
     }
 

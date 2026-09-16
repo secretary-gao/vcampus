@@ -40,6 +40,9 @@ public interface ICourseClientSrv {
     int applyAutoSchedule(AutoSchedulePlan plan)
             throws IOException, ClassNotFoundException;
 
+    int validateAutoSchedule(AutoSchedulePlan plan)
+            throws IOException, ClassNotFoundException;
+
     int loadAutoScheduleDemoData() throws IOException, ClassNotFoundException;
 
     CourseDashboardStats queryDashboard() throws IOException, ClassNotFoundException;

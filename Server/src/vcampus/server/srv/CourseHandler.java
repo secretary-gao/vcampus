@@ -70,6 +70,7 @@ public class CourseHandler implements ModuleHandler {
                 , IConstant.MSG_COURSE_REQUIREMENT_GROUP_QUERY
                 , IConstant.MSG_COURSE_AUTO_SCHEDULE_PREVIEW
                 , IConstant.MSG_COURSE_AUTO_SCHEDULE_APPLY
+                , IConstant.MSG_COURSE_AUTO_SCHEDULE_VALIDATE
                 , IConstant.MSG_COURSE_AUTO_SCHEDULE_DEMO_LOAD
                 , IConstant.MSG_COURSE_DASHBOARD_QUERY
         );
@@ -101,6 +102,8 @@ public class CourseHandler implements ModuleHandler {
                         _courseServerSrv.previewAutoSchedule((AutoScheduleRequest) request.getData()));
                 case IConstant.MSG_COURSE_AUTO_SCHEDULE_APPLY -> success(request,
                         _courseServerSrv.applyAutoSchedule((AutoSchedulePlan) request.getData()));
+                case IConstant.MSG_COURSE_AUTO_SCHEDULE_VALIDATE -> success(request,
+                        _courseServerSrv.validateAutoSchedule((AutoSchedulePlan) request.getData()));
                 case IConstant.MSG_COURSE_AUTO_SCHEDULE_DEMO_LOAD -> success(request,
                         _courseServerSrv.loadAutoScheduleDemoData());
                 case IConstant.MSG_COURSE_DASHBOARD_QUERY -> success(request,

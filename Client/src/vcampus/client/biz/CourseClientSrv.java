@@ -86,6 +86,17 @@ public class CourseClientSrv implements ICourseClientSrv {
     }
 
     @Override
+    public int validateAutoSchedule(AutoSchedulePlan plan)
+            throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_AUTO_SCHEDULE_VALIDATE, plan, "Admin");
+        ensureSuccess(response);
+        if (!(response.getData() instanceof Number count)) {
+            throw new CourseClientException(IConstant.STATUS_ERROR, "服务器响应格式错误");
+        }
+        return count.intValue();
+    }
+
+    @Override
     public int loadAutoScheduleDemoData() throws IOException, ClassNotFoundException {
         Message response = send(IConstant.MSG_COURSE_AUTO_SCHEDULE_DEMO_LOAD, null, "Admin");
         ensureSuccess(response);

@@ -119,6 +119,7 @@ public interface IConstant {
     String MSG_COURSE_REQUIREMENT_GROUP_QUERY = "courseRequirementGroupQuery";
     String MSG_COURSE_AUTO_SCHEDULE_PREVIEW = "courseAutoSchedulePreview";
     String MSG_COURSE_AUTO_SCHEDULE_APPLY = "courseAutoScheduleApply";
+    String MSG_COURSE_AUTO_SCHEDULE_VALIDATE = "courseAutoScheduleValidate";
     String MSG_COURSE_AUTO_SCHEDULE_DEMO_LOAD = "courseAutoScheduleDemoLoad";
     String MSG_COURSE_DASHBOARD_QUERY = "courseDashboardQuery";
 

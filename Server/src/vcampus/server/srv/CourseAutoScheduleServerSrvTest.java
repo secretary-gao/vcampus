@@ -26,6 +26,29 @@ public class CourseAutoScheduleServerSrvTest {
             AutoSchedulePlan preview = service.previewAutoSchedule(request);
             require(preview.getAssignments().size() == 2, "Preview 生成完整方案");
             require(countFixtureSchedules() == 0, "Preview 不修改数据库");
+            require(service.validateAutoSchedule(preview) == 2,
+                    "Validate 对照全部已有排课检查预览方案");
+            require(countFixtureSchedules() == 0, "Validate 不修改数据库");
+
+            AutoSchedulePlan conflicting = service.previewAutoSchedule(request);
+            CourseSchedule first = conflicting.getAssignments().get(0);
+            CourseSchedule second = conflicting.getAssignments().get(1);
+            second.setDayOfWeek(first.getDayOfWeek());
+            second.setWeekStart(first.getWeekStart());
+            second.setWeekEnd(first.getWeekEnd());
+            second.setStartPeriod(first.getStartPeriod());
+            second.setEndPeriod(first.getEndPeriod());
+            second.setStartTime(first.getStartTime());
+            second.setEndTime(first.getEndTime());
+            second.setClassroom(first.getClassroom());
+            boolean conflictRejected = false;
+            try {
+                service.validateAutoSchedule(conflicting);
+            } catch (CourseServiceException expected) {
+                conflictRejected = true;
+            }
+            require(conflictRejected, "Validate 拒绝方案内部教室时间冲突");
+            require(countFixtureSchedules() == 0, "Validate 拒绝后无数据残留");
             int applied = service.applyAutoSchedule(preview);
             require(applied == 2 && countFixtureSchedules() == 2, "Apply 原子写入全部排课");
 

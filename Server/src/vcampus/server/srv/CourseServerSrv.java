@@ -170,6 +170,46 @@ public class CourseServerSrv implements ICourseServerSrv {
     }
 
     @Override
+    public int validateAutoSchedule(AutoSchedulePlan plan)
+            throws SQLException, IOException, CourseServiceException {
+        if (plan == null || plan.getAssignments() == null
+                || plan.getAssignments().isEmpty()) {
+            throw new CourseServiceException("请先生成自动排课预览");
+        }
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                List<CourseSchedule> existing = _courseScheduleDAO.findAll(conn);
+                Set<String> classIds = new LinkedHashSet<>();
+                List<ValidatedSchedule> validated = new ArrayList<>();
+                for (CourseSchedule schedule : plan.getAssignments()) {
+                    validateSchedule(schedule, true);
+                    TeachingClass teachingClass = resolveScheduleTeachingClass(conn, schedule);
+                    if (!classIds.add(schedule.getTeachingClassId())) {
+                        throw new CourseServiceException("方案中教学班重复："
+                                + schedule.getTeachingClassId());
+                    }
+                    if (existing.stream().anyMatch(value -> value.getTeachingClassId()
+                            .equals(schedule.getTeachingClassId()))) {
+                        throw new CourseServiceException("教学班已存在排课，预览已过期："
+                                + schedule.getTeachingClassId());
+                    }
+                    checkScheduleConflicts(conn, schedule, teachingClass.getTeacher(), null);
+                    for (ValidatedSchedule prior : validated) {
+                        checkPreviewConflict(schedule, teachingClass, prior);
+                    }
+                    validated.add(new ValidatedSchedule(schedule, teachingClass));
+                }
+                conn.rollback();
+                return validated.size();
+            } catch (SQLException | CourseServiceException | RuntimeException exception) {
+                rollback(conn, exception);
+                throw exception;
+            }
+        }
+    }
+
+    @Override
     public int applyAutoSchedule(AutoSchedulePlan plan)
             throws SQLException, IOException, CourseServiceException {
         if (plan == null || plan.getAssignments() == null
@@ -883,6 +923,25 @@ public class CourseServerSrv implements ICourseServerSrv {
         }
     }
 
+    private void checkPreviewConflict(CourseSchedule schedule, TeachingClass teachingClass,
+                                      ValidatedSchedule prior)
+            throws CourseServiceException {
+        if (!CourseAutoScheduler.overlaps(schedule, prior.schedule())) return;
+        String pair = prior.schedule().getTeachingClassId() + " 与 "
+                + schedule.getTeachingClassId();
+        if (schedule.getTeachingClassId().equals(prior.schedule().getTeachingClassId())) {
+            throw new CourseServiceException("方案内部教学班时间重复：" + pair);
+        }
+        if (schedule.getClassroom().equals(prior.schedule().getClassroom())) {
+            throw new CourseServiceException("方案内部教室时间冲突：" + pair
+                    + "，教室 " + schedule.getClassroom());
+        }
+        if (teachingClass.getTeacher().equals(prior.teachingClass().getTeacher())) {
+            throw new CourseServiceException("方案内部教师时间冲突：" + pair
+                    + "，教师 " + teachingClass.getTeacher());
+        }
+    }
+
     /** 生成不超过 varchar(20) 的排课记录号。 */
     private String newScheduleId() {
         return "CSH" + UUID.randomUUID().toString().replace("-", "").substring(0, 17);
@@ -921,6 +980,10 @@ public class CourseServerSrv implements ICourseServerSrv {
     }
 
     private record DemoCourse(String courseId, String courseName, String teacher) {
+    }
+
+    private record ValidatedSchedule(CourseSchedule schedule,
+                                     TeachingClass teachingClass) {
     }
 
     /** 回滚事务；若回滚本身失败，将异常附加到原异常上。 */
