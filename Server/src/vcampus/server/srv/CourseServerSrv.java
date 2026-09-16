@@ -48,11 +48,11 @@ import java.util.Map;
 public class CourseServerSrv implements ICourseServerSrv {
 
     private static final List<DemoCourse> AUTO_SCHEDULE_DEMO_COURSES = List.of(
-            new DemoCourse("DEMO_AI001", "人工智能导论", "陈龙"),
-            new DemoCourse("DEMO_AI002", "机器学习", "戴大荣"),
-            new DemoCourse("DEMO_AI003", "计算机视觉", "伍家松"),
-            new DemoCourse("DEMO_AI004", "自然语言处理", "周琳"),
-            new DemoCourse("DEMO_AI005", "智能机器人", "杨绍富")
+            new DemoCourse("DEMO_AI001", "智能系统导论", "演示教师甲"),
+            new DemoCourse("DEMO_AI002", "数据工程实践", "演示教师乙"),
+            new DemoCourse("DEMO_AI003", "分布式系统基础", "演示教师丙"),
+            new DemoCourse("DEMO_AI004", "网络空间安全", "演示教师丁"),
+            new DemoCourse("DEMO_AI005", "人机交互设计", "演示教师戊")
     );
 
     /** 课程数据访问对象。 */
@@ -216,25 +216,47 @@ public class CourseServerSrv implements ICourseServerSrv {
             try {
                 int createdClasses = 0;
                 for (DemoCourse demo : AUTO_SCHEDULE_DEMO_COURSES) {
-                    if (_courseDAO.findById(conn, demo.courseId()) == null) {
-                        Course course = new Course(demo.courseId(), demo.courseName(),
+                    Course course = _courseDAO.findById(conn, demo.courseId());
+                    if (course == null) {
+                        course = new Course(demo.courseId(), demo.courseName(),
                                 demo.teacher(), 2, 50, 0);
                         course.setCourseNature("任选");
                         course.setOpeningUnit("人工智能学院");
                         if (!_courseDAO.insertCourse(conn, course)) {
                             throw new SQLException("创建演示课程失败：" + demo.courseId());
                         }
+                    } else {
+                        course.setCourseName(demo.courseName());
+                        course.setTeacher(demo.teacher());
+                        course.setCredit(2);
+                        course.setCourseNature("任选");
+                        course.setOpeningUnit("人工智能学院");
+                        course.setCapacity(50);
+                        if (!_courseDAO.updateCourse(conn, course)) {
+                            throw new SQLException("更新演示课程失败：" + demo.courseId());
+                        }
                     }
 
                     String teachingClassId = demo.courseId() + "-01";
-                    if (_teachingClassDAO.findById(conn, teachingClassId, false) == null) {
-                        TeachingClass teachingClass = new TeachingClass(teachingClassId,
+                    TeachingClass teachingClass = _teachingClassDAO.findById(
+                            conn, teachingClassId, false);
+                    if (teachingClass == null) {
+                        teachingClass = new TeachingClass(teachingClassId,
                                 demo.courseId(), "01", demo.teacher(), 50, 0,
                                 "中文", "自动排课演示数据");
                         if (!_teachingClassDAO.insert(conn, teachingClass)) {
                             throw new SQLException("创建演示教学班失败：" + teachingClassId);
                         }
                         createdClasses++;
+                    } else {
+                        teachingClass.setClassNumber("01");
+                        teachingClass.setTeacher(demo.teacher());
+                        teachingClass.setCapacity(50);
+                        teachingClass.setTeachingLanguage("中文");
+                        teachingClass.setRemark("自动排课演示数据");
+                        if (!_teachingClassDAO.update(conn, teachingClass)) {
+                            throw new SQLException("更新演示教学班失败：" + teachingClassId);
+                        }
                     }
                 }
                 conn.commit();

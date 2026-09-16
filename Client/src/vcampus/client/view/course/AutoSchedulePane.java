@@ -14,6 +14,7 @@ import javafx.scene.layout.VBox;
 import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.AutoSchedulePlan;
 import vcampus.common.vo.AutoScheduleRequest;
+import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.TeachingClass;
 
@@ -36,6 +37,7 @@ public class AutoSchedulePane extends VBox {
     private final Button _apply = new Button("应用方案");
     private List<TeachingClass> _unscheduled = List.of();
     private Map<String, TeachingClass> _classes = Map.of();
+    private Map<String, String> _courseNames = Map.of();
     private AutoSchedulePlan _plan;
 
     public AutoSchedulePane(ICourseClientSrv client, Runnable onApplied) {
@@ -49,12 +51,16 @@ public class AutoSchedulePane extends VBox {
     public void refresh() {
         _status.setText("正在读取未排课教学班…");
         CourseViewSupport.runAsync(this, () -> {
+            List<Course> courses = _client.queryCourse("");
             List<TeachingClass> classes = _client.queryTeachingClass("");
             Set<String> scheduled = _client.querySchedule().stream()
                     .map(CourseSchedule::getTeachingClassId).collect(Collectors.toSet());
-            return new Snapshot(classes, classes.stream()
+            return new Snapshot(courses, classes, classes.stream()
                     .filter(value -> !scheduled.contains(value.getTeachingClassId())).toList());
         }, snapshot -> {
+            _courseNames = snapshot.courses().stream().collect(Collectors.toMap(
+                    Course::getCourseId, Course::getCourseName,
+                    (left, right) -> left, LinkedHashMap::new));
             _classes = snapshot.classes().stream().collect(Collectors.toMap(
                     TeachingClass::getTeachingClassId, Function.identity(),
                     (left, right) -> left, LinkedHashMap::new));
@@ -96,8 +102,10 @@ public class AutoSchedulePane extends VBox {
         controls.getStyleClass().add("tool-bar-card");
 
         _previewTable.getColumns().addAll(
-                CourseViewSupport.textColumn("教学班", 160, CourseSchedule::getTeachingClassId),
-                CourseViewSupport.textColumn("教师", 100, value -> teacher(value.getTeachingClassId())),
+                CourseViewSupport.textColumn("教学班", 145, CourseSchedule::getTeachingClassId),
+                CourseViewSupport.textColumn("课程名称", 180,
+                        value -> courseName(value.getCourseId())),
+                CourseViewSupport.textColumn("教师", 110, value -> teacher(value.getTeachingClassId())),
                 CourseViewSupport.textColumn("周次", 80,
                         value -> value.getWeekStart() + "–" + value.getWeekEnd()),
                 CourseViewSupport.textColumn("星期", 80,
@@ -177,5 +185,10 @@ public class AutoSchedulePane extends VBox {
         return value == null ? "—" : value.getTeacher();
     }
 
-    private record Snapshot(List<TeachingClass> classes, List<TeachingClass> unscheduled) { }
+    private String courseName(String courseId) {
+        return _courseNames.getOrDefault(courseId, courseId == null ? "—" : courseId);
+    }
+
+    private record Snapshot(List<Course> courses, List<TeachingClass> classes,
+                            List<TeachingClass> unscheduled) { }
 }
