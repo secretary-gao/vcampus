@@ -21,6 +21,7 @@ import vcampus.common.vo.MessageType;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
+import vcampus.common.vo.CourseScore;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -104,6 +105,39 @@ public class CourseClientSrv implements ICourseClientSrv {
             throw new CourseClientException(IConstant.STATUS_ERROR, "服务器响应格式错误");
         }
         return count.intValue();
+    }
+
+    @Override
+    public List<CourseScore> queryStudentScores(String studentId) throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_SCORE_STUDENT_QUERY, studentId, "Student");
+        ensureSuccess(response); return castList(response.getData());
+    }
+
+    @Override
+    public List<CourseScore> queryTeacherScores(String teacher) throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_SCORE_TEACHER_QUERY, teacher, "Teacher");
+        ensureSuccess(response); return castList(response.getData());
+    }
+
+    @Override
+    public int submitScores(String teacher, List<CourseScore> scores)
+            throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_SCORE_SUBMIT,
+                Map.of("teacher", teacher, "scores", scores), "Teacher");
+        ensureSuccess(response); return ((Number) response.getData()).intValue();
+    }
+
+    @Override
+    public List<CourseScore> queryPendingScores() throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_SCORE_PENDING_QUERY, null, "Admin");
+        ensureSuccess(response); return castList(response.getData());
+    }
+
+    @Override
+    public boolean reviewScore(String scoreId, boolean approved) throws IOException, ClassNotFoundException {
+        Message response = send(IConstant.MSG_COURSE_SCORE_REVIEW,
+                Map.of("scoreId", scoreId, "approved", approved), "Admin");
+        ensureSuccess(response); return true;
     }
 
     @Override

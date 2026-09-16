@@ -27,6 +27,8 @@ import vcampus.server.dao.DbHelper;
 import vcampus.server.dao.SelectCourseDAO;
 import vcampus.server.dao.TeacherCourseEnrollmentDAO;
 import vcampus.server.dao.TeachingClassDAO;
+import vcampus.server.dao.CourseScoreDAO;
+import vcampus.common.vo.CourseScore;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -78,6 +80,7 @@ public class CourseServerSrv implements ICourseServerSrv {
     /** 教师课程名单查询。 */
     private final TeacherCourseEnrollmentDAO _teacherEnrollmentDAO =
             new TeacherCourseEnrollmentDAO();
+    private final CourseScoreDAO _courseScoreDAO = new CourseScoreDAO();
 
     /**
      * 使用默认 DAO 创建业务服务。
@@ -775,6 +778,79 @@ public class CourseServerSrv implements ICourseServerSrv {
             throw new CourseServiceException("教师姓名不能为空");
         }
         return _teacherEnrollmentDAO.findByTeacher(teacherName.trim());
+    }
+
+    @Override
+    public List<CourseScore> queryStudentScores(String studentId) throws SQLException, IOException {
+        return _courseScoreDAO.findByStudent(studentId, true);
+    }
+
+    @Override
+    public List<CourseScore> queryTeacherScores(String teacher) throws SQLException, IOException {
+        return _courseScoreDAO.findByTeacher(teacher);
+    }
+
+    @Override
+    public int submitScores(String teacher, List<CourseScore> scores)
+            throws SQLException, IOException, CourseServiceException {
+        if (teacher == null || teacher.isBlank() || scores == null || scores.isEmpty()) {
+            throw new CourseServiceException("教师和待提交成绩不能为空");
+        }
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                int submitted = 0;
+                for (CourseScore score : scores) {
+                    if (score == null || score.getStudentId() == null || score.getTeachingClassId() == null
+                            || score.getScore() == null || score.getScore() < 0 || score.getScore() > 100) {
+                        throw new CourseServiceException("成绩必须在 0 到 100 之间");
+                    }
+                    TeachingClass teachingClass = _teachingClassDAO.findById(
+                            conn, score.getTeachingClassId(), true);
+                    if (teachingClass == null || !teacher.trim().equals(teachingClass.getTeacher())) {
+                        throw new CourseServiceException("只能录入本人教学班的成绩：" + score.getTeachingClassId());
+                    }
+                    if (!_selectCourseDAO.existsByStudentAndTeachingClass(conn, score.getStudentId(),
+                            score.getTeachingClassId())) {
+                        throw new CourseServiceException("学生未选择该教学班：" + score.getStudentId());
+                    }
+                    score.setScoreId(score.getScoreId() == null || score.getScoreId().isBlank()
+                            ? "SCORE" + UUID.randomUUID().toString().replace("-", "").substring(0, 19)
+                            : score.getScoreId());
+                    score.setCourseId(teachingClass.getCourseId());
+                    score.setTeacher(teacher.trim());
+                    if (!_courseScoreDAO.upsert(conn, score)) throw new SQLException("成绩保存失败");
+                    submitted++;
+                }
+                conn.commit(); return submitted;
+            } catch (SQLException | CourseServiceException | RuntimeException e) {
+                rollback(conn, e); throw e;
+            }
+        }
+    }
+
+    @Override
+    public List<CourseScore> queryPendingScores() throws SQLException, IOException {
+        return _courseScoreDAO.findPending();
+    }
+
+    @Override
+    public boolean reviewScore(String scoreId, boolean approved)
+            throws SQLException, IOException, CourseServiceException {
+        if (scoreId == null || scoreId.isBlank()) throw new CourseServiceException("成绩记录不存在");
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                CourseScore score = _courseScoreDAO.findById(conn, scoreId);
+                if (score == null || !"PENDING".equals(score.getStatus())) {
+                    throw new CourseServiceException("该成绩已审核或不存在");
+                }
+                boolean result = _courseScoreDAO.review(conn, scoreId, approved ? "APPROVED" : "REJECTED");
+                conn.commit(); return result;
+            } catch (SQLException | CourseServiceException | RuntimeException e) {
+                rollback(conn, e); throw e;
+            }
+        }
     }
 
     /** 校验并规范化课程主数据。 */
