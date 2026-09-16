@@ -12,6 +12,7 @@ package vcampus.client.biz;
 import vcampus.common.vo.CartItem;
 import vcampus.common.vo.Goods;
 import vcampus.common.vo.Message;
+import vcampus.common.vo.Promotion;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -128,4 +129,43 @@ public interface IStoreClientSrv {
      * @throws ClassNotFoundException 反序列化响应对象失败
      */
     Message queryOrders(String userId) throws IOException, ClassNotFoundException;
+
+    /**
+     * 发起"查询全部促销活动"请求（管理员配置每日特价用）。
+     *
+     * @return 服务器返回的响应消息（成功时 data 为 {@code List<Promotion>}）
+     * @throws IOException            网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message queryPromotions() throws IOException, ClassNotFoundException;
+
+    /**
+     * 发起"新增促销活动"请求（管理员）。
+     *
+     * @param promotion 活动对象（商品、折扣率、生效星期、说明）
+     * @return 服务器返回的响应消息（成功时 data 为新增后的活动）
+     * @throws IOException            网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message addPromotion(Promotion promotion) throws IOException, ClassNotFoundException;
+
+    /**
+     * 发起"修改促销活动"请求（管理员）。
+     *
+     * @param promotion 活动对象（以 promoId 定位）
+     * @return 服务器返回的响应消息（成功时 data 为修改后的活动）
+     * @throws IOException            网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message updatePromotion(Promotion promotion) throws IOException, ClassNotFoundException;
+
+    /**
+     * 发起"删除促销活动"请求（管理员）。
+     *
+     * @param promoId 促销编号
+     * @return 服务器返回的响应消息（成功时 data 为提示文本）
+     * @throws IOException            网络连接异常（如服务器未启动）
+     * @throws ClassNotFoundException 反序列化响应对象失败
+     */
+    Message deletePromotion(String promoId) throws IOException, ClassNotFoundException;
 }

@@ -28,6 +28,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -373,6 +374,108 @@ public class StoreServerSrv implements IStoreServerSrv {
         }
         _walletDAO.recharge(userId, amount);
         return queryBalance(userId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Promotion> queryPromotions() throws SQLException, IOException {
+        return _promotionDAO.findAll();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>校验顺序：字段合法性 → 商品是否存在 → 促销编号是否重复 → 入库（"同一商品同一天已有活动"
+     * 由数据库唯一约束兜底，冲突时转成友好的业务提示）。</p>
+     */
+    @Override
+    public Promotion addPromotion(Promotion promotion) throws ShopException, SQLException, IOException {
+        validatePromotion(promotion);
+        if (_promotionDAO.findByPromoId(promotion.getPromoId()) != null) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, "促销编号已存在：" + promotion.getPromoId());
+        }
+        try {
+            _promotionDAO.insert(promotion);
+        } catch (SQLIntegrityConstraintViolationException e) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, conflictMessage(promotion));
+        }
+        return _promotionDAO.findByPromoId(promotion.getPromoId());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Promotion updatePromotion(Promotion promotion) throws ShopException, SQLException, IOException {
+        validatePromotion(promotion);
+        if (_promotionDAO.findByPromoId(promotion.getPromoId()) == null) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, "促销活动不存在：" + promotion.getPromoId());
+        }
+        try {
+            if (_promotionDAO.update(promotion) != 1) {
+                throw new ShopException(IConstant.STATUS_CONFLICT, "活动修改失败，请重试");
+            }
+        } catch (SQLIntegrityConstraintViolationException e) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, conflictMessage(promotion));
+        }
+        return _promotionDAO.findByPromoId(promotion.getPromoId());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean deletePromotion(String promoId) throws ShopException, SQLException, IOException {
+        if (promoId == null || promoId.isBlank()) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, "请先选择要删除的促销活动");
+        }
+        if (_promotionDAO.findByPromoId(promoId) == null) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, "促销活动不存在：" + promoId);
+        }
+        return _promotionDAO.delete(promoId) == 1;
+    }
+
+    /**
+     * 校验促销活动字段：商品必须存在，折扣率必须落在 (0,1) 之间，星期必须是 0~7。
+     *
+     * @param promotion 待校验的活动
+     * @throws ShopException       字段不合法或商品不存在
+     * @throws SQLException        数据库操作异常
+     * @throws IOException         数据库配置文件读取异常
+     */
+    private void validatePromotion(Promotion promotion) throws ShopException, SQLException, IOException {
+        if (promotion == null) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, "活动信息为空");
+        }
+        if (promotion.getPromoId() == null || promotion.getPromoId().isBlank()) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, "促销编号不能为空");
+        }
+        if (promotion.getGoodsId() == null || promotion.getGoodsId().isBlank()) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, "请选择活动商品");
+        }
+        if (_goodsDAO.findByGoodsId(promotion.getGoodsId()) == null) {
+            throw new ShopException(IConstant.STATUS_GOODS_NOT_FOUND, "商品不存在：" + promotion.getGoodsId());
+        }
+        BigDecimal rate = promotion.getDiscountRate();
+        if (rate == null || rate.compareTo(BigDecimal.ZERO) <= 0 || rate.compareTo(BigDecimal.ONE) >= 0) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, "折扣率必须在 0 到 1 之间（例如 0.80 表示 8 折）");
+        }
+        if (promotion.getWeekday() < 0 || promotion.getWeekday() > 7) {
+            throw new ShopException(IConstant.STATUS_CONFLICT, "生效星期必须是 0~7（0 表示每天）");
+        }
+    }
+
+    /**
+     * 生成"同一商品同一天已有活动"的友好提示。
+     *
+     * @param promotion 冲突的活动
+     * @return 提示文案
+     */
+    private String conflictMessage(Promotion promotion) {
+        String day = promotion.getWeekday() == 0 ? "每天特价" : "星期 " + promotion.getWeekday();
+        return "商品【" + promotion.getGoodsId() + "】在【" + day + "】已经有活动了，同一商品同一天只能有一条活动";
     }
 
     /**

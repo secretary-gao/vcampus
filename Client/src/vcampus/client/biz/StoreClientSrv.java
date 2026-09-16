@@ -14,6 +14,7 @@ import vcampus.common.vo.CartItem;
 import vcampus.common.vo.Goods;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
+import vcampus.common.vo.Promotion;
 import vcampus.common.vo.ShopRequest;
 
 import java.io.IOException;
@@ -146,6 +147,48 @@ public class StoreClientSrv implements IStoreClientSrv {
         req.setUserId(userId);
         return sendAndReceive(new Message(System.currentTimeMillis(),
                 IConstant.MSG_SHOP_QUERY_ORDERS, MessageType.COMMAND, null, req, userId));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Message queryPromotions() throws IOException, ClassNotFoundException {
+        return sendAndReceive(new Message(System.currentTimeMillis(),
+                IConstant.MSG_SHOP_QUERY_PROMOTIONS, MessageType.COMMAND, null, new ShopRequest(), "store-admin"));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Message addPromotion(Promotion promotion) throws IOException, ClassNotFoundException {
+        ShopRequest req = new ShopRequest();
+        req.setPromotion(promotion);
+        return sendAndReceive(new Message(System.currentTimeMillis(),
+                IConstant.MSG_SHOP_ADD_PROMOTION, MessageType.COMMAND, null, req, "store-admin"));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Message updatePromotion(Promotion promotion) throws IOException, ClassNotFoundException {
+        ShopRequest req = new ShopRequest();
+        req.setPromotion(promotion);
+        return sendAndReceive(new Message(System.currentTimeMillis(),
+                IConstant.MSG_SHOP_UPDATE_PROMOTION, MessageType.COMMAND, null, req, "store-admin"));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Message deletePromotion(String promoId) throws IOException, ClassNotFoundException {
+        ShopRequest req = new ShopRequest();
+        req.setPromoId(promoId);
+        return sendAndReceive(new Message(System.currentTimeMillis(),
+                IConstant.MSG_SHOP_DELETE_PROMOTION, MessageType.COMMAND, null, req, "store-admin"));
     }
 
     /**

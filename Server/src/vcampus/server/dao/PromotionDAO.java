@@ -86,6 +86,87 @@ public class PromotionDAO {
     }
 
     /**
+     * 按促销编号查询活动。
+     *
+     * @param promoId 促销编号
+     * @return 活动；不存在返回 {@code null}
+     * @throws SQLException 数据库操作异常
+     * @throws IOException  数据库配置文件读取异常
+     */
+    public Promotion findByPromoId(String promoId) throws SQLException, IOException {
+        String sql = SELECT_FIELDS + "WHERE p.promoId = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, promoId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                List<Promotion> list = mapList(rs);
+                return list.isEmpty() ? null : list.get(0);
+            }
+        }
+    }
+
+    /**
+     * 新增促销活动（管理员配置"每日特价"用）。
+     *
+     * @param promotion 活动对象
+     * @return 写入成功返回 {@code true}
+     * @throws SQLException 数据库操作异常（含"同一商品同一天已有活动"的唯一约束冲突）
+     * @throws IOException  数据库配置文件读取异常
+     */
+    public boolean insert(Promotion promotion) throws SQLException, IOException {
+        String sql = "INSERT INTO tblPromotion (promoId, goodsId, discountRate, weekday, remark) "
+                + "VALUES (?, ?, ?, ?, ?)";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, promotion.getPromoId());
+            pstmt.setString(2, promotion.getGoodsId());
+            pstmt.setBigDecimal(3, promotion.getDiscountRate());
+            pstmt.setInt(4, promotion.getWeekday());
+            pstmt.setString(5, promotion.getRemark());
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * 修改促销活动（按促销编号定位；商品、折扣率、星期、说明都可改）。
+     *
+     * @param promotion 活动对象
+     * @return 受影响行数（1 表示修改成功）
+     * @throws SQLException 数据库操作异常（含唯一约束冲突）
+     * @throws IOException  数据库配置文件读取异常
+     */
+    public int update(Promotion promotion) throws SQLException, IOException {
+        String sql = "UPDATE tblPromotion SET goodsId = ?, discountRate = ?, weekday = ?, remark = ? "
+                + "WHERE promoId = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, promotion.getGoodsId());
+            pstmt.setBigDecimal(2, promotion.getDiscountRate());
+            pstmt.setInt(3, promotion.getWeekday());
+            pstmt.setString(4, promotion.getRemark());
+            pstmt.setString(5, promotion.getPromoId());
+            return pstmt.executeUpdate();
+        }
+    }
+
+    /**
+     * 删除促销活动。
+     *
+     * @param promoId 促销编号
+     * @return 受影响行数（1 表示删除成功）
+     * @throws SQLException 数据库操作异常
+     * @throws IOException  数据库配置文件读取异常
+     */
+    public int delete(String promoId) throws SQLException, IOException {
+        String sql = "DELETE FROM tblPromotion WHERE promoId = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, promoId);
+            return pstmt.executeUpdate();
+        }
+    }
+
+    /**
      * 将结果集逐行映射为 Promotion 列表。
      *
      * @param rs 结果集

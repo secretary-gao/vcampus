@@ -13,6 +13,7 @@ import vcampus.common.vo.Goods;
 import vcampus.common.vo.Promotion;
 
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.util.List;
 
 /**
@@ -21,7 +22,9 @@ import java.util.List;
  * <ol>
  *   <li>查询全部活动：应覆盖 7 天（每天都有特价商品）；</li>
  *   <li>按星期查询：每天的生效活动 = 当天活动 + "每天特价"（weekday=0）；</li>
- *   <li>折扣标签与折扣价计算：0.80 → "8折"、0.85 → "8.5折"，特价 = 原价 × 折扣率（四舍五入到分）。</li>
+ *   <li>折扣标签与折扣价计算：0.80 → "8折"、0.85 → "8.5折"，特价 = 原价 × 折扣率（四舍五入到分）；</li>
+ *   <li>管理员配置用到的增/改/删：新增 → 回查 → 修改 → 删除，并验证"同一商品同一天只能有一条活动"
+ *       由数据库唯一约束兜底（服务器据此转成友好提示）。</li>
  * </ol>
  *
  * <p>运行前请确认：已执行 {@code sql/migration_add_promotion.sql} 与
@@ -90,6 +93,49 @@ public class PromotionDAOTest {
             g2.setDiscountRate(new BigDecimal("0.85"));
             check(g2.getDiscountPrice().compareTo(new BigDecimal("8.42")) == 0,
                     "9.90 × 0.85 应四舍五入为 8.42，实际 " + g2.getDiscountPrice());
+
+            System.out.println();
+            System.out.println("=== 4. 活动的增 / 改 / 删（管理员配置用）===");
+            String tempPromoId = "TPX1";
+            // 清掉上次可能残留的测试活动
+            if (dao.findByPromoId(tempPromoId) != null) {
+                dao.delete(tempPromoId);
+            }
+            // 新增：G001 在周四打 6.6 折（G001 现有活动是"每天特价"，周四没有，不会撞唯一约束）
+            Promotion temp = new Promotion(tempPromoId, "G001", new BigDecimal("0.66"), 4, "自测临时活动");
+            check(dao.insert(temp), "新增活动应成功");
+            Promotion loaded = dao.findByPromoId(tempPromoId);
+            check(loaded != null, "应能按活动编号查到刚新增的活动");
+            if (loaded != null) {
+                System.out.println("  新增后：" + loaded.getGoodsName() + " " + loaded.getDiscountLabel()
+                        + " " + loaded.getWeekdayLabel());
+                check(loaded.getDiscountRate().compareTo(new BigDecimal("0.66")) == 0, "折扣率应为 0.66");
+                check(loaded.getWeekday() == 4, "生效星期应为 4（周四）");
+            }
+
+            // 修改：改成 5.5 折 + 活动说明
+            temp.setDiscountRate(new BigDecimal("0.55"));
+            temp.setRemark("自测临时活动-已修改");
+            check(dao.update(temp) == 1, "修改活动应影响 1 行");
+            Promotion updated = dao.findByPromoId(tempPromoId);
+            check(updated != null && updated.getDiscountRate().compareTo(new BigDecimal("0.55")) == 0,
+                    "修改后折扣率应为 0.55");
+
+            // 同一商品同一天重复配置 → 数据库唯一约束应拦下来（服务器据此返回友好提示）
+            try {
+                dao.insert(new Promotion("TPX2", "G001", new BigDecimal("0.70"), 4, "故意冲突"));
+                check(false, "同一商品同一天重复配置应被唯一约束拦下");
+            } catch (java.sql.SQLIntegrityConstraintViolationException e) {
+                System.out.println("  按预期被数据库拦下：" + e.getMessage());
+                check(true, "同一商品同一天重复配置被唯一约束拦下");
+            } catch (SQLException e) {
+                check(false, "应抛出唯一约束异常，实际：" + e);
+            }
+
+            // 删除
+            check(dao.delete(tempPromoId) == 1, "删除活动应影响 1 行");
+            check(dao.findByPromoId(tempPromoId) == null, "删除后应查不到该活动");
+            check(dao.findAll().size() == all.size(), "增删一轮后活动总数应回到原值 " + all.size());
 
             System.out.println();
             if (failures == 0) {

@@ -16,6 +16,7 @@ import vcampus.common.vo.CartItem;
 import vcampus.common.vo.Goods;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.Order;
+import vcampus.common.vo.Promotion;
 import vcampus.common.vo.PurchaseRecord;
 import vcampus.common.vo.User;
 
@@ -53,6 +54,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import javafx.util.StringConverter;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -129,6 +131,14 @@ public class StoreFrame extends Application {
     private final TextField _priceField = new TextField();
     private final TextField _stockField = new TextField();
     private final TextField _imageUrlField = new TextField();
+
+    // ---- 活动管理（管理员：配置每日特价）----
+    private TableView<Promotion> _promoTable = new TableView<>();
+    private final TextField _promoIdField = new TextField();
+    private final ComboBox<Goods> _promoGoodsBox = new ComboBox<>();
+    private final ComboBox<String> _promoRateBox = new ComboBox<>();
+    private final ComboBox<String> _promoWeekdayBox = new ComboBox<>();
+    private final TextField _promoRemarkField = new TextField();
 
     /**
      * 无参构造方法（供 {@code launch()} 使用），默认使用一个演示学生用户。
@@ -208,11 +218,14 @@ public class StoreFrame extends Application {
         tabPane.getTabs().add(new Tab("我的订单", buildOrdersTab()));
         if (isAdmin()) {
             tabPane.getTabs().add(new Tab("商品管理", buildManageTab()));
+            tabPane.getTabs().add(new Tab("活动管理", buildPromotionTab()));
         }
         // 切到"我的订单"时才查询：进入模块不必多发一次请求，且每次查看都是最新记录
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
             if (selected != null && "我的订单".equals(selected.getText())) {
                 loadOrders();
+            } else if (selected != null && "活动管理".equals(selected.getText())) {
+                loadPromotions();
             }
         });
         root.setCenter(tabPane);
@@ -538,6 +551,7 @@ public class StoreFrame extends Application {
                 _loadedGoods.clear();
                 _loadedGoods.addAll(goods);
                 _promoCountLabel.setText("今日特价 " + countPromotion(goods) + " 件");
+                refreshPromoGoods(goods); // 活动表单的商品下拉框跟着刷新
                 renderGoodsCards(_loadedGoods);
                 _manageTable.getItems().setAll(goods);
             } else {
@@ -887,6 +901,293 @@ public class StoreFrame extends Application {
             }
         } catch (IOException | ClassNotFoundException e) {
             showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器：" + e.getMessage());
+        }
+    }
+
+    // ==================== 活动管理（管理员：配置每日特价） ====================
+
+    /**
+     * 构建"活动管理"页签（仅管理员）：录入/修改/删除每日特价活动。
+     *
+     * <p>折扣率用可编辑下拉框（预设 9 折~5 折，也允许手填 0~1 之间的小数），
+     * 生效星期用下拉框（每天 / 周一~周日），商品用下拉框（直接从商品列表里选，
+     * 避免手打商品编号打错）。所有校验在服务器端还会再做一遍。</p>
+     *
+     * @return 页签内容
+     */
+    private VBox buildPromotionTab() {
+        _promoIdField.setPromptText("活动编号，如 P023");
+        _promoIdField.setPrefWidth(150);
+
+        _promoGoodsBox.setPrefWidth(220);
+        _promoGoodsBox.setPromptText("选择活动商品");
+        _promoGoodsBox.setConverter(new StringConverter<Goods>() {
+            @Override
+            public String toString(Goods goods) {
+                return goods == null ? "" : goods.getGoodsId() + " " + goods.getGoodsName();
+            }
+
+            @Override
+            public Goods fromString(String string) {
+                return null;
+            }
+        });
+
+        _promoRateBox.getItems().setAll("0.90", "0.85", "0.80", "0.75", "0.70", "0.60", "0.50");
+        _promoRateBox.setEditable(true);
+        _promoRateBox.setValue("0.80");
+        _promoRateBox.setPrefWidth(110);
+
+        _promoWeekdayBox.getItems().setAll("每天", "周一", "周二", "周三", "周四", "周五", "周六", "周日");
+        _promoWeekdayBox.getSelectionModel().selectFirst();
+        _promoWeekdayBox.setPrefWidth(110);
+
+        _promoRemarkField.setPromptText("活动说明，如「周三文具日」");
+        _promoRemarkField.setPrefWidth(240);
+
+        GridPane form = new GridPane();
+        form.setHgap(10);
+        form.setVgap(10);
+        form.getStyleClass().add("tool-bar-card");
+        form.add(formLabel("活动编号"), 0, 0);
+        form.add(_promoIdField, 1, 0);
+        form.add(formLabel("商品"), 0, 1);
+        form.add(_promoGoodsBox, 1, 1);
+        form.add(formLabel("折扣率"), 0, 2);
+        form.add(_promoRateBox, 1, 2);
+        form.add(formLabel("生效星期"), 0, 3);
+        form.add(_promoWeekdayBox, 1, 3);
+        form.add(formLabel("活动说明"), 0, 4);
+        form.add(_promoRemarkField, 1, 4);
+
+        Button addButton = new Button("新增活动");
+        addButton.getStyleClass().add("primary");
+        addButton.setOnAction(e -> onAddPromotion());
+        Button updateButton = new Button("修改活动");
+        updateButton.getStyleClass().add("primary");
+        updateButton.setOnAction(e -> onUpdatePromotion());
+        Button deleteButton = new Button("删除活动");
+        deleteButton.getStyleClass().add("danger");
+        deleteButton.setOnAction(e -> onDeletePromotion());
+        Button clearButton = new Button("清空表单");
+        clearButton.setOnAction(e -> clearPromoForm());
+        HBox buttons = new HBox(10, addButton, updateButton, deleteButton, clearButton);
+        buttons.setAlignment(Pos.CENTER_LEFT);
+
+        setUpPromotionColumns(_promoTable);
+        VBox.setVgrow(_promoTable, Priority.ALWAYS);
+        _promoTable.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
+            if (selected != null) {
+                fillPromoForm(selected);
+            }
+        });
+
+        Label tip = new Label("折扣率 0.80 表示 8 折（可手填 0~1 之间的小数）；"
+                + "生效星期选「每天」就是常年特价；同一商品同一天只能有一条活动");
+        tip.getStyleClass().add("cart-hint");
+
+        VBox box = new VBox(10, sectionTitle("配置每日特价活动（管理员）"), form, buttons, tip,
+                sectionTitle("全部活动"), _promoTable);
+        box.getStyleClass().add("store-page");
+        return box;
+    }
+
+    /**
+     * 设置活动表格的列。
+     *
+     * @param table 表格
+     */
+    private void setUpPromotionColumns(TableView<Promotion> table) {
+        table.getStyleClass().add("store-table");
+        table.getStyleClass().add("promo-table");
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        table.getColumns().add(column("活动编号", p -> safe(p.getPromoId()), 110));
+        table.getColumns().add(column("商品", p -> safe(p.getGoodsId()) + " " + safe(p.getGoodsName()), 220));
+        table.getColumns().add(column("折扣", p -> p.getDiscountLabel(), 80));
+        table.getColumns().add(column("生效", p -> p.getWeekdayLabel(), 90));
+        table.getColumns().add(column("说明", p -> safe(p.getRemark()), 220));
+    }
+
+    /**
+     * 加载全部活动并刷新活动表格。
+     */
+    @SuppressWarnings("unchecked") // 服务器返回的 List 元素类型在运行时是确定的，此处强转安全
+    private void loadPromotions() {
+        try {
+            Message response = _storeClientSrv.queryPromotions();
+            if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
+                List<Promotion> promotions = (List<Promotion>) response.getData();
+                _promoTable.getItems().setAll(promotions);
+            } else {
+                showAlert(Alert.AlertType.ERROR, "查询失败", String.valueOf(response.getData()));
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 把表格中选中行的活动回填到表单（活动编号是主键，回填后锁定不可改）。
+     *
+     * @param promotion 活动
+     */
+    private void fillPromoForm(Promotion promotion) {
+        _promoIdField.setText(safe(promotion.getPromoId()));
+        _promoIdField.setDisable(true);
+        _promoGoodsBox.getSelectionModel().select(findGoodsInBox(promotion.getGoodsId(), promotion.getGoodsName()));
+        _promoRateBox.setValue(promotion.getDiscountRate() == null
+                ? "0.80" : promotion.getDiscountRate().toPlainString());
+        _promoWeekdayBox.getSelectionModel().select(promotion.getWeekday());
+        _promoRemarkField.setText(safe(promotion.getRemark()));
+    }
+
+    /**
+     * 在商品下拉框中查找商品；找不到时补一个占位项（例如商品列表被筛选过）。
+     *
+     * @param goodsId   商品编号
+     * @param goodsName 商品名称
+     * @return 下拉框中的商品项
+     */
+    private Goods findGoodsInBox(String goodsId, String goodsName) {
+        for (Goods g : _promoGoodsBox.getItems()) {
+            if (goodsId != null && goodsId.equals(g.getGoodsId())) {
+                return g;
+            }
+        }
+        Goods placeholder = new Goods(goodsId, goodsName, null, BigDecimal.ZERO, 0);
+        _promoGoodsBox.getItems().add(placeholder);
+        return placeholder;
+    }
+
+    /**
+     * 清空活动表单并解除活动编号的锁定。
+     */
+    private void clearPromoForm() {
+        _promoIdField.clear();
+        _promoIdField.setDisable(false);
+        _promoGoodsBox.getSelectionModel().clearSelection();
+        _promoRateBox.setValue("0.80");
+        _promoWeekdayBox.getSelectionModel().selectFirst();
+        _promoRemarkField.clear();
+        _promoTable.getSelectionModel().clearSelection();
+    }
+
+    /**
+     * 从表单读取一个活动对象；字段不合法时弹提示并返回 {@code null}。
+     *
+     * @return 活动对象；校验不通过时返回 {@code null}
+     */
+    private Promotion readPromoForm() {
+        String promoId = _promoIdField.getText() == null ? "" : _promoIdField.getText().trim();
+        if (promoId.isEmpty()) {
+            showAlert(Alert.AlertType.WARNING, "提示", "请填写活动编号（如 P023）");
+            return null;
+        }
+        Goods goods = _promoGoodsBox.getSelectionModel().getSelectedItem();
+        if (goods == null) {
+            showAlert(Alert.AlertType.WARNING, "提示", "请选择活动商品");
+            return null;
+        }
+        BigDecimal rate;
+        try {
+            rate = new BigDecimal(String.valueOf(_promoRateBox.getValue()).trim());
+        } catch (NumberFormatException e) {
+            showAlert(Alert.AlertType.ERROR, "输入错误", "折扣率必须是数字，例如 0.80 表示 8 折");
+            return null;
+        }
+        if (rate.compareTo(BigDecimal.ZERO) <= 0 || rate.compareTo(BigDecimal.ONE) >= 0) {
+            showAlert(Alert.AlertType.ERROR, "输入错误", "折扣率必须在 0 到 1 之间（0.80 表示 8 折）");
+            return null;
+        }
+        int weekday = Math.max(0, _promoWeekdayBox.getSelectionModel().getSelectedIndex());
+        String remark = _promoRemarkField.getText() == null ? "" : _promoRemarkField.getText().trim();
+        return new Promotion(promoId, goods.getGoodsId(), rate, weekday, remark);
+    }
+
+    /**
+     * 新增活动（管理员）。
+     */
+    private void onAddPromotion() {
+        Promotion promotion = readPromoForm();
+        if (promotion == null) {
+            return;
+        }
+        try {
+            Message response = _storeClientSrv.addPromotion(promotion);
+            if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
+                showAlert(Alert.AlertType.INFORMATION, "提示", "新增活动成功");
+                clearPromoForm();
+                loadPromotions();
+                loadGoods(); // 商品列表上的折扣展示同步刷新
+            } else {
+                showAlert(Alert.AlertType.ERROR, "新增失败", String.valueOf(response.getData()));
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 修改活动（管理员，按活动编号定位）。
+     */
+    private void onUpdatePromotion() {
+        Promotion promotion = readPromoForm();
+        if (promotion == null) {
+            return;
+        }
+        try {
+            Message response = _storeClientSrv.updatePromotion(promotion);
+            if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
+                showAlert(Alert.AlertType.INFORMATION, "提示", "修改活动成功");
+                clearPromoForm();
+                loadPromotions();
+                loadGoods();
+            } else {
+                showAlert(Alert.AlertType.ERROR, "修改失败", String.valueOf(response.getData()));
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 删除活动（管理员，二次确认）。
+     */
+    private void onDeletePromotion() {
+        Promotion selected = _promoTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showAlert(Alert.AlertType.WARNING, "提示", "请先在列表中选中要删除的活动");
+            return;
+        }
+        if (!confirm("确认删除", "确定删除活动【" + safe(selected.getPromoId()) + " "
+                + safe(selected.getGoodsName()) + " " + selected.getDiscountLabel() + "】吗？")) {
+            return;
+        }
+        try {
+            Message response = _storeClientSrv.deletePromotion(selected.getPromoId());
+            if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
+                showAlert(Alert.AlertType.INFORMATION, "提示", "删除活动成功");
+                clearPromoForm();
+                loadPromotions();
+                loadGoods();
+            } else {
+                showAlert(Alert.AlertType.ERROR, "删除失败", String.valueOf(response.getData()));
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            showAlert(Alert.AlertType.ERROR, "连接失败", "无法连接服务器：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 刷新活动表单里的商品下拉框（尽量保持当前选中项）。
+     *
+     * @param goods 商品列表
+     */
+    private void refreshPromoGoods(List<Goods> goods) {
+        Goods selected = _promoGoodsBox.getSelectionModel().getSelectedItem();
+        _promoGoodsBox.getItems().setAll(goods);
+        if (selected != null) {
+            _promoGoodsBox.getSelectionModel().select(findGoodsInBox(selected.getGoodsId(), selected.getGoodsName()));
         }
     }
 

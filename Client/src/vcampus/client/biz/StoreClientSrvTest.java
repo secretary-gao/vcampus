@@ -13,6 +13,7 @@ import vcampus.common.vo.CartItem;
 import vcampus.common.vo.Goods;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.Order;
+import vcampus.common.vo.Promotion;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -135,6 +136,39 @@ public class StoreClientSrvTest {
             System.out.println("=== 16. 清理：删除本次测试新增的商品 ST001（应删除成功）===");
             Message clean = storeClientSrv.deleteGoods("ST001");
             System.out.println("删除ST001响应：statusCode=" + clean.getStatusCode() + ", data=" + clean.getData());
+
+            System.out.println("=== 17. 测试查询促销活动（管理员配置每日特价用）===");
+            Message pl = storeClientSrv.queryPromotions();
+            System.out.println("活动查询响应：statusCode=" + pl.getStatusCode());
+            if (pl.getData() instanceof List<?> promos) {
+                System.out.println("活动总数=" + promos.size());
+                for (Object obj : promos) {
+                    if (obj instanceof Promotion promo) {
+                        System.out.println("    " + promo.getPromoId() + " " + promo.getGoodsName() + " "
+                                + promo.getDiscountLabel() + " 生效=" + promo.getWeekdayLabel());
+                    }
+                }
+            }
+
+            System.out.println("=== 18. 新增活动（G002 周五 5 折）===");
+            Message pa = storeClientSrv.addPromotion(new Promotion("TPX9", "G002", new BigDecimal("0.50"), 5, "客户端自测活动"));
+            System.out.println("新增响应：statusCode=" + pa.getStatusCode() + ", data=" + pa.getData());
+
+            System.out.println("=== 19. 同一商品同一天再配一条（应被拦下，409）===");
+            Message pd = storeClientSrv.addPromotion(new Promotion("TPX8", "G002", new BigDecimal("0.60"), 5, "故意冲突"));
+            System.out.println("重复新增响应：statusCode=" + pd.getStatusCode() + ", data=" + pd.getData());
+
+            System.out.println("=== 20. 修改活动（改成 4.5 折）===");
+            Message pu = storeClientSrv.updatePromotion(new Promotion("TPX9", "G002", new BigDecimal("0.45"), 5, "客户端自测活动-已改"));
+            System.out.println("修改响应：statusCode=" + pu.getStatusCode() + ", data=" + pu.getData());
+
+            System.out.println("=== 21. 删除活动 ===");
+            Message pdel = storeClientSrv.deletePromotion("TPX9");
+            System.out.println("删除响应：statusCode=" + pdel.getStatusCode() + ", data=" + pdel.getData());
+
+            System.out.println("=== 22. 删除不存在的活动（应提示不存在）===");
+            Message pdel2 = storeClientSrv.deletePromotion("TPX9");
+            System.out.println("再删除响应：statusCode=" + pdel2.getStatusCode() + ", data=" + pdel2.getData());
 
             System.out.println();
             System.out.println("=== 商店模块 Socket 端到端自测完成 ===");

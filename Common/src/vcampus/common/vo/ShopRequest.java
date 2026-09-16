@@ -53,6 +53,12 @@ public class ShopRequest implements Serializable {
     /** 购物车结算的商品条目（一次结算可含多个商品）。 */
     private List<CartItem> _items;
 
+    /** 促销活动对象（新增/修改"每日特价"活动）。 */
+    private Promotion _promotion;
+
+    /** 促销编号（删除/定位指定活动）。 */
+    private String _promoId;
+
     /**
      * 无参构造方法。
      */
@@ -201,5 +207,41 @@ public class ShopRequest implements Serializable {
      */
     public void setItems(List<CartItem> items) {
         this._items = items;
+    }
+
+    /**
+     * 获取促销活动对象。
+     *
+     * @return 促销活动
+     */
+    public Promotion getPromotion() {
+        return _promotion;
+    }
+
+    /**
+     * 设置促销活动对象。
+     *
+     * @param promotion 促销活动
+     */
+    public void setPromotion(Promotion promotion) {
+        this._promotion = promotion;
+    }
+
+    /**
+     * 获取促销编号。
+     *
+     * @return 促销编号
+     */
+    public String getPromoId() {
+        return _promoId;
+    }
+
+    /**
+     * 设置促销编号。
+     *
+     * @param promoId 促销编号
+     */
+    public void setPromoId(String promoId) {
+        this._promoId = promoId;
     }
 }
