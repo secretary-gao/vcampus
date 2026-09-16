@@ -48,6 +48,7 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -63,6 +64,7 @@ import javafx.util.StringConverter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -149,6 +151,12 @@ public class StoreFrame extends Application {
     private final ComboBox<String> _promoRateBox = new ComboBox<>();
     private final ComboBox<String> _promoWeekdayBox = new ComboBox<>();
     private final TextField _promoRemarkField = new TextField();
+
+    /** 活动管理右侧的统计面板（活动分布 + 今日特价 + 规则说明）。 */
+    private VBox _promoStatsBox;
+
+    /** 商品管理右侧的库存概览面板。 */
+    private VBox _goodsStatsBox;
 
     /**
      * 无参构造方法（供 {@code launch()} 使用），默认使用一个演示学生用户。
@@ -392,28 +400,37 @@ public class StoreFrame extends Application {
     private VBox buildManageTab() {
         _goodsIdField.setPromptText("商品编号");
         _goodsNameField.setPromptText("名称");
-        _categoryField.setPromptText("类别");
-        _priceField.setPromptText("单价");
-        _stockField.setPromptText("库存");
-        _imageUrlField.setPromptText("图片路径（可留空，留空则用类别图标）");
-        _imageUrlField.setPrefWidth(360);
+        _categoryField.setPromptText("类别，如 饮料");
+        _priceField.setPromptText("单价，如 2.00");
+        _stockField.setPromptText("库存数量");
+        _imageUrlField.setPromptText("可留空，留空则用类别图标占位");
 
+        // 表单改成两列，字段自适应宽度铺满卡片，避免右侧大片留白
         GridPane form = new GridPane();
-        form.setHgap(10);
+        form.setHgap(12);
         form.setVgap(10);
-        form.getStyleClass().add("tool-bar-card");
         form.add(formLabel("编号"), 0, 0);
         form.add(_goodsIdField, 1, 0);
-        form.add(formLabel("名称"), 0, 1);
-        form.add(_goodsNameField, 1, 1);
-        form.add(formLabel("类别"), 0, 2);
-        form.add(_categoryField, 1, 2);
-        form.add(formLabel("单价"), 0, 3);
-        form.add(_priceField, 1, 3);
-        form.add(formLabel("库存"), 0, 4);
-        form.add(_stockField, 1, 4);
-        form.add(formLabel("图片路径"), 0, 5);
-        form.add(_imageUrlField, 1, 5);
+        form.add(formLabel("名称"), 2, 0);
+        form.add(_goodsNameField, 3, 0);
+        form.add(formLabel("类别"), 0, 1);
+        form.add(_categoryField, 1, 1);
+        form.add(formLabel("单价"), 2, 1);
+        form.add(_priceField, 3, 1);
+        form.add(formLabel("库存"), 0, 2);
+        form.add(_stockField, 1, 2);
+        form.add(formLabel("图片路径"), 2, 2);
+        form.add(_imageUrlField, 3, 2);
+        for (Node field : new Node[]{_goodsIdField, _goodsNameField, _categoryField,
+                _priceField, _stockField, _imageUrlField}) {
+            GridPane.setHgrow(field, Priority.ALWAYS);
+            if (field instanceof javafx.scene.layout.Region region) {
+                region.setMaxWidth(Double.MAX_VALUE);
+            }
+        }
+        form.getColumnConstraints().addAll(
+                growColumn(false, 56), growColumn(true, 0),
+                growColumn(false, 72), growColumn(true, 0));
 
         Button addButton = new Button("新增");
         addButton.getStyleClass().add("primary");
@@ -430,6 +447,24 @@ public class StoreFrame extends Application {
         HBox buttons = new HBox(10, addButton, updateButton, deleteButton, clearButton);
         buttons.setAlignment(Pos.CENTER_LEFT);
 
+        Label tip = new Label("选中「商品列表」里的一行会自动回填表单；商品编号是主键、修改时不可改；"
+                + "已有购买记录的商品不能删除");
+        tip.getStyleClass().add("cart-hint");
+        tip.setWrapText(true);
+
+        VBox formCard = new VBox(12, form, buttons, tip);
+        formCard.getStyleClass().add("tool-bar-card");
+        HBox.setHgrow(formCard, Priority.ALWAYS);
+
+        // 右侧：库存概览（顺手把空白区域利用起来，也给管理员一些有用信息）
+        _goodsStatsBox = new VBox(8);
+        _goodsStatsBox.getStyleClass().add("side-card");
+        _goodsStatsBox.setPrefWidth(270);
+        _goodsStatsBox.setMinWidth(250);
+
+        HBox upper = new HBox(14, formCard, _goodsStatsBox);
+        upper.setAlignment(Pos.TOP_LEFT);
+
         _manageTable.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
             if (sel != null) {
                 fillForm(sel);
@@ -437,11 +472,148 @@ public class StoreFrame extends Application {
         });
         setUpGoodsColumns(_manageTable);
         VBox.setVgrow(_manageTable, Priority.ALWAYS);
+        _manageTable.setMinHeight(150);
 
-        VBox box = new VBox(10, sectionTitle("录入商品（管理员）"), form, buttons,
+        VBox box = new VBox(10, sectionTitle("录入商品（管理员）"), upper,
                 sectionTitle("商品列表"), _manageTable);
         box.getStyleClass().add("store-page");
         return box;
+    }
+
+    /**
+     * 生成一个列约束（标签列固定最小宽度，字段列自适应拉伸）。
+     *
+     * @param grow     是否拉伸
+     * @param minWidth 最小宽度
+     * @return 列约束
+     */
+    private ColumnConstraints growColumn(boolean grow, double minWidth) {
+        ColumnConstraints column = new ColumnConstraints();
+        column.setMinWidth(minWidth);
+        if (grow) {
+            column.setHgrow(Priority.ALWAYS);
+            column.setFillWidth(true);
+        }
+        return column;
+    }
+
+    /**
+     * 生成一行"标签 + 数值"的统计行。
+     *
+     * @param label 标签
+     * @param value 数值
+     * @return 统计行
+     */
+    private HBox statRow(String label, String value) {
+        Label name = new Label(label);
+        name.getStyleClass().add("stat-label");
+        name.setMinWidth(76);
+        Label val = new Label(value);
+        val.getStyleClass().add("stat-value");
+        val.setWrapText(true);
+        val.setMaxWidth(Double.MAX_VALUE); // 让它自动换行而不是被省略号截断
+        HBox.setHgrow(val, Priority.ALWAYS);
+        HBox row = new HBox(8, name, val);
+        row.setAlignment(Pos.TOP_LEFT);
+        return row;
+    }
+
+    /**
+     * 刷新"商品管理"右侧的库存概览（商品总数、缺图、库存合计、今日特价、库存预警）。
+     */
+    private void refreshGoodsStats() {
+        if (_goodsStatsBox == null) {
+            return;
+        }
+        List<Goods> goods = _manageTable.getItems();
+        int noImage = 0;
+        int promotion = 0;
+        int stockSum = 0;
+        StringBuilder lowStock = new StringBuilder();
+        for (Goods g : goods) {
+            if (g.getImageUrl() == null || g.getImageUrl().isBlank()) {
+                noImage++;
+            }
+            if (g.hasDiscount()) {
+                promotion++;
+            }
+            stockSum += g.getStock();
+            if (g.getStock() < 10) {
+                if (lowStock.length() > 0) {
+                    lowStock.append("、");
+                }
+                lowStock.append(safe(g.getGoodsName())).append("(").append(g.getStock()).append(")");
+            }
+        }
+        _goodsStatsBox.getChildren().setAll(
+                sectionTitle("库存概览"),
+                statRow("商品总数", goods.size() + " 件"),
+                statRow("缺图商品", noImage + " 件"),
+                statRow("库存合计", stockSum + " 件"),
+                statRow("今日特价", promotion + " 件"),
+                statRow("库存预警", lowStock.length() == 0 ? "无（均 ≥ 10 件）" : lowStock.toString()));
+    }
+
+    /**
+     * 刷新"活动管理"右侧的统计面板：各天活动数量 + 今日生效的特价 + 规则说明。
+     */
+    private void refreshPromotionStats() {
+        if (_promoStatsBox == null) {
+            return;
+        }
+        List<Promotion> promotions = _promoTable.getItems();
+        int[] perDay = new int[8];
+        int today = LocalDate.now().getDayOfWeek().getValue();
+        List<String> todayDeals = new ArrayList<>();
+        for (Promotion p : promotions) {
+            int day = p.getWeekday();
+            if (day >= 0 && day <= 7) {
+                perDay[day]++;
+            }
+            if (day == 0 || day == today) {
+                todayDeals.add(safe(p.getGoodsName()) + " " + p.getDiscountLabel());
+            }
+        }
+
+        // 今日特价逐行列出（不挤成一行，避免被截断）
+        Label todayTitle = new Label("今日特价（" + todayDeals.size() + " 件）");
+        todayTitle.getStyleClass().add("stat-label");
+        VBox todayBox = new VBox(3, todayTitle);
+        if (todayDeals.isEmpty()) {
+            Label none = new Label("今天没有特价商品");
+            none.getStyleClass().add("stat-value");
+            todayBox.getChildren().add(none);
+        } else {
+            int shown = 0;
+            for (String deal : todayDeals) {
+                if (shown >= 4) {
+                    Label more = new Label("…共 " + todayDeals.size() + " 件");
+                    more.getStyleClass().add("stat-label");
+                    todayBox.getChildren().add(more);
+                    break;
+                }
+                Label item = new Label("· " + deal);
+                item.getStyleClass().add("stat-value");
+                item.setWrapText(true);
+                todayBox.getChildren().add(item);
+                shown++;
+            }
+        }
+
+        Label rule = new Label("规则：0.80 = 8 折；「每天」= 常年特价");
+        rule.getStyleClass().add("cart-hint");
+        rule.setWrapText(true);
+
+        _promoStatsBox.getChildren().setAll(
+                sectionTitle("活动分布"),
+                statRow("活动总数", promotions.size() + " 条"),
+                statRow("每天特价", perDay[0] + " 条"),
+                statRow("周一 / 周二", perDay[1] + " / " + perDay[2] + " 条"),
+                statRow("周三 / 周四", perDay[3] + " / " + perDay[4] + " 条"),
+                statRow("周五 / 周六", perDay[5] + " / " + perDay[6] + " 条"),
+                statRow("周日", perDay[7] + " 条"),
+                todayBox,
+                rule);
     }
 
     /**
@@ -566,6 +738,7 @@ public class StoreFrame extends Application {
                 refreshPromoGoods(goods); // 活动表单的商品下拉框跟着刷新
                 renderGoodsCards(_loadedGoods);
                 _manageTable.getItems().setAll(goods);
+                refreshGoodsStats(); // 商品管理右侧的库存概览同步刷新
             } else {
                 showAlert(Alert.AlertType.ERROR, "查询失败", String.valueOf(response.getData()));
             }
@@ -965,19 +1138,28 @@ public class StoreFrame extends Application {
         _promoRemarkField.setPrefWidth(240);
 
         GridPane form = new GridPane();
-        form.setHgap(10);
+        form.setHgap(12);
         form.setVgap(10);
-        form.getStyleClass().add("tool-bar-card");
         form.add(formLabel("活动编号"), 0, 0);
         form.add(_promoIdField, 1, 0);
-        form.add(formLabel("商品"), 0, 1);
-        form.add(_promoGoodsBox, 1, 1);
-        form.add(formLabel("折扣率"), 0, 2);
-        form.add(_promoRateBox, 1, 2);
-        form.add(formLabel("生效星期"), 0, 3);
-        form.add(_promoWeekdayBox, 1, 3);
-        form.add(formLabel("活动说明"), 0, 4);
-        form.add(_promoRemarkField, 1, 4);
+        form.add(formLabel("商品"), 2, 0);
+        form.add(_promoGoodsBox, 3, 0);
+        form.add(formLabel("折扣率"), 0, 1);
+        form.add(_promoRateBox, 1, 1);
+        form.add(formLabel("生效星期"), 2, 1);
+        form.add(_promoWeekdayBox, 3, 1);
+        form.add(formLabel("活动说明"), 0, 2);
+        form.add(_promoRemarkField, 1, 2, 3, 1); // 说明横跨 3 列，铺满整行
+        for (Node field : new Node[]{_promoIdField, _promoGoodsBox, _promoRateBox,
+                _promoWeekdayBox, _promoRemarkField}) {
+            GridPane.setHgrow(field, Priority.ALWAYS);
+            if (field instanceof javafx.scene.layout.Region region) {
+                region.setMaxWidth(Double.MAX_VALUE);
+            }
+        }
+        form.getColumnConstraints().addAll(
+                growColumn(false, 66), growColumn(true, 110),
+                growColumn(false, 66), growColumn(true, 110));
 
         Button addButton = new Button("新增活动");
         addButton.getStyleClass().add("primary");
@@ -993,19 +1175,35 @@ public class StoreFrame extends Application {
         HBox buttons = new HBox(10, addButton, updateButton, deleteButton, clearButton);
         buttons.setAlignment(Pos.CENTER_LEFT);
 
+        Label tip = new Label("折扣率 0.80 表示 8 折（可手填 0~1 之间的小数）；生效星期选「每天」就是常年特价；"
+                + "同一商品同一天只能有一条活动。\n"
+                + "配置步骤：① 填活动编号（如 P023）→ ② 选商品与折扣率 → ③ 选生效星期、填活动说明 → ④ 点「新增活动」。");
+        tip.getStyleClass().add("cart-hint");
+        tip.setWrapText(true);
+
+        VBox formCard = new VBox(12, form, buttons, tip);
+        formCard.getStyleClass().add("tool-bar-card");
+        HBox.setHgrow(formCard, Priority.ALWAYS);
+
+        // 右侧：活动分布 + 今日特价（把空白区域用起来，也给管理员一眼能看的信息）
+        _promoStatsBox = new VBox(8);
+        _promoStatsBox.getStyleClass().add("side-card");
+        _promoStatsBox.setPrefWidth(270);
+        _promoStatsBox.setMinWidth(250);
+
+        HBox upper = new HBox(14, formCard, _promoStatsBox);
+        upper.setAlignment(Pos.TOP_LEFT);
+
         setUpPromotionColumns(_promoTable);
         VBox.setVgrow(_promoTable, Priority.ALWAYS);
+        _promoTable.setMinHeight(150);
         _promoTable.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
             if (selected != null) {
                 fillPromoForm(selected);
             }
         });
 
-        Label tip = new Label("折扣率 0.80 表示 8 折（可手填 0~1 之间的小数）；"
-                + "生效星期选「每天」就是常年特价；同一商品同一天只能有一条活动");
-        tip.getStyleClass().add("cart-hint");
-
-        VBox box = new VBox(10, sectionTitle("配置每日特价活动（管理员）"), form, buttons, tip,
+        VBox box = new VBox(10, sectionTitle("配置每日特价活动（管理员）"), upper,
                 sectionTitle("全部活动"), _promoTable);
         box.getStyleClass().add("store-page");
         return box;
@@ -1037,6 +1235,7 @@ public class StoreFrame extends Application {
             if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
                 List<Promotion> promotions = (List<Promotion>) response.getData();
                 _promoTable.getItems().setAll(promotions);
+                refreshPromotionStats(); // 右侧统计面板同步刷新
             } else {
                 showAlert(Alert.AlertType.ERROR, "查询失败", String.valueOf(response.getData()));
             }

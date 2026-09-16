@@ -109,21 +109,75 @@
 }
 
 /* ==================== 输入控件 ==================== */
-.store-root .text-field,
+.store-root .text-field {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #cad7e6;
+    -fx-padding: 7 10 7 10;
+    -fx-min-height: 32;
+}
+
+/* 组合框：注意不要把 padding 加在 combo-box 本身——那样会挤压内部布局、把文字裁掉，
+   正确做法是给内部的 list-cell 设内边距，并给组合框一个统一的最小高度。 */
 .store-root .combo-box {
     -fx-background-color: white;
     -fx-background-radius: 8;
     -fx-border-radius: 8;
     -fx-border-color: #cad7e6;
-    -fx-padding: 6 10 6 10;
+    -fx-padding: 0;
+    -fx-min-height: 32;
+    -fx-pref-height: 32;
+}
+.store-root .combo-box > .list-cell {
+    -fx-padding: 0 6 0 10;
+    -fx-text-fill: #27384e;
+    -fx-background-color: transparent;
+}
+.store-root .combo-box > .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 8 0 4;
+}
+.store-root .combo-box > .arrow-button > .arrow {
+    -fx-background-color: #5b7796;
+    -fx-padding: 3 5 3 5;
 }
 .store-root .text-field:focused,
 .store-root .combo-box:focused {
     -fx-border-color: #1f8f80;
     -fx-effect: dropshadow(gaussian, rgba(31, 143, 128, 0.20), 6, 0, 0, 0);
 }
-.store-root .combo-box > .arrow-button { -fx-background-color: transparent; }
-.store-root .combo-box .list-cell { -fx-text-fill: #27384e; }
+
+/* 下拉列表（弹出层不在商店子树里，用全局样式保证一致） */
+.combo-box-popup > .list-view {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #dbe5f0;
+    -fx-effect: dropshadow(gaussian, rgba(24, 51, 92, 0.12), 12, 0.1, 0, 4);
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell {
+    -fx-padding: 7 12 7 12;
+    -fx-text-fill: #27384e;
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:hover {
+    -fx-background-color: #e9f5f3;
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:selected {
+    -fx-background-color: #1f8f80;
+    -fx-text-fill: white;
+}
+
+/* ==================== 右侧信息面板（管理员页签的"库存概览/活动分布"） ==================== */
+.side-card {
+    -fx-background-color: #f7fafd;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: #dbe5f0;
+    -fx-padding: 14 16 14 16;
+}
+.stat-label { -fx-text-fill: #6b7a8d; -fx-font-size: 12px; }
+.stat-value { -fx-text-fill: #12564e; -fx-font-size: 13px; -fx-font-weight: bold; }
 
 /* ==================== 商品卡片 ==================== */
 .goods-card {
