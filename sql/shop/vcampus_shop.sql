@@ -91,16 +91,35 @@ CREATE TABLE IF NOT EXISTS tblWallet (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='校园卡钱包表';
 
 -- ------------------------------------------------------------
--- 示例数据（商品）
+-- 示例数据（商品，22 件，覆盖 5 个类别）
+-- 说明：G001~G007 带真实商品图；G008 以后 imageUrl 留空，界面用
+--   "类别色块 + 类别图标"占位，管理员可在【商品管理】里补图片路径。
+--   只想补商品、不想动表结构的话，也可以单独执行
+--   sql/shop/seed_goods_demo.sql（同样幂等）。
 -- ------------------------------------------------------------
 INSERT IGNORE INTO tblGoods (goodsId, goodsName, category, price, stock, imageUrl) VALUES
-('G001', '农夫山泉', '饮料', 2.00, 100, 'Client/src/vcampus/client/view/assets/store/G001.jpg'),
-('G002', '可口可乐', '饮料', 3.50, 80, 'Client/src/vcampus/client/view/assets/store/G002.jpg'),
-('G003', '面包', '食品', 5.00, 50, 'Client/src/vcampus/client/view/assets/store/G003.jpg'),
-('G004', '笔记本', '文具', 8.00, 200, 'Client/src/vcampus/client/view/assets/store/G004.jpg'),
-('G005', '中性笔', '文具', 2.00, 300, 'Client/src/vcampus/client/view/assets/store/G005.jpg'),
-('G006', 'U盘64G', '数码', 45.00, 30, 'Client/src/vcampus/client/view/assets/store/G006.jpg'),
-('G007', '洗衣液', '生活用品', 15.00, 40, 'Client/src/vcampus/client/view/assets/store/G007.jpg');
+    ('G001', '农夫山泉',         '饮料',     2.00, 100, 'Client/src/vcampus/client/view/assets/store/G001.jpg'),
+    ('G002', '可口可乐',         '饮料',     3.50,  80, 'Client/src/vcampus/client/view/assets/store/G002.jpg'),
+    ('G012', '蒙牛纯牛奶',       '饮料',     3.00,  90, NULL),
+    ('G013', '雀巢咖啡',         '饮料',     6.00,  40, NULL),
+    ('G014', '冰红茶',           '饮料',     3.00,  70, NULL),
+    ('G003', '面包',             '食品',     5.00,  50, 'Client/src/vcampus/client/view/assets/store/G003.jpg'),
+    ('G008', '康师傅红烧牛肉面', '食品',     5.50,  60, NULL),
+    ('G009', '奥利奥饼干',       '食品',     9.90,  45, NULL),
+    ('G010', '乐事薯片',         '食品',     6.50,  55, NULL),
+    ('G011', '士力架',           '食品',     4.00,  80, NULL),
+    ('G004', '笔记本',           '文具',     8.00, 200, 'Client/src/vcampus/client/view/assets/store/G004.jpg'),
+    ('G005', '中性笔',           '文具',     2.00, 300, 'Client/src/vcampus/client/view/assets/store/G005.jpg'),
+    ('G015', '晨光橡皮',         '文具',     1.50, 150, NULL),
+    ('G016', '得力订书机',       '文具',    12.00,  25, NULL),
+    ('G017', '便利贴',           '文具',     4.50, 120, NULL),
+    ('G007', '洗衣液',           '生活用品', 15.00,  40, 'Client/src/vcampus/client/view/assets/store/G007.jpg'),
+    ('G018', '抽纸',             '生活用品',  6.90,  65, NULL),
+    ('G019', '洗发水',           '生活用品', 29.90,  20, NULL),
+    ('G006', 'U盘64G',           '数码',    45.00,  30, 'Client/src/vcampus/client/view/assets/store/G006.jpg'),
+    ('G020', '无线鼠标',         '数码',    39.00,  18, NULL),
+    ('G021', '数据线',           '数码',    15.00, 100, NULL),
+    ('G022', '充电宝',           '数码',    89.00,   5, NULL);
 
 -- ------------------------------------------------------------
 -- 示例余额（依赖 seed_demo_data.sql 里的示例用户）
