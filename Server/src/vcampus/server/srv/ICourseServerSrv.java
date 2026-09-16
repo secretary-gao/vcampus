@@ -49,6 +49,8 @@ public interface ICourseServerSrv {
     int applyAutoSchedule(AutoSchedulePlan plan)
             throws SQLException, IOException, CourseServiceException;
 
+    int loadAutoScheduleDemoData() throws SQLException, IOException, CourseServiceException;
+
     CourseDashboardStats queryDashboard() throws SQLException, IOException;
 
     TeachingClass addTeachingClass(TeachingClass teachingClass)

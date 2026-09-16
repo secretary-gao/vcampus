@@ -47,6 +47,14 @@ import java.util.Map;
  */
 public class CourseServerSrv implements ICourseServerSrv {
 
+    private static final List<DemoCourse> AUTO_SCHEDULE_DEMO_COURSES = List.of(
+            new DemoCourse("DEMO_AI001", "人工智能导论", "陈龙"),
+            new DemoCourse("DEMO_AI002", "机器学习", "戴大荣"),
+            new DemoCourse("DEMO_AI003", "计算机视觉", "伍家松"),
+            new DemoCourse("DEMO_AI004", "自然语言处理", "周琳"),
+            new DemoCourse("DEMO_AI005", "智能机器人", "杨绍富")
+    );
+
     /** 课程数据访问对象。 */
     private final CourseDAO _courseDAO;
 
@@ -194,6 +202,47 @@ public class CourseServerSrv implements ICourseServerSrv {
                 conn.commit();
                 return plan.getAssignments().size();
             } catch (SQLException | CourseServiceException | RuntimeException exception) {
+                rollback(conn, exception);
+                throw exception;
+            }
+        }
+    }
+
+    @Override
+    public int loadAutoScheduleDemoData()
+            throws SQLException, IOException, CourseServiceException {
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                int createdClasses = 0;
+                for (DemoCourse demo : AUTO_SCHEDULE_DEMO_COURSES) {
+                    if (_courseDAO.findById(conn, demo.courseId()) == null) {
+                        Course course = new Course(demo.courseId(), demo.courseName(),
+                                demo.teacher(), 2, 50, 0);
+                        course.setCourseNature("任选");
+                        course.setOpeningUnit("人工智能学院");
+                        if (!_courseDAO.insertCourse(conn, course)) {
+                            throw new SQLException("创建演示课程失败：" + demo.courseId());
+                        }
+                    }
+
+                    String teachingClassId = demo.courseId() + "-01";
+                    if (_teachingClassDAO.findById(conn, teachingClassId, false) == null) {
+                        TeachingClass teachingClass = new TeachingClass(teachingClassId,
+                                demo.courseId(), "01", demo.teacher(), 50, 0,
+                                "中文", "自动排课演示数据");
+                        if (!_teachingClassDAO.insert(conn, teachingClass)) {
+                            throw new SQLException("创建演示教学班失败：" + teachingClassId);
+                        }
+                        createdClasses++;
+                    }
+                }
+                conn.commit();
+                return createdClasses;
+            } catch (SQLIntegrityConstraintViolationException exception) {
+                rollback(conn, exception);
+                throw new CourseServiceException("演示数据已存在或与现有数据冲突");
+            } catch (SQLException | RuntimeException exception) {
                 rollback(conn, exception);
                 throw exception;
             }
@@ -847,6 +896,9 @@ public class CourseServerSrv implements ICourseServerSrv {
         if (minutes < 1190) return 11;
         if (minutes < 1240) return 12;
         return 13;
+    }
+
+    private record DemoCourse(String courseId, String courseName, String teacher) {
     }
 
     /** 回滚事务；若回滚本身失败，将异常附加到原异常上。 */

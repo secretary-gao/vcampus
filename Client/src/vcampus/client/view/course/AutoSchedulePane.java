@@ -81,6 +81,9 @@ public class AutoSchedulePane extends VBox {
         Button preview = new Button("生成预览");
         preview.getStyleClass().add("primary");
         preview.setOnAction(event -> preview());
+        Button loadDemo = new Button("加载演示数据");
+        loadDemo.getStyleClass().add("secondary");
+        loadDemo.setOnAction(event -> loadDemoData());
         Button cancel = new Button("取消预览");
         cancel.getStyleClass().add("secondary");
         cancel.setOnAction(event -> clearPreview());
@@ -88,7 +91,7 @@ public class AutoSchedulePane extends VBox {
         _apply.setDisable(true);
         _apply.setOnAction(event -> apply());
         HBox controls = new HBox(9, new Label("周次"), _weekStart,
-                new Label("至"), _weekEnd, preview, cancel, _apply);
+                new Label("至"), _weekEnd, loadDemo, preview, cancel, _apply);
         controls.setAlignment(Pos.CENTER_LEFT);
         controls.getStyleClass().add("tool-bar-card");
 
@@ -128,6 +131,22 @@ public class AutoSchedulePane extends VBox {
             _apply.setDisable(plan.getAssignments().isEmpty()
                     || !plan.getUnassignedTeachingClassIds().isEmpty());
             _status.setText(_apply.isDisabled() ? "未找到完整可行方案" : "预览已生成，数据库尚未改变");
+        });
+    }
+
+    private void loadDemoData() {
+        _status.setText("正在加载自动排课演示数据…");
+        CourseViewSupport.runAsync(this, _client::loadAutoScheduleDemoData, count -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("加载演示数据");
+            alert.setHeaderText(null);
+            alert.setContentText(count == 0
+                    ? "演示数据已存在，无需重复加载。"
+                    : "演示数据加载成功，共生成 " + count
+                    + " 个待排课教学班，请点击生成预览。");
+            CourseViewSupport.styleDialog(alert.getDialogPane());
+            alert.showAndWait();
+            refresh();
         });
     }
 
