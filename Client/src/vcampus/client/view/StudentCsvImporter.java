@@ -58,16 +58,17 @@ final class StudentCsvImporter {
         student.setMajor(required(values.get(5), "专业"));
         student.setGrade(required(values.get(6), "年级"));
         String date = values.get(7).trim();
-        if (!date.isEmpty()) {
-            try {
-                student.setEnrollmentDate(LocalDate.parse(date));
-            } catch (DateTimeParseException exception) {
-                throw new IllegalArgumentException("入学日期格式错误，应为 yyyy-MM-dd");
-            }
+        if (date.isEmpty()) {
+            throw new IllegalArgumentException("入学日期不能为空");
+        }
+        try {
+            student.setEnrollmentDate(LocalDate.parse(date));
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException("入学日期格式错误，应为 yyyy-MM-dd");
         }
         String status = values.get(8).trim();
         if (status.isEmpty()) {
-            student.setStatus(StudentStatus.ENROLLED);
+            throw new IllegalArgumentException("学籍状态不能为空");
         } else {
             try {
                 student.setStatus(StudentStatus.fromDatabaseValue(status));

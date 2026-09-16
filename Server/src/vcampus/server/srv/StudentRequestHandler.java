@@ -63,8 +63,29 @@ public class StudentRequestHandler {
                     yield "删除成功";
                 }
                 case StudentProtocol.OVERVIEW -> {
-                    requireAdmin(currentUser);
-                    yield _studentServerSrv.loadOverview((String) request.getData());
+                    yield loadOverviewForViewer(currentUser, (String) request.getData());
+                }
+                case StudentProtocol.FOCUS_LIST -> {
+                    requireTeacher(currentUser);
+                    yield _studentServerSrv.listStudentFocus(currentUser.getUId());
+                }
+                case StudentProtocol.FOCUS_ADD -> {
+                    requireTeacher(currentUser);
+                    String[] values = (String[]) request.getData();
+                    if (values == null || values.length < 1) {
+                        throw new StudentServiceException(StudentProtocol.STATUS_BAD_REQUEST,
+                                "关注学生请求格式不正确");
+                    }
+                    _studentServerSrv.addStudentFocus(currentUser.getUId(), values[0],
+                            values.length > 1 ? values[1] : null,
+                            values.length > 2 ? values[2] : null);
+                    yield "关注成功";
+                }
+                case StudentProtocol.FOCUS_REMOVE -> {
+                    requireTeacher(currentUser);
+                    _studentServerSrv.removeStudentFocus(currentUser.getUId(),
+                            (String) request.getData());
+                    yield "已取消关注";
                 }
                 default -> throw new StudentServiceException(
                         StudentProtocol.STATUS_BAD_REQUEST, "未知的学籍操作：" + request.getName());
@@ -172,10 +193,33 @@ public class StudentRequestHandler {
                 "学籍修改请求格式不正确");
     }
 
+    private vcampus.common.vo.StudentCampusOverview loadOverviewForViewer(
+            User currentUser, String studentId)
+            throws SQLException, IOException, StudentServiceException {
+        String target = requireQueryText(studentId, "学号");
+        if (currentUser.isStudent()) {
+            Student self = _studentServerSrv.findByUserId(currentUser.getUId());
+            if (self == null || !target.equals(self.getStudentId())) {
+                throw forbidden("学生账号只能查看本人详细信息");
+            }
+        } else if (currentUser.isTeacher()) {
+            if (_studentServerSrv.findStudentTaughtBy(currentUser.getUId(), target) == null) {
+                throw forbidden("教师只能查看自己所授课程中的学生");
+            }
+        } else if (!currentUser.isAdmin()) {
+            throw forbidden("当前账号无权查看学生详细信息");
+        }
+        return _studentServerSrv.loadOverview(target);
+    }
+
     private static void requireTeacherOrAdmin(User user) throws StudentServiceException {
         if (!user.isTeacher() && !user.isAdmin()) {
             throw forbidden("当前账号无权查询其他学生学籍");
         }
+    }
+
+    private static void requireTeacher(User user) throws StudentServiceException {
+        if (!user.isTeacher()) throw forbidden("只有教师账号可以使用关注名单");
     }
 
     private static void requireAdmin(User user) throws StudentServiceException {
@@ -217,7 +261,10 @@ public class StudentRequestHandler {
         target.setClassName(source.getClassName());
         target.setMajor(source.getMajor());
         target.setGrade(source.getGrade());
+        target.setEnrollmentDate(source.getEnrollmentDate());
         target.setStatus(source.getStatus());
+        target.setVersion(source.getVersion());
+        target.setUpdatedAt(source.getUpdatedAt());
         return target;
     }
 

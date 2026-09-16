@@ -27,45 +27,60 @@
     -fx-background-color: -vc-background;
 }
 
+.app-root .page-header {
+    -fx-padding: 16px 22px 14px 22px;
+    -fx-background-color: linear-gradient(to right, #1e4f40, #3f8a68);
+    -fx-background-radius: 18 18 0 0;
+}
+
 .app-root .title-row {
-    -fx-padding: 20px 24px 15px 24px;
-    -fx-background-color: -vc-surface;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
 }
 
 .app-root .page-title {
     -fx-font-size: 22px;
     -fx-font-weight: 700;
-    -fx-text-fill: -vc-text;
+    -fx-text-fill: white;
+}
+
+.app-root .page-subtitle {
+    -fx-font-size: 12px;
+    -fx-text-fill: #dceee4;
 }
 
 .app-root .count-label {
     -fx-padding: 3px 0 0 0;
-    -fx-text-fill: -vc-text-secondary;
+    -fx-text-fill: #e5f4ea;
     -fx-font-weight: 600;
 }
 
 .app-root .role-label {
-    -fx-padding: 4px 10px;
-    -fx-background-color: -vc-primary-soft;
+    -fx-padding: 4px 12px;
+    -fx-background-color: rgba(255, 255, 255, 0.18);
     -fx-background-radius: 999px;
-    -fx-text-fill: -vc-primary;
+    -fx-text-fill: white;
     -fx-font-size: 11px;
     -fx-font-weight: 700;
 }
 
 .app-root .student-self-hint {
-    -fx-padding: 10px 22px 12px 22px;
-    -fx-background-color: -vc-surface;
-    -fx-border-color: transparent transparent -vc-border transparent;
-    -fx-border-width: 0 0 1px 0;
-    -fx-text-fill: -vc-text-secondary;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-text-fill: #dceee4;
 }
 
 .app-root .search-bar {
-    -fx-padding: 11px 24px 13px 24px;
-    -fx-background-color: -vc-surface;
-    -fx-border-color: -vc-border transparent -vc-border transparent;
-    -fx-border-width: 1px 0 1px 0;
+    -fx-padding: 22px 30px 22px 30px;
+    -fx-spacing: 8px;
+    -fx-background-color: #f6faf7;
+    -fx-background-radius: 12px;
+    -fx-border-color: #d7e4d3;
+    -fx-border-radius: 12px;
+    -fx-border-width: 1px;
+    -fx-background-insets: 10px 16px 8px 16px;
+    -fx-border-insets: 10px 16px 8px 16px;
 }
 
 .app-root .text-field,
@@ -75,8 +90,8 @@
     -fx-pref-height: 38px;
     -fx-background-color: -vc-surface;
     -fx-border-color: -vc-border-strong;
-    -fx-border-radius: 6px;
-    -fx-background-radius: 6px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
     -fx-padding: 0 9px;
 }
 
@@ -112,8 +127,8 @@
 .app-root .button {
     -fx-min-height: 38px;
     -fx-padding: 0 14px;
-    -fx-background-radius: 6px;
-    -fx-border-radius: 6px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
     -fx-cursor: hand;
     -fx-font-weight: 600;
 }
@@ -208,8 +223,9 @@
     -fx-background-color: -vc-surface;
     -fx-border-color: -vc-border;
     -fx-border-width: 1px;
-    -fx-border-radius: 8px;
-    -fx-background-radius: 8px;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(40, 93, 76, 0.10), 16, 0.10, 0, 4);
 }
 
 .app-root .student-detail {
@@ -217,8 +233,9 @@
     -fx-background-color: -vc-surface;
     -fx-border-color: -vc-border;
     -fx-border-width: 1px;
-    -fx-border-radius: 8px;
-    -fx-background-radius: 8px;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(40, 93, 76, 0.10), 16, 0.10, 0, 4);
 }
 
 .app-root .detail-grid {
@@ -236,8 +253,8 @@
     -fx-padding: 9px 12px;
     -fx-background-color: -vc-surface-subtle;
     -fx-border-color: -vc-border;
-    -fx-border-radius: 3px;
-    -fx-background-radius: 3px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
     -fx-text-fill: -vc-text;
     -fx-font-weight: 600;
 }
@@ -258,6 +275,43 @@
 .app-root .section-hint {
     -fx-text-fill: -vc-text-muted;
     -fx-font-size: 11px;
+}
+
+.app-root .year-selector {
+    -fx-padding: 7px 0 0 0;
+}
+
+.app-root .year-selector-label {
+    -fx-padding: 7px 0 0 0;
+    -fx-text-fill: -vc-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+.app-root .class-selector {
+    -fx-padding: 2px 0 0 0;
+}
+
+.app-root .year-button {
+    -fx-min-width: 72px;
+    -fx-min-height: 32px;
+    -fx-pref-height: 32px;
+    -fx-padding: 0 14px;
+}
+
+.app-root .year-button.year-selected {
+    -fx-background-color: -vc-primary;
+    -fx-border-color: -vc-primary;
+    -fx-text-fill: white;
+}
+
+.app-root .year-button.year-selected:hover {
+    -fx-background-color: -vc-primary-hover;
+    -fx-border-color: -vc-primary-hover;
+}
+
+.app-root .search-bar .action-row {
+    -fx-padding: 1px 0 0 0;
 }
 
 .app-root .statistics-bar {
@@ -291,7 +345,11 @@
 }
 
 .app-root.statistics-dialog {
-    -fx-background-color: -vc-background;
+    -fx-background-color: -vc-surface;
+    -fx-background-radius: 12px;
+    -fx-border-color: -vc-border;
+    -fx-border-radius: 12px;
+    -fx-border-width: 1px;
 }
 
 .app-root.statistics-dialog .header-panel {
@@ -317,8 +375,8 @@
     -fx-padding: 8px 10px 5px 10px;
     -fx-background-color: -vc-surface-subtle;
     -fx-border-color: -vc-border;
-    -fx-border-radius: 6px;
-    -fx-background-radius: 6px;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
 }
 
 .app-root .chart-card-title {
@@ -378,6 +436,32 @@
     -fx-bar-fill: -vc-primary;
 }
 
+.app-root .student-line-chart {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.app-root .student-line-chart .chart-plot-background {
+    -fx-background-color: transparent;
+}
+
+.app-root .student-line-chart .chart-vertical-grid-lines,
+.app-root .student-line-chart .chart-horizontal-grid-lines {
+    -fx-stroke: #dfe7e2;
+}
+
+.app-root .student-line-chart .default-color0.chart-series-line {
+    -fx-stroke: -vc-primary;
+    -fx-stroke-width: 3px;
+}
+
+.app-root .student-line-chart .default-color0.chart-line-symbol {
+    -fx-background-color: -vc-surface, -vc-primary;
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 7px;
+    -fx-padding: 5px;
+}
+
 .app-root .stat-breakdown {
     -fx-max-width: 360px;
     -fx-padding: 0 0 0 6px;
@@ -406,8 +490,8 @@
     -fx-padding: 6px 10px;
     -fx-background-color: -vc-surface-subtle;
     -fx-border-color: -vc-border;
-    -fx-border-radius: 5px;
-    -fx-background-radius: 5px;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
 }
 
 .app-root .stat-title {
@@ -446,7 +530,8 @@
 }
 
 .app-root .student-table .column-header-background {
-    -fx-background-color: -vc-surface-subtle;
+    -fx-background-color: #e7f1df;
+    -fx-background-radius: 12 12 0 0;
 }
 
 .app-root .student-table .column-header,
@@ -472,11 +557,11 @@
 }
 
 .app-root .student-table .table-row-cell:hover {
-    -fx-background-color: #f1f5f3;
+    -fx-background-color: #f3f8f0;
 }
 
 .app-root .student-table .table-row-cell:selected {
-    -fx-background-color: -vc-primary-soft;
+    -fx-background-color: #e4efe8;
 }
 
 .app-root .student-table .table-row-cell:selected .table-cell {
@@ -538,8 +623,9 @@
     -fx-background-color: -vc-surface;
     -fx-border-color: -vc-border;
     -fx-border-width: 1px;
-    -fx-border-radius: 8px;
-    -fx-background-radius: 8px;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(40, 93, 76, 0.10), 16, 0.10, 0, 4);
 }
 
 .app-root .student-form {
@@ -614,7 +700,11 @@
 }
 
 .app-root.student-detail-dialog {
-    -fx-background-color: -vc-background;
+    -fx-background-color: -vc-surface;
+    -fx-background-radius: 12px;
+    -fx-border-color: -vc-border;
+    -fx-border-radius: 12px;
+    -fx-border-width: 1px;
 }
 
 .app-root.student-detail-dialog .header-panel {
@@ -644,7 +734,9 @@
 }
 
 .app-root .student-detail-heading {
-    -fx-padding: 0 0 5px 0;
+    -fx-padding: 3px 0 9px 14px;
+    -fx-border-color: transparent transparent transparent -vc-primary;
+    -fx-border-width: 0 0 0 4px;
 }
 
 .app-root .student-detail-title {
@@ -656,6 +748,28 @@
 .app-root .student-detail-subtitle {
     -fx-font-size: 12px;
     -fx-text-fill: -vc-text-muted;
+}
+
+.app-root .student-detail-status-badge {
+    -fx-padding: 4px 10px;
+    -fx-background-radius: 999px;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+}
+
+.app-root .student-detail-status-enrolled {
+    -fx-background-color: -vc-primary-soft;
+    -fx-text-fill: -vc-primary;
+}
+
+.app-root .student-detail-status-suspended {
+    -fx-background-color: -vc-warning-soft;
+    -fx-text-fill: -vc-warning;
+}
+
+.app-root .student-detail-status-muted {
+    -fx-background-color: -vc-surface-muted;
+    -fx-text-fill: -vc-text-secondary;
 }
 
 .app-root .student-detail-identity {
@@ -696,13 +810,19 @@
 }
 
 .app-root .student-detail-metric {
-    -fx-min-width: 160px;
-    -fx-min-height: 86px;
-    -fx-padding: 13px 14px;
+    -fx-min-width: 158px;
+    -fx-min-height: 82px;
+    -fx-padding: 12px 14px;
     -fx-background-color: -vc-surface;
     -fx-border-color: -vc-border;
     -fx-border-radius: 9px;
     -fx-background-radius: 9px;
+}
+
+.app-root .student-detail-metric:hover {
+    -fx-border-color: -vc-primary;
+    -fx-background-color: #f3f8f5;
+    -fx-effect: dropshadow(three-pass-box, rgba(40, 93, 76, 0.12), 7, 0, 0, 2);
 }
 
 .app-root .student-detail-metric-value {
@@ -717,12 +837,20 @@
     -fx-text-fill: -vc-text-muted;
 }
 
-.app-root .detail-metric-green { -fx-border-color: #9bc8b1; -fx-background-color: #f1f8f4; }
-.app-root .detail-metric-blue { -fx-border-color: #a9c5dc; -fx-background-color: #f2f7fb; }
-.app-root .detail-metric-red { -fx-border-color: #e1b5b2; -fx-background-color: #fff5f4; }
-.app-root .detail-metric-amber { -fx-border-color: #dec68e; -fx-background-color: #fffaf0; }
-.app-root .detail-metric-purple { -fx-border-color: #c8b9da; -fx-background-color: #faf7fd; }
-.app-root .detail-metric-teal { -fx-border-color: #9fcac5; -fx-background-color: #f1f9f8; }
+.app-root .detail-metric-neutral {
+    -fx-border-color: -vc-border;
+    -fx-background-color: -vc-surface;
+}
+
+.app-root .detail-metric-accent {
+    -fx-border-color: #a6cdb9;
+    -fx-background-color: #f2f8f5;
+}
+
+.app-root .detail-metric-red {
+    -fx-border-color: #e1b5b2;
+    -fx-background-color: #fff5f4;
+}
 
 .app-root .student-detail-ok,
 .app-root .student-detail-warning {
@@ -750,4 +878,198 @@
 .app-root .student-detail-alert-text {
     -fx-font-size: 12px;
     -fx-text-fill: -vc-text-secondary;
+}
+
+.app-root .student-detail-auto-tag {
+    -fx-padding: 5px 10px;
+    -fx-background-color: -vc-primary-soft;
+    -fx-border-color: #b7d3c4;
+    -fx-border-radius: 999px;
+    -fx-background-radius: 999px;
+    -fx-text-fill: -vc-primary;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+}
+
+.student-context-menu {
+    -fx-padding: 7px;
+    -fx-opacity: 1.0;
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 9px;
+    -fx-border-color: #d5ddd9;
+    -fx-border-width: 1px;
+    -fx-border-radius: 9px;
+    -fx-effect: dropshadow(three-pass-box, rgba(30, 55, 45, 0.18), 14, 0, 0, 4);
+}
+
+.student-context-menu .menu-item {
+    -fx-min-width: 218px;
+    -fx-padding: 9px 13px;
+    -fx-background-radius: 6px;
+}
+
+.student-context-menu .menu-item .label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #202a26;
+}
+
+.student-context-menu .menu-item:hover,
+.student-context-menu .menu-item:focused {
+    -fx-background-color: #e5eee9;
+}
+
+.student-context-menu .menu-item:hover .label,
+.student-context-menu .menu-item:focused .label {
+    -fx-text-fill: #285d4c;
+    -fx-font-weight: 700;
+}
+
+.student-context-menu .menu-item:disabled {
+    -fx-opacity: 0.42;
+}
+
+.student-context-menu .separator-menu-item {
+    -fx-padding: 6px 5px;
+}
+
+.student-context-menu .separator-menu-item .line {
+    -fx-border-color: #d5ddd9 transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+}
+
+
+.app-root.student-dialog {
+    -fx-background-color: -vc-surface;
+    -fx-background-radius: 12px;
+    -fx-border-color: -vc-border;
+    -fx-border-radius: 12px;
+    -fx-border-width: 1px;
+}
+
+.app-root.student-dialog .header-panel {
+    -fx-padding: 16px 18px 6px 18px;
+    -fx-background-color: -vc-surface;
+    -fx-background-radius: 12px 12px 0 0;
+}
+
+.app-root.student-dialog .header-panel .label {
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -vc-text;
+}
+
+.app-root.student-dialog > .content {
+    -fx-padding: 8px 18px 10px 18px;
+    -fx-background-color: -vc-surface;
+}
+
+.app-root.student-dialog > .content.label {
+    -fx-text-fill: -vc-text-secondary;
+    -fx-font-size: 13px;
+}
+
+.app-root.student-dialog .button-bar {
+    -fx-background-color: -vc-surface;
+    -fx-background-radius: 0 0 12px 12px;
+    -fx-padding: 10px 16px 14px 16px;
+}
+
+.app-root.student-dialog .button-bar .button {
+    -fx-min-height: 34px;
+    -fx-padding: 0 16px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-background-color: -vc-surface;
+    -fx-border-color: -vc-border-strong;
+    -fx-text-fill: #293832;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+}
+
+.app-root.student-dialog .button-bar .button:hover {
+    -fx-background-color: #edf3f0;
+    -fx-border-color: -vc-primary;
+    -fx-text-fill: -vc-primary;
+}
+
+.app-root.student-dialog .button-bar .default-button {
+    -fx-background-color: -vc-primary;
+    -fx-border-color: -vc-primary;
+    -fx-text-fill: white;
+}
+
+.app-root.student-dialog .button-bar .default-button:hover {
+    -fx-background-color: -vc-primary-hover;
+    -fx-border-color: -vc-primary-hover;
+    -fx-text-fill: white;
+}
+
+.app-root.student-dialog .button-bar .cancel-button {
+    -fx-background-color: -vc-surface-muted;
+    -fx-border-color: transparent;
+    -fx-text-fill: #3f4c56;
+}
+
+
+.app-root.student-dialog .text-field,
+.app-root.student-dialog .combo-box,
+.app-root.student-dialog .date-picker,
+.app-root.student-dialog .combo-box > .list-cell {
+    -fx-min-height: 34px;
+    -fx-pref-height: 34px;
+    -fx-background-color: -vc-surface;
+    -fx-border-color: -vc-border-strong;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 0 9px;
+    -fx-text-fill: -vc-text;
+}
+
+.app-root.student-dialog .text-field:focused,
+.app-root.student-dialog .combo-box:focused,
+.app-root.student-dialog .date-picker:focused {
+    -fx-border-color: -vc-focus;
+    -fx-border-width: 1.5px;
+    -fx-effect: dropshadow(three-pass-box, -vc-focus-shadow, 4, 0, 0, 0);
+}
+
+.app-root.student-dialog .combo-box > .arrow-button,
+.app-root.student-dialog .date-picker > .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.app-root .combo-box > .arrow-button,
+.app-root .date-picker > .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.app-root.student-dialog .button-bar .cancel-button:hover {
+    -fx-background-color: #e1e5e9;
+}
+
+.app-root.statistics-dialog .button-bar .button,
+.app-root.student-detail-dialog .button-bar .button {
+    -fx-min-height: 34px;
+    -fx-padding: 0 16px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-background-color: -vc-surface;
+    -fx-border-color: -vc-border-strong;
+    -fx-text-fill: #293832;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+}
+
+.app-root.statistics-dialog .button-bar .button:hover,
+.app-root.student-detail-dialog .button-bar .button:hover {
+    -fx-background-color: #edf3f0;
+    -fx-border-color: -vc-primary;
+    -fx-text-fill: -vc-primary;
+}
+
+.app-root.statistics-dialog .button-bar .default-button,
+.app-root.student-detail-dialog .button-bar .default-button {
+    -fx-background-color: -vc-primary;
+    -fx-border-color: -vc-primary;
+    -fx-text-fill: white;
 }
