@@ -4,10 +4,12 @@ import javafx.collections.FXCollections;
 import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -36,6 +38,13 @@ public class AutoSchedulePane extends VBox {
     private final Spinner<Integer> _weekEnd = new Spinner<>(1, 30, 16);
     private final Button _validate = new Button("检查冲突");
     private final Button _apply = new Button("应用方案");
+    private final ComboBox<Integer> _editDay = new ComboBox<>(FXCollections.observableArrayList(1, 2, 3, 4, 5, 6, 7));
+    private final TextField _editRoom = new TextField();
+    private final TextField _editWeekStart = new TextField();
+    private final TextField _editWeekEnd = new TextField();
+    private final TextField _editPeriodStart = new TextField();
+    private final TextField _editPeriodEnd = new TextField();
+    private CourseSchedule _selectedAssignment;
     private List<TeachingClass> _unscheduled = List.of();
     private Map<String, TeachingClass> _classes = Map.of();
     private Map<String, String> _courseNames = Map.of();
@@ -118,10 +127,29 @@ public class AutoSchedulePane extends VBox {
                         value -> value.getStartPeriod() + "–" + value.getEndPeriod()),
                 CourseViewSupport.textColumn("教室", 120, CourseSchedule::getClassroom));
         CourseViewSupport.configureTable(_previewTable, "生成预览后在此检查候选方案");
+        _previewTable.getSelectionModel().selectedItemProperty().addListener((ignored, old, value) -> showAssignment(value));
         VBox.setVgrow(_previewTable, Priority.ALWAYS);
+        _editDay.setConverter(new javafx.util.StringConverter<>() {
+            @Override public String toString(Integer value) {
+                return value == null ? "" : CourseViewSupport.dayName(value);
+            }
+            @Override public Integer fromString(String value) { return null; }
+        });
+        _editRoom.setPromptText("教室"); _editWeekStart.setPromptText("起始周");
+        _editWeekEnd.setPromptText("结束周"); _editPeriodStart.setPromptText("起始节");
+        _editPeriodEnd.setPromptText("结束节");
+        Button saveEdit = new Button("保存调整"); saveEdit.getStyleClass().add("secondary");
+        saveEdit.setOnAction(event -> saveAssignment());
+        Button deleteEdit = new Button("删除教学班"); deleteEdit.getStyleClass().add("danger");
+        deleteEdit.setOnAction(event -> deleteAssignment());
+        HBox editor = new HBox(8, new Label("预览详情"), _editRoom,
+                _editWeekStart, _editWeekEnd, _editDay, _editPeriodStart, _editPeriodEnd,
+                saveEdit, deleteEdit);
+        editor.setAlignment(Pos.CENTER_LEFT);
+        editor.getStyleClass().add("tool-bar-card");
         _summary.getStyleClass().add("teacher-detail-meta");
         _status.getStyleClass().add("status-label");
-        getChildren().addAll(header, controls, _summary, _previewTable, _status);
+        getChildren().addAll(header, controls, _summary, _previewTable, editor, _status);
     }
 
     private void preview() {
@@ -196,9 +224,81 @@ public class AutoSchedulePane extends VBox {
     private void clearPreview() {
         _plan = null;
         _previewTable.getItems().clear();
+        _selectedAssignment = null;
+        _editRoom.clear(); _editWeekStart.clear(); _editWeekEnd.clear();
+        _editPeriodStart.clear(); _editPeriodEnd.clear(); _editDay.setValue(null);
         _summary.setText("尚未生成方案");
         _validate.setDisable(true);
         _apply.setDisable(true);
+    }
+
+    private void showAssignment(CourseSchedule value) {
+        _selectedAssignment = value;
+        if (value == null) return;
+        _editRoom.setText(value.getClassroom());
+        _editWeekStart.setText(String.valueOf(value.getWeekStart()));
+        _editWeekEnd.setText(String.valueOf(value.getWeekEnd()));
+        _editDay.setValue(value.getDayOfWeek());
+        _editPeriodStart.setText(String.valueOf(value.getStartPeriod()));
+        _editPeriodEnd.setText(String.valueOf(value.getEndPeriod()));
+    }
+
+    private void saveAssignment() {
+        if (_selectedAssignment == null) {
+            CourseViewSupport.showError(new IllegalArgumentException("请先选择一条预览排课"));
+            return;
+        }
+        try {
+            int startWeek = number(_editWeekStart, "起始周");
+            int endWeek = number(_editWeekEnd, "结束周");
+            int startPeriod = number(_editPeriodStart, "起始节");
+            int endPeriod = number(_editPeriodEnd, "结束节");
+            if (_editDay.getValue() == null || startWeek > endWeek || startPeriod > endPeriod) {
+                throw new IllegalArgumentException("请填写有效的周次、星期和节次范围");
+            }
+            _selectedAssignment.setClassroom(required(_editRoom, "教室"));
+            _selectedAssignment.setWeekStart(startWeek); _selectedAssignment.setWeekEnd(endWeek);
+            _selectedAssignment.setDayOfWeek(_editDay.getValue());
+            _selectedAssignment.setStartPeriod(startPeriod); _selectedAssignment.setEndPeriod(endPeriod);
+            validateEditedPlan("已更新预览，冲突检查通过");
+        } catch (RuntimeException exception) { CourseViewSupport.showError(exception); }
+    }
+
+    private void deleteAssignment() {
+        if (_selectedAssignment == null) {
+            CourseViewSupport.showError(new IllegalArgumentException("请先选择一条预览排课"));
+            return;
+        }
+        if (!CourseViewSupport.confirm("从方案删除该教学班？", _selectedAssignment.getTeachingClassId())) return;
+        List<CourseSchedule> values = _plan.getAssignments().stream()
+                .filter(value -> value != _selectedAssignment).toList();
+        _plan.setAssignments(values);
+        _plan.getUnassignedTeachingClassIds().add(_selectedAssignment.getTeachingClassId());
+        _previewTable.setItems(FXCollections.observableArrayList(values));
+        _selectedAssignment = null;
+        _apply.setDisable(true);
+        _validate.setDisable(true);
+        _status.setText("已从预览移除教学班；请重新生成完整方案后应用");
+    }
+
+    private void validateEditedPlan(String success) {
+        _status.setText("正在检查调整后的方案…");
+        CourseViewSupport.runAsync(this, () -> _client.validateAutoSchedule(_plan), count -> {
+            _previewTable.refresh();
+            _status.setText(success + "，可应用方案");
+            _apply.setDisable(false); _validate.setDisable(false);
+        });
+    }
+
+    private static String required(TextField field, String name) {
+        String value = field.getText() == null ? "" : field.getText().trim();
+        if (value.isBlank()) throw new IllegalArgumentException(name + "不能为空");
+        return value;
+    }
+
+    private static int number(TextField field, String name) {
+        try { return Integer.parseInt(required(field, name)); }
+        catch (NumberFormatException exception) { throw new IllegalArgumentException(name + "必须是整数"); }
     }
 
     private String teacher(String teachingClassId) {
