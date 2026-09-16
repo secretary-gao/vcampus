@@ -31,7 +31,11 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
@@ -95,6 +99,12 @@ public class StoreFrame extends Application {
 
     // ---- 校园卡余额 ----
     private final Label _balanceLabel = new Label("余额：--");
+
+    /** 最近一次查询到的余额数值（弹窗里展示用）。 */
+    private BigDecimal _balanceValue;
+
+    /** 商店界面的根节点（弹窗用它取所属窗口，保证弹窗居中显示）。 */
+    private Node _ownerNode;
 
     // ---- 今日特价 ----
     /** 横幅上的"今日特价 N 件"提示。 */
@@ -175,6 +185,7 @@ public class StoreFrame extends Application {
         BorderPane root = new BorderPane(buildContent());
         root.setPrefSize(1080, 720);
         applyStylesheet(root);
+        _ownerNode = root;
 
         Button exitButton = new Button("退出");
         exitButton.getStyleClass().add("secondary");
@@ -241,6 +252,7 @@ public class StoreFrame extends Application {
         BorderPane content = buildContent();
         content.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         applyStylesheet(content);
+        _ownerNode = content;
         loadGoods();
         loadBalance();
         return content;
@@ -770,15 +782,14 @@ public class StoreFrame extends Application {
      * @param g 商品
      */
     private void promptAndBuy(Goods g) {
-        TextInputDialog dialog = new TextInputDialog("1");
-        dialog.setTitle("购买数量");
-        dialog.setHeaderText(safe(g.getGoodsName())
+        String headline = safe(g.getGoodsName())
                 + (g.hasDiscount()
-                        ? "    今日特价 ¥" + plain(g.getDiscountPrice()) + "（" + g.getDiscountLabel()
+                        ? "　今日特价 ¥" + plain(g.getDiscountPrice()) + "（" + g.getDiscountLabel()
                                 + "，原价 ¥" + plain(g.getPrice()) + "）"
-                        : "    单价 ¥" + plain(g.getPrice())));
-        dialog.setContentText("购买数量：");
-        Optional<String> result = dialog.showAndWait();
+                        : "　单价 ¥" + plain(g.getPrice()))
+                + "　|　当前库存 " + g.getStock();
+        Optional<String> result = promptInput("立即下单", headline, "购买数量：", "1",
+                "1", "2", "3", "5", "");
         if (result.isEmpty()) {
             return;
         }
@@ -790,6 +801,11 @@ public class StoreFrame extends Application {
         }
         if (quantity <= 0) {
             showAlert(Alert.AlertType.ERROR, "输入错误", "购买数量必须为正整数");
+            return;
+        }
+        if (quantity > g.getStock()) {
+            showAlert(Alert.AlertType.WARNING, "库存不足",
+                    "「" + safe(g.getGoodsName()) + "」当前库存只有 " + g.getStock() + " 件");
             return;
         }
         doBuy(g, quantity);
@@ -828,17 +844,22 @@ public class StoreFrame extends Application {
         String userId = _currentUser == null ? null : _currentUser.getUId();
         if (userId == null || userId.isBlank()) {
             _balanceLabel.setText("余额：--");
+            _balanceValue = null;
             return;
         }
         try {
             Message response = _storeClientSrv.queryBalance(userId);
             if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode()) && response.getData() != null) {
                 _balanceLabel.setText("余额：¥" + response.getData());
+                _balanceValue = response.getData() instanceof BigDecimal
+                        ? (BigDecimal) response.getData() : new BigDecimal(String.valueOf(response.getData()));
             } else {
                 _balanceLabel.setText("余额：--");
+                _balanceValue = null;
             }
         } catch (IOException | ClassNotFoundException e) {
             _balanceLabel.setText("余额：--");
+            _balanceValue = null;
         }
     }
 
@@ -851,11 +872,9 @@ public class StoreFrame extends Application {
             showAlert(Alert.AlertType.WARNING, "提示", "未登录，无法充值");
             return;
         }
-        TextInputDialog dialog = new TextInputDialog("100");
-        dialog.setTitle("校园卡充值");
-        dialog.setHeaderText("为账号 " + userId + " 充值");
-        dialog.setContentText("充值金额（元）：");
-        Optional<String> result = dialog.showAndWait();
+        Optional<String> result = promptInput("校园卡充值",
+                "为账号 " + userId + " 充值　|　当前余额 " + plain(_balanceValue),
+                "充值金额（元）：", "100", "50", "100", "200", "500", "元");
         if (result.isEmpty()) {
             return;
         }
@@ -1463,19 +1482,155 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * 弹出二次确认框。
+     * 弹出一个与商店风格一致的二次确认框（青绿渐变标题栏 + 白底内容 + 药丸按钮）。
      *
      * @param title   标题
      * @param message 提示内容
      * @return 用户点击"确定"返回 {@code true}
      */
     private boolean confirm(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        Optional<javafx.scene.control.ButtonType> result = alert.showAndWait();
-        return result.isPresent() && result.get() == javafx.scene.control.ButtonType.OK;
+        ButtonType okType = new ButtonType("确定", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelType = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(title);
+        dialog.setHeaderText(null);
+        DialogPane pane = buildStyledPane(title, "请确认下面的操作", okType, cancelType);
+        Label content = new Label(message);
+        content.getStyleClass().add("dialog-prompt");
+        content.setWrapText(true);
+        content.setMaxWidth(420);
+        pane.setContent(content);
+        styleButton(pane, okType, "primary");
+        styleButton(pane, cancelType, "secondary");
+        dialog.setDialogPane(pane);
+        initOwnerIfPossible(dialog);
+        return dialog.showAndWait().orElse(cancelType) == okType;
+    }
+
+    /**
+     * 构建一个与商店风格一致的输入弹窗（充值金额、下单数量用）。
+     *
+     * @param title       窗口标题
+     * @param headline    副标题（显示商品/账号与价格等上下文）
+     * @param promptText  输入框前面的说明文字
+     * @param defaultValue 输入框默认值
+     * @param quickValues 快捷按钮的取值（可为空）
+     * @param quickSuffix 快捷按钮文字后缀（如"元"，数量场景传空串）
+     * @return 用户输入的内容；点取消返回 {@link Optional#empty()}
+     */
+    private Optional<String> promptInput(String title, String headline, String promptText, String defaultValue,
+                                         String quick1, String quick2, String quick3, String quick4,
+                                         String quickSuffix) {
+        ButtonType okType = new ButtonType("确认", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelType = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle(title);
+        dialog.setHeaderText(null);
+        DialogPane pane = buildStyledPane(title, headline, okType, cancelType);
+
+        Label prompt = new Label(promptText);
+        prompt.getStyleClass().add("dialog-prompt");
+        TextField field = new TextField(defaultValue);
+        field.setPrefWidth(200);
+        HBox inputRow = new HBox(10, prompt, field);
+        inputRow.setAlignment(Pos.CENTER_LEFT);
+
+        VBox content = new VBox(12, inputRow);
+        String[] quicks = {quick1, quick2, quick3, quick4};
+        HBox quickRow = new HBox(8);
+        quickRow.setAlignment(Pos.CENTER_LEFT);
+        Label quickLabel = new Label("快捷：");
+        quickLabel.getStyleClass().add("dialog-hint");
+        quickRow.getChildren().add(quickLabel);
+        for (String value : quicks) {
+            if (value == null || value.isBlank()) {
+                continue;
+            }
+            Button chip = new Button(value + quickSuffix);
+            chip.getStyleClass().add("dialog-chip");
+            chip.setOnAction(e -> {
+                field.setText(value);
+                field.requestFocus();
+            });
+            quickRow.getChildren().add(chip);
+        }
+        if (quickRow.getChildren().size() > 1) {
+            content.getChildren().add(quickRow);
+        }
+        pane.setContent(content);
+        styleButton(pane, okType, "primary");
+        styleButton(pane, cancelType, "secondary");
+
+        dialog.setDialogPane(pane);
+        dialog.setResultConverter(buttonType -> buttonType == okType ? field.getText() : null);
+        initOwnerIfPossible(dialog);
+        Platform.runLater(() -> {
+            field.requestFocus();
+            field.selectAll();
+        });
+        Optional<String> result = dialog.showAndWait();
+        return result == null ? Optional.empty() : result;
+    }
+
+    /**
+     * 构建弹窗面板：顶部青绿渐变标题栏 + 白底内容区，并挂上商店样式表。
+     *
+     * @param title       标题（白色大字）
+     * @param headline    副标题（浅色小字，可为空）
+     * @param buttonTypes 按钮类型
+     * @return 弹窗面板
+     */
+    private DialogPane buildStyledPane(String title, String headline, ButtonType... buttonTypes) {
+        DialogPane pane = new DialogPane();
+        pane.getStyleClass().addAll("store-root", "store-dialog");
+        applyStylesheet(pane);
+        pane.getButtonTypes().setAll(buttonTypes);
+
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("dialog-title");
+        VBox header = new VBox(4);
+        header.getStyleClass().add("dialog-header");
+        header.getChildren().add(titleLabel);
+        if (headline != null && !headline.isBlank()) {
+            Label headlineLabel = new Label(headline);
+            headlineLabel.getStyleClass().add("dialog-headline");
+            headlineLabel.setWrapText(true);
+            headlineLabel.setMaxWidth(420);
+            header.getChildren().add(headlineLabel);
+        }
+        pane.setHeader(header);
+        return pane;
+    }
+
+    /**
+     * 给弹窗里的按钮套上商店的按钮样式。
+     *
+     * @param pane        弹窗面板
+     * @param buttonType  按钮类型
+     * @param styleClass  样式类（primary / danger / secondary）
+     */
+    private void styleButton(DialogPane pane, ButtonType buttonType, String styleClass) {
+        Node node = pane.lookupButton(buttonType);
+        if (node instanceof Button button) {
+            button.getStyleClass().add(styleClass);
+            button.setDefaultButton(ButtonBar.ButtonData.OK_DONE.equals(buttonType.getButtonData()));
+            button.setCancelButton(ButtonBar.ButtonData.CANCEL_CLOSE.equals(buttonType.getButtonData()));
+        }
+    }
+
+    /**
+     * 把弹窗挂到当前窗口上（居中显示、保持模态关系）；拿不到窗口时忽略。
+     *
+     * @param dialog 弹窗
+     */
+    private void initOwnerIfPossible(Dialog<?> dialog) {
+        try {
+            if (_ownerNode != null && _ownerNode.getScene() != null && _ownerNode.getScene().getWindow() != null) {
+                dialog.initOwner(_ownerNode.getScene().getWindow());
+            }
+        } catch (Exception ignored) {
+            // 独立窗口/测试场景下拿不到 owner，忽略即可
+        }
     }
 
     /**
@@ -1646,18 +1801,29 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * 显示提示对话框。
+     * 显示提示对话框（与商店风格一致：青绿渐变标题栏 + 白底内容 + 药丸按钮；
+     * 成功/提示用主色按钮，错误用红色按钮，一眼能看出结果）。
      *
      * @param type    提示类型
      * @param title   标题
      * @param content 内容
      */
     private void showAlert(Alert.AlertType type, String title, String content) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(content);
-        alert.showAndWait();
+        ButtonType okType = new ButtonType("知道了", ButtonBar.ButtonData.OK_DONE);
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(title);
+        dialog.setHeaderText(null);
+        DialogPane pane = buildStyledPane(title, null, okType);
+        Label label = new Label(content);
+        label.getStyleClass().add("dialog-prompt");
+        label.setWrapText(true);
+        label.setMaxWidth(420);
+        pane.setContent(label);
+        boolean error = type == Alert.AlertType.ERROR;
+        styleButton(pane, okType, error ? "danger" : "primary");
+        dialog.setDialogPane(pane);
+        initOwnerIfPossible(dialog);
+        dialog.showAndWait();
     }
 
     /**

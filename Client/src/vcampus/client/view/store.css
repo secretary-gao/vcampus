@@ -204,6 +204,72 @@
     -fx-font-weight: bold;
 }
 
+/* ==================== 弹窗（充值 / 下单 / 确认 / 提示，统一风格） ==================== */
+/* 说明：JavaFX 默认的 Dialog 是灰底 + 蓝色问号图标 + 默认灰按钮，跟商店配色不搭，
+   这里把商店所有弹窗换成"顶部青绿渐变标题栏 + 白底内容 + 药丸按钮"的自绘风格。 */
+.store-dialog {
+    -fx-background-color: white;
+    -fx-padding: 0;
+    -fx-border-color: #dbe5f0;
+    -fx-border-width: 1;
+    -fx-font-size: 13px;
+    -fx-font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
+}
+
+/* 顶部渐变标题栏（DialogPane 自带的 header-panel 去掉底色和边距，让自绘标题条贴满） */
+.store-dialog > .header-panel {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-border-color: transparent;
+}
+.dialog-header {
+    -fx-background-color: linear-gradient(to right, #0f7a72, #2fb3a0);
+    -fx-padding: 16 22 14 22;
+}
+.dialog-title { -fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold; }
+.dialog-headline { -fx-text-fill: #d8f5ee; -fx-font-size: 12px; }
+
+/* 内容区 */
+.store-dialog > .content {
+    -fx-padding: 18 22 8 22;
+    -fx-background-color: white;
+}
+.dialog-prompt { -fx-text-fill: #33475f; -fx-font-weight: bold; }
+.dialog-hint { -fx-text-fill: #8794a6; -fx-font-size: 12px; }
+
+/* 输入框在弹窗里放大一点，便于看清数字 */
+.store-dialog .text-field {
+    -fx-font-size: 14px;
+    -fx-padding: 8 12 8 12;
+}
+
+/* 底部按钮区 */
+.store-dialog > .button-bar > .container {
+    -fx-padding: 10 22 18 22;
+    -fx-background-color: white;
+}
+.store-dialog .button {
+    -fx-padding: 9 22 9 22;
+    -fx-font-size: 13px;
+}
+/* 弹窗里的"确定"用主色实心，"取消"用浅灰 */
+.store-dialog .button.primary { -fx-background-color: #1f8f80; -fx-text-fill: white; }
+.store-dialog .button.primary:hover { -fx-background-color: #18786c; }
+.store-dialog .button.danger { -fx-background-color: #e2553f; -fx-text-fill: white; }
+.store-dialog .button.danger:hover { -fx-background-color: #cf4733; }
+
+/* 快捷金额/数量的小药丸按钮 */
+.button.dialog-chip {
+    -fx-background-color: #e9f5f3;
+    -fx-text-fill: #1f7f72;
+    -fx-background-radius: 14;
+    -fx-padding: 6 14 6 14;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+.button.dialog-chip:hover { -fx-background-color: #d3ebe6; }
+
 /* ==================== 表格 ==================== */
 .store-table {
     -fx-background-color: transparent;
