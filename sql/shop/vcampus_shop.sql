@@ -32,6 +32,27 @@ CREATE TABLE IF NOT EXISTS tblGoods (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品信息表';
 
 -- ------------------------------------------------------------
+-- tblPromotion：商品促销表（每日特价/打折活动）
+-- 需求："每天有不同的特价商品搞活动"。设计成"商品 × 星期"配置：
+--   weekday 1=周一…7=周日，0=每天特价；服务器按今天是星期几取当日活动，
+--   折扣价一律由服务器计算（客户端只显示，改了也没用）。
+--   同一商品同一天只允许一条活动（UNIQUE 约束）。
+-- 示例活动见 sql/shop/seed_promotion_demo.sql。
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tblPromotion (
+    promoId      VARCHAR(20)  NOT NULL COMMENT '促销编号（PK）',
+    goodsId      VARCHAR(20)  NOT NULL COMMENT '商品编号，外键->tblGoods.goodsId',
+    discountRate DECIMAL(3,2) NOT NULL COMMENT '折扣率（0.10~0.95，如 0.80 表示 8 折）',
+    weekday      TINYINT      NOT NULL DEFAULT 0 COMMENT '生效星期：1=周一…7=周日，0=每天',
+    remark       VARCHAR(50)           COMMENT '活动说明（如"周三文具日"）',
+    PRIMARY KEY (promoId),
+    UNIQUE KEY uk_tblPromotion_goods_weekday (goodsId, weekday),
+    CONSTRAINT fk_promotion_goods FOREIGN KEY (goodsId) REFERENCES tblGoods(goodsId),
+    CONSTRAINT chk_tblPromotion_rate    CHECK (discountRate > 0 AND discountRate < 1),
+    CONSTRAINT chk_tblPromotion_weekday CHECK (weekday BETWEEN 0 AND 7)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品促销表（每日特价活动）';
+
+-- ------------------------------------------------------------
 -- tblOrder：订单主表（一次结算 = 一个订单，可含多个商品）
 -- 说明书把"同一订单可包含多个商品"作为开放问题简化处理（一次购买仅针对单一商品）；
 -- 本模块在购物车功能中按"一单多商品"落地，因此拆出订单主表：

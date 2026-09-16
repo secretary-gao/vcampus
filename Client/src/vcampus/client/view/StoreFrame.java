@@ -39,6 +39,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -92,6 +93,16 @@ public class StoreFrame extends Application {
 
     // ---- 校园卡余额 ----
     private final Label _balanceLabel = new Label("余额：--");
+
+    // ---- 今日特价 ----
+    /** 横幅上的"今日特价 N 件"提示。 */
+    private final Label _promoCountLabel = new Label("今日特价：--");
+
+    /** "只看特价"筛选开关（纯客户端筛选，不额外请求服务器）。 */
+    private final ToggleButton _onlyPromoFilter = new ToggleButton("只看特价");
+
+    /** 最近一次查询到的商品（用于本地重新筛选，不再打服务器）。 */
+    private final List<Goods> _loadedGoods = new ArrayList<>();
 
     // ---- 商品商城 ----
     private FlowPane _goodsCards = new FlowPane(16, 16);
@@ -256,6 +267,7 @@ public class StoreFrame extends Application {
         banner.setLeft(titleBlock);
 
         _balanceLabel.getStyleClass().add("balance-badge");
+        _promoCountLabel.getStyleClass().add("promo-badge");
 
         Button rechargeButton = new Button("充值");
         rechargeButton.getStyleClass().add("accent");
@@ -265,7 +277,7 @@ public class StoreFrame extends Application {
                 + "（" + safe(_currentUser == null ? "" : _currentUser.getURole()) + "）");
         userInfo.getStyleClass().add("store-subtitle");
 
-        HBox right = new HBox(14, _balanceLabel, rechargeButton, userInfo);
+        HBox right = new HBox(14, _balanceLabel, _promoCountLabel, rechargeButton, userInfo);
         right.setAlignment(Pos.CENTER_RIGHT);
         banner.setRight(right);
         BorderPane.setAlignment(right, Pos.CENTER_RIGHT);
@@ -288,13 +300,18 @@ public class StoreFrame extends Application {
         refreshButton.getStyleClass().add("secondary");
         refreshButton.setOnAction(e -> loadGoods());
 
+        // "只看特价"：纯客户端筛选，不打服务器
+        _onlyPromoFilter.getStyleClass().add("filter-toggle");
+        _onlyPromoFilter.setOnAction(e -> renderGoodsCards(_loadedGoods));
+
         // 加入购物车后的轻提示（2.5 秒后自动消失），靠右显示
         _hintLabel.getStyleClass().add("cart-hint");
         _hintLabel.setMaxWidth(Double.MAX_VALUE);
         _hintLabel.setAlignment(Pos.CENTER_RIGHT);
         HBox.setHgrow(_hintLabel, Priority.ALWAYS);
 
-        HBox searchBar = new HBox(10, _categoryBox, _searchField, queryButton, refreshButton, _hintLabel);
+        HBox searchBar = new HBox(10, _categoryBox, _searchField, queryButton, refreshButton,
+                _onlyPromoFilter, _hintLabel);
         searchBar.setAlignment(Pos.CENTER_LEFT);
         searchBar.getStyleClass().add("tool-bar-card");
 
@@ -518,7 +535,10 @@ public class StoreFrame extends Application {
             Message response = _storeClientSrv.queryGoods(keyword, category);
             if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
                 List<Goods> goods = (List<Goods>) response.getData();
-                renderGoodsCards(goods);
+                _loadedGoods.clear();
+                _loadedGoods.addAll(goods);
+                _promoCountLabel.setText("今日特价 " + countPromotion(goods) + " 件");
+                renderGoodsCards(_loadedGoods);
                 _manageTable.getItems().setAll(goods);
             } else {
                 showAlert(Alert.AlertType.ERROR, "查询失败", String.valueOf(response.getData()));
@@ -529,19 +549,42 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * 把商品集合渲染为卡片网格。
+     * 统计商品列表中今日有折扣的商品数量（服务器返回时会带上午夜至今生效的活动）。
+     *
+     * @param goods 商品集合
+     * @return 特价商品数量
+     */
+    private int countPromotion(List<Goods> goods) {
+        int count = 0;
+        for (Goods g : goods) {
+            if (g.hasDiscount()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * 把商品集合渲染为卡片网格（"只看特价"打开时只显示今日有折扣的商品）。
      *
      * @param goods 商品集合
      */
     private void renderGoodsCards(List<Goods> goods) {
         _goodsCards.getChildren().clear();
-        if (goods == null || goods.isEmpty()) {
-            Label empty = new Label("暂无商品");
+        boolean onlyPromo = _onlyPromoFilter.isSelected();
+        List<Goods> show = new ArrayList<>();
+        for (Goods g : goods == null ? List.<Goods>of() : goods) {
+            if (!onlyPromo || g.hasDiscount()) {
+                show.add(g);
+            }
+        }
+        if (show.isEmpty()) {
+            Label empty = new Label(onlyPromo ? "今天没有特价商品" : "暂无商品");
             empty.getStyleClass().add("empty-state-label");
             _goodsCards.getChildren().add(empty);
             return;
         }
-        for (Goods g : goods) {
+        for (Goods g : show) {
             _goodsCards.getChildren().add(buildGoodsCard(g));
         }
     }
@@ -590,10 +633,28 @@ public class StoreFrame extends Application {
         name.setWrapText(true);
         name.getStyleClass().add("goods-name");
 
-        Label price = new Label("¥ " + g.getPrice().toPlainString());
-        price.getStyleClass().add("goods-price");
+        // 价格区：今日特价时显示"折扣角标 + 特价 + 划线原价"
+        HBox priceRow = new HBox(6);
+        priceRow.setAlignment(Pos.CENTER_LEFT);
+        if (g.hasDiscount()) {
+            Label badge = new Label(g.getDiscountLabel());
+            badge.getStyleClass().add("discount-badge");
+            Label promoPrice = new Label("¥ " + g.getDiscountPrice().toPlainString());
+            promoPrice.getStyleClass().add("goods-price");
+            Label originPrice = new Label("¥ " + g.getPrice().toPlainString());
+            originPrice.getStyleClass().add("goods-price-original");
+            priceRow.getChildren().addAll(badge, promoPrice, originPrice);
+        } else {
+            Label price = new Label("¥ " + g.getPrice().toPlainString());
+            price.getStyleClass().add("goods-price");
+            priceRow.getChildren().add(price);
+        }
 
-        Label stock = new Label("库存 " + g.getStock());
+        String stockText = "库存 " + g.getStock();
+        if (g.hasDiscount() && g.getPromotionRemark() != null && !g.getPromotionRemark().isBlank()) {
+            stockText += " · " + g.getPromotionRemark();
+        }
+        Label stock = new Label(stockText);
         stock.getStyleClass().add("goods-stock");
 
         Button buy = new Button("立即下单");
@@ -610,7 +671,7 @@ public class StoreFrame extends Application {
         HBox.setHgrow(buy, Priority.ALWAYS);
         HBox.setHgrow(addToCart, Priority.ALWAYS);
 
-        card.getChildren().addAll(img, name, price, stock, actions);
+        card.getChildren().addAll(img, name, priceRow, stock, actions);
         return card;
     }
 
@@ -697,7 +758,11 @@ public class StoreFrame extends Application {
     private void promptAndBuy(Goods g) {
         TextInputDialog dialog = new TextInputDialog("1");
         dialog.setTitle("购买数量");
-        dialog.setHeaderText(safe(g.getGoodsName()));
+        dialog.setHeaderText(safe(g.getGoodsName())
+                + (g.hasDiscount()
+                        ? "    今日特价 ¥" + plain(g.getDiscountPrice()) + "（" + g.getDiscountLabel()
+                                + "，原价 ¥" + plain(g.getPrice()) + "）"
+                        : "    单价 ¥" + plain(g.getPrice())));
         dialog.setContentText("购买数量：");
         Optional<String> result = dialog.showAndWait();
         if (result.isEmpty()) {
@@ -883,7 +948,7 @@ public class StoreFrame extends Application {
         }
         CartItem exist = findCartItem(goods.getGoodsId());
         if (exist == null) {
-            _cart.add(new CartItem(goods.getGoodsId(), goods.getGoodsName(), goods.getPrice(), quantity));
+            _cart.add(new CartItem(goods.getGoodsId(), goods.getGoodsName(), goods.getEffectivePrice(), quantity));
         } else {
             if (exist.getQuantity() + quantity > goods.getStock()) {
                 showAlert(Alert.AlertType.WARNING, "数量超出库存",
@@ -892,10 +957,15 @@ public class StoreFrame extends Application {
                 return;
             }
             exist.setQuantity(exist.getQuantity() + quantity);
-            exist.setUnitPrice(goods.getPrice()); // 价格可能被管理员改过，刷新为最新快照
+            // 价格可能被管理员改过、也可能今天新上了活动，刷新为最新的成交价快照
+            exist.setUnitPrice(goods.getEffectivePrice());
         }
         renderCart();
-        showHint("已加入购物车：" + safe(goods.getGoodsName()) + " ×" + quantity);
+        String hint = "已加入购物车：" + safe(goods.getGoodsName()) + " ×" + quantity;
+        if (goods.hasDiscount()) {
+            hint += "（" + goods.getDiscountLabel() + " ¥" + plain(goods.getDiscountPrice()) + "）";
+        }
+        showHint(hint);
     }
 
     /**
@@ -1044,7 +1114,7 @@ public class StoreFrame extends Application {
                     .append(" = ¥").append(plain(item.getSubtotal())).append('\n');
         }
         message.append("\n合计 ").append(cartQuantity()).append(" 件，应付 ¥").append(plain(cartTotal()))
-                .append(" 元。\n结算后将生成一个订单并扣减校园卡余额。");
+                .append(" 元。\n结算后将生成一个订单并扣减校园卡余额；\n金额以服务器按当日活动与库存实时计算为准。");
         if (!confirm("确认结算", message.toString())) {
             return;
         }

@@ -21,9 +21,11 @@ import vcampus.server.dao.OrderDAO;
 import vcampus.server.dao.WalletDAO;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,7 +36,9 @@ import java.util.List;
  *   <li>正常结算：一单两商品 → 订单主表 1 行 + 明细 2 行，库存与余额按整单扣减；</li>
  *   <li>库存不足回滚：第二件商品超量 → 第一件也不能生效（库存/余额/订单都不变）；</li>
  *   <li>余额不足回滚：整单金额超过余额 → 库存/余额/订单都不变；</li>
- *   <li>订单查询：{@link StoreServerSrv#queryOrders} 能把多条明细按订单号分回同一订单。</li>
+ *   <li>订单查询：{@link StoreServerSrv#queryOrders} 能把多条明细按订单号分回同一订单；</li>
+ *   <li>今日特价：给测试商品建一条当天生效的 5 折活动后，结算金额与扣款都按特价计算，
+ *       且查询商品时会带上折扣信息。</li>
  * </ol>
  *
  * <p>测试使用专用测试商品（TS901/TS902）与测试用户 09010101，运行结束后会删除测试商品与
@@ -189,11 +193,50 @@ public class StoreCheckoutTest {
                 System.out.println("按预期失败：" + e.getStatusCode() + " " + e.getMessage());
             }
 
-            // ============ 6. 清理测试数据 ============
+            // ============ 6. 今日特价 → 按折扣价结算 ============
             System.out.println();
-            System.out.println("=== 6. 清理测试数据 ===");
-            cleanup(order.getOrderId(), balanceBefore, goodsDAO, walletDAO);
-            System.out.println("已删除测试订单与测试商品，并把余额恢复到 " + balanceBefore.toPlainString());
+            System.out.println("=== 6. 今日特价 → 按折扣价结算 ===");
+            // 给测试商品A建一条"今天"的 5 折活动（weekday 用系统的今天，跑完在清理阶段删掉）
+            int today = LocalDate.now().getDayOfWeek().getValue();
+            insertPromotion("TP901", GOODS_A, new BigDecimal("0.50"), today, "自测临时活动");
+            System.out.println("已创建今日活动：商品A 5 折（weekday=" + today + "）");
+
+            // 商品查询也应带上今日折扣
+            List<Goods> queriedGoods = srv.queryGoods("购物车测试商品A", null);
+            check(!queriedGoods.isEmpty() && queriedGoods.get(0).hasDiscount(),
+                    "查询商品时应附上今日折扣信息");
+            if (!queriedGoods.isEmpty()) {
+                Goods q = queriedGoods.get(0);
+                System.out.println("查询到的商品：" + q.getGoodsName() + " 原价 " + q.getPrice().toPlainString()
+                        + " → 特价 " + q.getDiscountPrice().toPlainString() + "（" + q.getDiscountLabel() + "）");
+                check(q.getDiscountPrice().compareTo(new BigDecimal("4.95")) == 0,
+                        "9.90 打 5 折应为 4.95，实际 " + q.getDiscountPrice());
+            }
+
+            BigDecimal expectUnit = new BigDecimal("9.90").multiply(new BigDecimal("0.50"))
+                    .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal expectTotal = expectUnit.multiply(BigDecimal.valueOf(2));
+            BigDecimal balanceBefore6 = balanceOf(walletDAO);
+            int stockABefore6 = stockOf(goodsDAO, GOODS_A);
+            List<CartItem> promoCart = new ArrayList<>();
+            promoCart.add(new CartItem(GOODS_A, 2));
+            Order promoOrder = srv.checkout(TEST_USER, promoCart);
+            System.out.println("特价订单：" + promoOrder.getOrderId() + "，金额 " + promoOrder.getTotalAmount().toPlainString()
+                    + "（原价应为 " + new BigDecimal("19.80").toPlainString() + "）");
+            check(promoOrder.getTotalAmount().compareTo(expectTotal) == 0,
+                    "特价订单金额应为 " + expectTotal.toPlainString() + "，实际 " + promoOrder.getTotalAmount().toPlainString());
+            check(balanceOf(walletDAO).compareTo(balanceBefore6.subtract(expectTotal)) == 0,
+                    "余额应按特价扣减 " + expectTotal.toPlainString() + "，实际剩余 " + balanceOf(walletDAO).toPlainString());
+            check(stockOf(goodsDAO, GOODS_A) == stockABefore6 - 2, "特价订单也应正常扣减库存");
+
+            // ============ 7. 清理测试数据 ============
+            System.out.println();
+            System.out.println("=== 7. 清理测试数据 ===");
+            List<String> orderIds = new ArrayList<>();
+            orderIds.add(order.getOrderId());
+            orderIds.add(promoOrder.getOrderId());
+            cleanup(orderIds, balanceBefore, goodsDAO, walletDAO);
+            System.out.println("已删除测试订单、测试活动与测试商品，并把余额恢复到 " + balanceBefore.toPlainString());
 
             System.out.println();
             if (failures == 0) {
@@ -227,23 +270,31 @@ public class StoreCheckoutTest {
     }
 
     /**
-     * 删除测试订单、测试商品，并把测试用户余额恢复到执行前的数值。
+     * 删除测试订单、测试活动、测试商品，并把测试用户余额恢复到执行前的数值。
      *
-     * @param orderId       本次测试产生的订单号
+     * @param orderIds      本次测试产生的订单号
      * @param balanceBefore 测试前的余额
      * @param goodsDAO      商品数据访问对象
      * @param walletDAO     钱包数据访问对象
      * @throws Exception 清理过程中的异常
      */
-    private static void cleanup(String orderId, BigDecimal balanceBefore, GoodsDAO goodsDAO, WalletDAO walletDAO)
+    private static void cleanup(List<String> orderIds, BigDecimal balanceBefore, GoodsDAO goodsDAO, WalletDAO walletDAO)
             throws Exception {
         try (Connection conn = DbHelper.getConnection()) {
-            try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM tblPurchase WHERE orderId = ?")) {
-                pstmt.setString(1, orderId);
-                pstmt.executeUpdate();
+            for (String orderId : orderIds) {
+                try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM tblPurchase WHERE orderId = ?")) {
+                    pstmt.setString(1, orderId);
+                    pstmt.executeUpdate();
+                }
+                try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM tblOrder WHERE orderId = ?")) {
+                    pstmt.setString(1, orderId);
+                    pstmt.executeUpdate();
+                }
             }
-            try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM tblOrder WHERE orderId = ?")) {
-                pstmt.setString(1, orderId);
+            // 促销表有外键指向 tblGoods，必须先删活动再删商品
+            try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM tblPromotion WHERE goodsId IN (?, ?)")) {
+                pstmt.setString(1, GOODS_A);
+                pstmt.setString(2, GOODS_B);
                 pstmt.executeUpdate();
             }
             try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM tblGoods WHERE goodsId IN (?, ?)")) {
@@ -256,6 +307,31 @@ public class StoreCheckoutTest {
         BigDecimal diff = balanceBefore.subtract(now);
         if (diff.compareTo(BigDecimal.ZERO) > 0) {
             walletDAO.recharge(TEST_USER, diff);
+        }
+    }
+
+    /**
+     * 插入一条临时促销活动（自测用，清理阶段会删除）。
+     *
+     * @param promoId      促销编号
+     * @param goodsId      商品编号
+     * @param discountRate 折扣率
+     * @param weekday      生效星期（1=周一 … 7=周日，0=每天）
+     * @param remark       活动说明
+     * @throws Exception 数据库操作异常
+     */
+    private static void insertPromotion(String promoId, String goodsId, BigDecimal discountRate,
+                                        int weekday, String remark) throws Exception {
+        String sql = "INSERT INTO tblPromotion (promoId, goodsId, discountRate, weekday, remark) VALUES (?, ?, ?, ?, ?) "
+                + "ON DUPLICATE KEY UPDATE discountRate = VALUES(discountRate), weekday = VALUES(weekday)";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, promoId);
+            pstmt.setString(2, goodsId);
+            pstmt.setBigDecimal(3, discountRate);
+            pstmt.setInt(4, weekday);
+            pstmt.setString(5, remark);
+            pstmt.executeUpdate();
         }
     }
 

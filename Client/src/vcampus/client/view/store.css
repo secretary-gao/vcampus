@@ -149,6 +149,61 @@
     -fx-font-size: 12px;
 }
 
+/* ==================== 今日特价 ==================== */
+/* 卡片上的折扣角标（如"8折"） */
+.discount-badge {
+    -fx-background-color: #e2553f;
+    -fx-text-fill: white;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6;
+    -fx-padding: 2 6 2 6;
+}
+
+/* 划线原价 */
+.goods-price-original {
+    -fx-text-fill: #9aa5b1;
+    -fx-font-size: 12px;
+    -fx-strikethrough: true;
+}
+
+/* 横幅上的"今日特价 N 件"提示 */
+.promo-badge {
+    -fx-padding: 7 16 7 16;
+    -fx-background-radius: 16;
+    -fx-background-color: rgba(226, 85, 63, 0.92);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+/* "只看特价"开关：药丸型，选中时实心 */
+.toggle-button.filter-toggle {
+    -fx-background-color: #eef3f9;
+    -fx-text-fill: #33475f;
+    -fx-background-radius: 16;
+    -fx-padding: 7 14 7 14;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+.toggle-button.filter-toggle:hover { -fx-background-color: #e2eaf4; }
+.toggle-button.filter-toggle:selected {
+    -fx-background-color: #e2553f;
+    -fx-text-fill: white;
+}
+.toggle-button.filter-toggle:focused { -fx-background-color: #e2eaf4; }
+.toggle-button.filter-toggle:selected:focused {
+    -fx-background-color: #e2553f;
+    -fx-text-fill: white;
+}
+
+/* 购物车行里的"今日特价"标记 */
+.cart-promo-tag {
+    -fx-text-fill: #e2553f;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
 /* ==================== 表格 ==================== */
 .store-table {
     -fx-background-color: transparent;

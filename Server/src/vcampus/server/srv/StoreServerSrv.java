@@ -13,18 +13,22 @@ import vcampus.common.constant.IConstant;
 import vcampus.common.vo.CartItem;
 import vcampus.common.vo.Goods;
 import vcampus.common.vo.Order;
+import vcampus.common.vo.Promotion;
 import vcampus.common.vo.PurchaseRecord;
 import vcampus.common.vo.Wallet;
 import vcampus.server.dao.GoodsDAO;
 import vcampus.server.dao.OrderDAO;
+import vcampus.server.dao.PromotionDAO;
 import vcampus.server.dao.PurchaseDAO;
 import vcampus.server.dao.WalletDAO;
 import vcampus.server.dao.DbHelper;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -58,15 +62,79 @@ public class StoreServerSrv implements IStoreServerSrv {
     /** 钱包（校园卡余额）数据访问对象。 */
     private final WalletDAO _walletDAO = new WalletDAO();
 
+    /** 促销（每日特价）数据访问对象。 */
+    private final PromotionDAO _promotionDAO = new PromotionDAO();
+
     /** 订单号时间戳格式。 */
     private static final DateTimeFormatter ORDER_ID_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
     /**
      * {@inheritDoc}
+     *
+     * <p>查询结果会附上"今日特价"：服务器按当前日期算出星期几，取 tblPromotion 中
+     * 当天生效的活动（含 weekday=0 的每天特价），把折扣率与活动说明填进商品对象，
+     * 供客户端展示划线原价与折扣角标。</p>
      */
     @Override
     public List<Goods> queryGoods(String keyword, String category) throws SQLException, IOException {
-        return _goodsDAO.queryByCondition(keyword, category);
+        List<Goods> goods = _goodsDAO.queryByCondition(keyword, category);
+        attachTodayPromotion(goods);
+        return goods;
+    }
+
+    /**
+     * 给商品列表附上今日特价信息。
+     *
+     * <p>同一个商品若同时命中"当天活动"和"每天特价"，取折扣更大（更便宜）的那条。</p>
+     *
+     * @param goods 商品列表
+     * @throws SQLException 数据库操作异常
+     * @throws IOException  数据库配置文件读取异常
+     */
+    private void attachTodayPromotion(List<Goods> goods) throws SQLException, IOException {
+        if (goods == null || goods.isEmpty()) {
+            return;
+        }
+        Map<String, Promotion> today = bestPromotionMap(_promotionDAO.findByWeekday(todayWeekday()));
+        for (Goods item : goods) {
+            Promotion promotion = today.get(item.getGoodsId());
+            if (promotion != null) {
+                item.setDiscountRate(promotion.getDiscountRate());
+                item.setPromotionRemark(promotion.getRemark());
+            }
+        }
+    }
+
+    /**
+     * 把活动列表整理成"商品编号 -> 最优惠活动"的映射。
+     *
+     * @param promotions 活动列表
+     * @return 商品编号到最优惠活动的映射
+     */
+    private Map<String, Promotion> bestPromotionMap(List<Promotion> promotions) {
+        Map<String, Promotion> best = new LinkedHashMap<>();
+        if (promotions == null) {
+            return best;
+        }
+        for (Promotion promotion : promotions) {
+            if (promotion.getGoodsId() == null || promotion.getDiscountRate() == null) {
+                continue;
+            }
+            Promotion exist = best.get(promotion.getGoodsId());
+            if (exist == null || promotion.getDiscountRate().compareTo(exist.getDiscountRate()) < 0) {
+                best.put(promotion.getGoodsId(), promotion);
+            }
+        }
+        return best;
+    }
+
+    /**
+     * 今天是星期几（1=周一 … 7=周日，与 tblPromotion.weekday 的约定一致）。
+     *
+     * @return 星期编号
+     */
+    private int todayWeekday() {
+        return LocalDate.now().getDayOfWeek().getValue();
     }
 
     /**
@@ -119,7 +187,10 @@ public class StoreServerSrv implements IStoreServerSrv {
             conn = DbHelper.getConnection();
             conn.setAutoCommit(false);
 
-            // 2) 逐个商品加锁校验库存，金额一律取数据库实时单价（不信任客户端传来的价格快照）
+            // 2) 取出今日特价（与扣库存、扣余额同一事务读取），成交价按"原价 × 当日折扣"计算
+            Map<String, Promotion> today = bestPromotionMap(_promotionDAO.findByWeekday(conn, todayWeekday()));
+
+            // 3) 逐个商品加锁校验库存，金额一律由服务器按数据库实时单价与当日活动计算
             BigDecimal totalAmount = BigDecimal.ZERO;
             List<PurchaseRecord> details = new ArrayList<>();
             for (Map.Entry<String, Integer> entry : merged.entrySet()) {
@@ -134,7 +205,14 @@ public class StoreServerSrv implements IStoreServerSrv {
                             "库存不足：" + goods.getGoodsName() + " 当前库存 " + goods.getStock()
                                     + "，购买数量 " + quantity);
                 }
-                BigDecimal subtotal = goods.getPrice().multiply(BigDecimal.valueOf(quantity));
+                // 今日有活动就按折扣价成交（客户端传上来的价格完全不参与计算）
+                Promotion promotion = today.get(goodsId);
+                BigDecimal unitPrice = goods.getPrice();
+                if (promotion != null && promotion.getDiscountRate() != null) {
+                    unitPrice = unitPrice.multiply(promotion.getDiscountRate())
+                            .setScale(2, RoundingMode.HALF_UP);
+                }
+                BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
                 totalAmount = totalAmount.add(subtotal);
 
                 PurchaseRecord detail = new PurchaseRecord();
