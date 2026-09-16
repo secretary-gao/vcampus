@@ -6,6 +6,7 @@ import javafx.geometry.Orientation;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -128,7 +129,13 @@ public class CourseAdminPane extends VBox {
     }
 
     private VBox workspace(HBox toolbar, VBox left, VBox right) {
-        SplitPane split = new SplitPane(left, right); split.setOrientation(Orientation.HORIZONTAL); split.setDividerPositions(.66);
+        ScrollPane detailScroll = new ScrollPane(right);
+        detailScroll.setFitToWidth(true);
+        detailScroll.setFitToHeight(true);
+        detailScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        detailScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        detailScroll.getStyleClass().add("admin-detail-scroll");
+        SplitPane split = new SplitPane(left, detailScroll); split.setOrientation(Orientation.HORIZONTAL); split.setDividerPositions(.66);
         VBox.setVgrow(split, Priority.ALWAYS); VBox root = new VBox(10, toolbar, split); VBox.setVgrow(root, Priority.ALWAYS); return root;
     }
     private HBox toolbar(javafx.scene.Node... nodes) { HBox h = new HBox(9, nodes); h.setPadding(new Insets(0,0,4,0)); h.getStyleClass().add("tool-bar-card"); return h; }
@@ -137,10 +144,38 @@ public class CourseAdminPane extends VBox {
         status.getStyleClass().add("status-label"); status.setWrapText(true);
         VBox box = new VBox(12, label, actions, status, form); box.setPadding(new Insets(12)); box.getStyleClass().add("course-card"); return box;
     }
-    private GridPane courseForm() { GridPane g = form(); add(g,0,"课程号",courseId); add(g,1,"课程名称",courseName); add(g,2,"默认教师",courseTeacher); add(g,3,"学分",courseCredit); add(g,4,"默认容量",courseCapacity); add(g,5,"课程性质",courseNature); add(g,6,"开课单位",courseUnit); return g; }
-    private GridPane classForm() { GridPane g=form(); add(g,0,"所属课程",classCourse); add(g,1,"教学班 ID",classId); add(g,2,"教学班号",classNo); add(g,3,"授课教师",classTeacher); add(g,4,"容量",classCapacity); add(g,5,"授课语言",classLanguage); add(g,6,"备注",classRemark); return g; }
-    private GridPane form() { GridPane g=new GridPane(); g.setHgap(10); g.setVgap(10); g.getStyleClass().add("form-grid"); return g; }
-    private void add(GridPane g,int row,String name,javafx.scene.Node value){ Label l=new Label(name);l.setMinWidth(76);l.getStyleClass().add("field-label");g.add(l,0,row);g.add(value,1,row);GridPane.setHgrow(value,Priority.ALWAYS); }
+    private GridPane courseForm() {
+        GridPane g = form();
+        addWide(g,0,"课程号",courseId);
+        addWide(g,1,"课程名称",courseName);
+        addWide(g,2,"默认教师",courseTeacher);
+        addPair(g,3,0,"学分",courseCredit);
+        addPair(g,3,2,"默认容量",courseCapacity);
+        addWide(g,4,"课程性质",courseNature);
+        addWide(g,5,"开课单位",courseUnit);
+        return g;
+    }
+    private GridPane classForm() {
+        GridPane g=form();
+        addWide(g,0,"所属课程",classCourse);
+        addWide(g,1,"教学班 ID",classId);
+        addPair(g,2,0,"教学班号",classNo);
+        addPair(g,2,2,"容量",classCapacity);
+        addWide(g,3,"授课教师",classTeacher);
+        addWide(g,4,"授课语言",classLanguage);
+        addWide(g,5,"备注",classRemark);
+        return g;
+    }
+    private GridPane form() { GridPane g=new GridPane(); g.setHgap(8); g.setVgap(8); g.getStyleClass().add("form-grid"); return g; }
+    private void addWide(GridPane g,int row,String name,javafx.scene.Node value){
+        Label l=fieldLabel(name);g.add(l,0,row);g.add(value,1,row,3,1);GridPane.setHgrow(value,Priority.ALWAYS);
+    }
+    private void addPair(GridPane g,int row,int column,String name,javafx.scene.Node value){
+        Label l=fieldLabel(name);g.add(l,column,row);g.add(value,column+1,row);GridPane.setHgrow(value,Priority.ALWAYS);
+    }
+    private Label fieldLabel(String name){
+        Label label=new Label(name);label.setMinWidth(68);label.getStyleClass().add("field-label");return label;
+    }
 
     private void filterCourses() { String k=normal(courseSearch.getText()); List<Course> rows=allCourses.stream().filter(v->k.isBlank()||has(v.getCourseId(),k)||has(v.getCourseName(),k)||has(v.getCourseNature(),k)||has(v.getOpeningUnit(),k)).toList(); courses.setItems(FXCollections.observableArrayList(rows));courseStatus.setText("显示 "+rows.size()+" 门，共 "+allCourses.size()+" 门课程"); }
     private void filterClasses() { String k=normal(classSearch.getText()); List<TeachingClass> rows=allClasses.stream().filter(v->k.isBlank()||has(v.getTeachingClassId(),k)||has(v.getCourseId(),k)||has(v.getClassNumber(),k)||has(v.getTeacher(),k)).toList();classes.setItems(FXCollections.observableArrayList(rows));classStatus.setText("显示 "+rows.size()+" 个，共 "+allClasses.size()+" 个教学班"); }
