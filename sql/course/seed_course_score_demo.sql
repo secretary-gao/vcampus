@@ -23,8 +23,15 @@ FROM (SELECT studentId FROM tblStudent ORDER BY studentId LIMIT 20) demoStudents
 UPDATE tblTeachingClass tc SET selectedCount=(SELECT COUNT(*) FROM tblSelectCourse sc WHERE sc.teachingClassId=tc.teachingClassId)
 WHERE tc.teachingClassId IN ('SCORE_DEMO_DB-01','SCORE_DEMO_DB-02','SCORE_DEMO_ML-01');
 
+-- 保留约四分之一学生为空白，答辩时可完整展示“未录入 -> 未提交 -> 待审核 -> 已发布”。
+DELETE cs FROM tblCourseScore cs
+JOIN tblSelectCourse sc ON sc.studentId=cs.studentId AND sc.teachingClassId=cs.teachingClassId
+WHERE sc.teachingClassId IN ('SCORE_DEMO_DB-01','SCORE_DEMO_DB-02','SCORE_DEMO_ML-01')
+  AND MOD(CRC32(CONCAT(sc.studentId,sc.teachingClassId)),4)=0;
+
 INSERT INTO tblCourseScore(scoreId,studentId,courseId,teachingClassId,teacher,score,status,submittedAt,reviewedAt)
 SELECT CONCAT('SS',SUBSTRING(MD5(CONCAT(sc.teachingClassId,sc.studentId)),1,18)),sc.studentId,sc.courseId,sc.teachingClassId,'王老师',70 + MOD(CRC32(sc.studentId),30),
        IF(MOD(CRC32(sc.studentId),3)=0,'PENDING','APPROVED'),NOW(),IF(MOD(CRC32(sc.studentId),3)=0,NULL,NOW())
 FROM tblSelectCourse sc WHERE sc.teachingClassId IN ('SCORE_DEMO_DB-01','SCORE_DEMO_DB-02','SCORE_DEMO_ML-01')
+  AND MOD(CRC32(CONCAT(sc.studentId,sc.teachingClassId)),4)<>0
 ON DUPLICATE KEY UPDATE score=VALUES(score),teacher=VALUES(teacher),status=VALUES(status),submittedAt=VALUES(submittedAt),reviewedAt=VALUES(reviewedAt);

@@ -201,6 +201,7 @@ public class TeacherCoursesPane extends VBox {
                         row -> CourseViewSupport.dateTime(row.getSelectTime()))
         );
         CourseViewSupport.configureTable(_rosterTable, "暂无学生选修该课程");
+        _rosterTable.setMinHeight(280);
         SortedList<TeacherCourseEnrollment> sortedRoster = new SortedList<>(_filteredRoster);
         sortedRoster.comparatorProperty().bind(_rosterTable.comparatorProperty());
         _rosterTable.setItems(sortedRoster);
@@ -251,10 +252,12 @@ public class TeacherCoursesPane extends VBox {
         searchBar.setAlignment(Pos.CENTER_LEFT);
         VBox right = new VBox(10, rosterHeader, detail, rosterHint, searchBar, _rosterTable);
         right.getStyleClass().add("course-card");
+        right.setMinHeight(420);
         VBox.setVgrow(_rosterTable, Priority.ALWAYS);
 
         SplitPane workspace = new SplitPane(left, right);
         workspace.setDividerPositions(0.30);
+        workspace.setMinHeight(440);
         workspace.setStyle("-fx-background-color: transparent;");
         VBox.setVgrow(workspace, Priority.ALWAYS);
 

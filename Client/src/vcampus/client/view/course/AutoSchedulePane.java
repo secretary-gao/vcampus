@@ -2,6 +2,7 @@ package vcampus.client.view.course;
 
 import javafx.collections.FXCollections;
 import javafx.geometry.Pos;
+import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -11,6 +12,7 @@ import javafx.scene.control.Spinner;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import vcampus.client.biz.ICourseClientSrv;
@@ -45,6 +47,7 @@ public class AutoSchedulePane extends VBox {
     private final TextField _editPeriodStart = new TextField();
     private final TextField _editPeriodEnd = new TextField();
     private CourseSchedule _selectedAssignment;
+    private final Label _editSelection = new Label("请先选择上方方案中的一条排课");
     private List<TeachingClass> _unscheduled = List.of();
     private Map<String, TeachingClass> _classes = Map.of();
     private Map<String, String> _courseNames = Map.of();
@@ -138,14 +141,24 @@ public class AutoSchedulePane extends VBox {
         _editRoom.setPromptText("教室"); _editWeekStart.setPromptText("起始周");
         _editWeekEnd.setPromptText("结束周"); _editPeriodStart.setPromptText("起始节");
         _editPeriodEnd.setPromptText("结束节");
-        Button saveEdit = new Button("保存调整"); saveEdit.getStyleClass().add("secondary");
+        Button saveEdit = new Button("保存修改并检查冲突"); saveEdit.getStyleClass().add("primary");
         saveEdit.setOnAction(event -> saveAssignment());
-        Button deleteEdit = new Button("删除教学班"); deleteEdit.getStyleClass().add("danger");
+        Button deleteEdit = new Button("从方案移除"); deleteEdit.getStyleClass().add("danger");
         deleteEdit.setOnAction(event -> deleteAssignment());
-        HBox editor = new HBox(8, new Label("预览详情"), _editRoom,
-                _editWeekStart, _editWeekEnd, _editDay, _editPeriodStart, _editPeriodEnd,
-                saveEdit, deleteEdit);
-        editor.setAlignment(Pos.CENTER_LEFT);
+        GridPane editForm = new GridPane();
+        editForm.setHgap(8); editForm.setVgap(8);
+        addEditField(editForm, 0, 0, "教室", _editRoom);
+        addEditField(editForm, 0, 2, "星期", _editDay);
+        addEditField(editForm, 0, 4, "起始周", _editWeekStart);
+        addEditField(editForm, 0, 6, "结束周", _editWeekEnd);
+        addEditField(editForm, 1, 0, "起始节", _editPeriodStart);
+        addEditField(editForm, 1, 2, "结束节", _editPeriodEnd);
+        HBox editActions = new HBox(8, saveEdit, deleteEdit);
+        editActions.setAlignment(Pos.CENTER_LEFT);
+        editForm.add(editActions, 4, 1, 4, 1);
+        _editSelection.getStyleClass().add("teacher-detail-meta");
+        VBox editor = new VBox(8, new Label("预览排课编辑"), _editSelection, editForm);
+        editor.setPadding(new Insets(10));
         editor.getStyleClass().add("tool-bar-card");
         _summary.getStyleClass().add("teacher-detail-meta");
         _status.getStyleClass().add("status-label");
@@ -225,6 +238,7 @@ public class AutoSchedulePane extends VBox {
         _plan = null;
         _previewTable.getItems().clear();
         _selectedAssignment = null;
+        _editSelection.setText("请先选择上方方案中的一条排课");
         _editRoom.clear(); _editWeekStart.clear(); _editWeekEnd.clear();
         _editPeriodStart.clear(); _editPeriodEnd.clear(); _editDay.setValue(null);
         _summary.setText("尚未生成方案");
@@ -235,6 +249,8 @@ public class AutoSchedulePane extends VBox {
     private void showAssignment(CourseSchedule value) {
         _selectedAssignment = value;
         if (value == null) return;
+        _editSelection.setText(courseName(value.getCourseId()) + " · "
+                + value.getTeachingClassId() + " · " + teacher(value.getTeachingClassId()));
         _editRoom.setText(value.getClassroom());
         _editWeekStart.setText(String.valueOf(value.getWeekStart()));
         _editWeekEnd.setText(String.valueOf(value.getWeekEnd()));
@@ -260,6 +276,8 @@ public class AutoSchedulePane extends VBox {
             _selectedAssignment.setWeekStart(startWeek); _selectedAssignment.setWeekEnd(endWeek);
             _selectedAssignment.setDayOfWeek(_editDay.getValue());
             _selectedAssignment.setStartPeriod(startPeriod); _selectedAssignment.setEndPeriod(endPeriod);
+            _selectedAssignment.setStartTime(periodStartTime(startPeriod));
+            _selectedAssignment.setEndTime(periodEndTime(endPeriod));
             validateEditedPlan("已更新预览，冲突检查通过");
         } catch (RuntimeException exception) { CourseViewSupport.showError(exception); }
     }
@@ -276,6 +294,7 @@ public class AutoSchedulePane extends VBox {
         _plan.getUnassignedTeachingClassIds().add(_selectedAssignment.getTeachingClassId());
         _previewTable.setItems(FXCollections.observableArrayList(values));
         _selectedAssignment = null;
+        _editSelection.setText("请先选择上方方案中的一条排课");
         _apply.setDisable(true);
         _validate.setDisable(true);
         _status.setText("已从预览移除教学班；请重新生成完整方案后应用");
@@ -299,6 +318,30 @@ public class AutoSchedulePane extends VBox {
     private static int number(TextField field, String name) {
         try { return Integer.parseInt(required(field, name)); }
         catch (NumberFormatException exception) { throw new IllegalArgumentException(name + "必须是整数"); }
+    }
+
+    private static void addEditField(GridPane form, int row, int column,
+                                     String name, javafx.scene.Node value) {
+        Label label = new Label(name);
+        label.setMinWidth(48);
+        label.getStyleClass().add("field-label");
+        form.add(label, column, row);
+        form.add(value, column + 1, row);
+        GridPane.setHgrow(value, Priority.ALWAYS);
+    }
+
+    private static java.time.LocalTime periodStartTime(int period) {
+        String[] values = {"", "08:00", "08:50", "09:50", "10:40", "11:30",
+                "14:00", "14:50", "15:50", "16:40", "17:30", "19:00", "19:50", "20:40"};
+        if (period < 1 || period > 13) throw new IllegalArgumentException("节次必须在 1 到 13 之间");
+        return java.time.LocalTime.parse(values[period]);
+    }
+
+    private static java.time.LocalTime periodEndTime(int period) {
+        String[] values = {"", "08:45", "09:35", "10:35", "11:25", "12:15",
+                "14:45", "15:35", "16:35", "17:25", "18:15", "19:45", "20:35", "21:25"};
+        if (period < 1 || period > 13) throw new IllegalArgumentException("节次必须在 1 到 13 之间");
+        return java.time.LocalTime.parse(values[period]);
     }
 
     private String teacher(String teachingClassId) {
