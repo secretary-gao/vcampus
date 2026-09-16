@@ -3,6 +3,7 @@ package vcampus.client.biz.Library;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.Library.Paper;
+import vcampus.common.constant.IConstant;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -15,8 +16,8 @@ import java.util.List;
  */
 public class PaperClientServiceImpl implements IPaperClientService {
 
-    private static final String SERVER_HOST = "localhost";
-    private static final int SERVER_PORT = 8888;
+    private static final String SERVER_HOST = IConstant.SERVER_HOST;
+    private static final int SERVER_PORT = IConstant.SERVER_PORT;
 
     @Override
     @SuppressWarnings("unchecked")
