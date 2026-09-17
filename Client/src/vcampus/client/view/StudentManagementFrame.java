@@ -1472,7 +1472,8 @@ public class StudentManagementFrame extends Application {
             return;
         }
         ClassMajorSelection selection = chooseClassAndMajor(
-                "生成班级花名册", "选择要生成花名册的班级和专业", _students);
+                "生成班级花名册", isAdmin()
+                        ? "选择要生成花名册的班级和专业" : "选择要生成花名册的班级", _students);
         if (selection == null) {
             return;
         }
@@ -1528,22 +1529,28 @@ public class StudentManagementFrame extends Application {
             majorBox.getItems().addAll(majors);
             majorBox.setValue("全部专业");
         };
-        classBox.valueProperty().addListener((observable, oldValue, newValue) -> refreshMajors.run());
-        refreshMajors.run();
+        if (isAdmin()) {
+            classBox.valueProperty().addListener((observable, oldValue, newValue) -> refreshMajors.run());
+            refreshMajors.run();
+        } else {
+            majorBox.setValue("全部专业");
+        }
 
         GridPane form = new GridPane();
         form.setHgap(12);
         form.setVgap(10);
         form.getStyleClass().add("selector-form");
         addSelectorRow(form, 0, "班级", classBox);
-        addSelectorRow(form, 1, "专业", majorBox);
+        if (isAdmin()) {
+            addSelectorRow(form, 1, "专业", majorBox);
+        }
 
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(title);
         dialog.setHeaderText(header);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
         dialog.getDialogPane().setContent(form);
-        dialog.getDialogPane().setPrefWidth(390);
+        dialog.getDialogPane().setPrefWidth(isAdmin() ? 390 : 330);
         dialog.getDialogPane().getStyleClass().add("selector-dialog");
         styleDialog(dialog);
         if (dialog.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
@@ -1651,7 +1658,8 @@ public class StudentManagementFrame extends Application {
             return;
         }
         ClassMajorSelection selection = chooseClassAndMajor(
-                "班级画像", "选择要查看画像的班级和专业", _students);
+                "班级画像", isAdmin()
+                        ? "选择要查看画像的班级和专业" : "选择要查看画像的班级", _students);
         if (selection == null) {
             return;
         }
