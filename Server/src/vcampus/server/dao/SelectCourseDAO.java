@@ -196,6 +196,11 @@ public class SelectCourseDAO {
         }
     }
 
+    public boolean existsByStudentAndTeachingClass(Connection conn, String studentId,
+                                                    String teachingClassId) throws SQLException {
+        return findByStudentAndTeachingClass(conn, studentId, teachingClassId) != null;
+    }
+
     /**
      * 查询某个学生的全部选课记录，按选课时间倒序排列。
      *

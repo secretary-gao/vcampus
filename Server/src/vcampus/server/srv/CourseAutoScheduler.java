@@ -7,10 +7,12 @@ import vcampus.common.vo.TeachingClass;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
@@ -93,6 +95,7 @@ public class CourseAutoScheduler {
                 result.add(candidate);
             }
         }
+        Collections.shuffle(result, new Random(target.getTeachingClassId().hashCode()));
         return result;
     }
 
@@ -123,7 +126,7 @@ public class CourseAutoScheduler {
         Set<TimePattern> times = new LinkedHashSet<>();
         Set<String> rooms = new LinkedHashSet<>();
         for (CourseSchedule value : schedules) {
-            if (value.getClassroom() != null && !value.getClassroom().isBlank()) {
+            if (isDisplayReadyClassroom(value.getClassroom())) {
                 rooms.add(value.getClassroom());
             }
             times.add(new TimePattern(value.getDayOfWeek(), value.getStartPeriod(),
@@ -137,6 +140,10 @@ public class CourseAutoScheduler {
         List<Slot> result = new ArrayList<>();
         for (TimePattern time : times) for (String room : rooms) result.add(new Slot(time, room));
         return result;
+    }
+
+    private boolean isDisplayReadyClassroom(String classroom) {
+        return classroom != null && classroom.matches("教[一二三四五]-[1-5]\\d{2}");
     }
 
     private CourseSchedule schedule(TeachingClass target, Slot slot,

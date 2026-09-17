@@ -335,3 +335,11 @@ Socket E2E 覆盖规则组、Dashboard、自动排课 Preview，并验证 Previe
 不直接修改或推送 `main`。最终以本分支最新 HEAD 和 `origin/feat/course-realistic-model` 一致为交付条件。
 
 PR 结论：完成最终门禁并推送后，可交给组长 review / merge。
+# Course Final Sprint: 成绩流程
+
+执行 `sql/course/migration_course_score.sql` 创建 `tblCourseScore`，再执行
+`sql/course/seed_course_score_demo.sql` 加载王老师的三个演示教学班及成绩样本。
+
+成绩通过 Socket 进入服务端：教师提交后均为 `PENDING`；管理员审核为
+`APPROVED` 后，学生端查询才会返回该成绩。教师提交时服务端同时校验教学班
+归属与学生实际选课记录。

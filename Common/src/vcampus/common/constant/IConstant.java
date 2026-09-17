@@ -122,7 +122,14 @@ public interface IConstant {
     String MSG_COURSE_REQUIREMENT_GROUP_QUERY = "courseRequirementGroupQuery";
     String MSG_COURSE_AUTO_SCHEDULE_PREVIEW = "courseAutoSchedulePreview";
     String MSG_COURSE_AUTO_SCHEDULE_APPLY = "courseAutoScheduleApply";
+    String MSG_COURSE_AUTO_SCHEDULE_VALIDATE = "courseAutoScheduleValidate";
+    String MSG_COURSE_AUTO_SCHEDULE_DEMO_LOAD = "courseAutoScheduleDemoLoad";
     String MSG_COURSE_DASHBOARD_QUERY = "courseDashboardQuery";
+    String MSG_COURSE_SCORE_STUDENT_QUERY = "courseScoreStudentQuery";
+    String MSG_COURSE_SCORE_TEACHER_QUERY = "courseScoreTeacherQuery";
+    String MSG_COURSE_SCORE_SUBMIT = "courseScoreSubmit";
+    String MSG_COURSE_SCORE_PENDING_QUERY = "courseScorePendingQuery";
+    String MSG_COURSE_SCORE_REVIEW = "courseScoreReview";
 
     // ---------- 虚拟商店模块（store）消息名与状态码 ----------
 

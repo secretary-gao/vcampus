@@ -197,6 +197,12 @@
 .course-dialog { -fx-background-color: #f5f8f2; }
 .course-dialog > .content.label { -fx-text-fill: #35483b; }
 .form-grid { -fx-hgap: 12; -fx-vgap: 12; -fx-padding: 8 0 0 0; }
+.admin-detail-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-padding: 0;
+}
+.admin-detail-scroll > .viewport { -fx-background-color: transparent; }
 .field-label { -fx-text-fill: #506257; -fx-font-weight: bold; }
 
 /* Official selection-system inspired course catalog. */

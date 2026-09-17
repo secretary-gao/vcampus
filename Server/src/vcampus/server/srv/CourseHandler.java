@@ -19,10 +19,12 @@ import vcampus.common.vo.Course;
 import vcampus.common.vo.TeachingClass;
 import vcampus.common.vo.User;
 import vcampus.server.dao.UserDAO;
+import vcampus.common.vo.CourseScore;
 
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -78,7 +80,14 @@ public class CourseHandler implements ModuleHandler {
                 , IConstant.MSG_COURSE_REQUIREMENT_GROUP_QUERY
                 , IConstant.MSG_COURSE_AUTO_SCHEDULE_PREVIEW
                 , IConstant.MSG_COURSE_AUTO_SCHEDULE_APPLY
+                , IConstant.MSG_COURSE_AUTO_SCHEDULE_VALIDATE
+                , IConstant.MSG_COURSE_AUTO_SCHEDULE_DEMO_LOAD
                 , IConstant.MSG_COURSE_DASHBOARD_QUERY
+                , IConstant.MSG_COURSE_SCORE_STUDENT_QUERY
+                , IConstant.MSG_COURSE_SCORE_TEACHER_QUERY
+                , IConstant.MSG_COURSE_SCORE_SUBMIT
+                , IConstant.MSG_COURSE_SCORE_PENDING_QUERY
+                , IConstant.MSG_COURSE_SCORE_REVIEW
         );
     }
 
@@ -108,8 +117,20 @@ public class CourseHandler implements ModuleHandler {
                         _courseServerSrv.previewAutoSchedule((AutoScheduleRequest) request.getData()));
                 case IConstant.MSG_COURSE_AUTO_SCHEDULE_APPLY -> success(request,
                         _courseServerSrv.applyAutoSchedule((AutoSchedulePlan) request.getData()));
+                case IConstant.MSG_COURSE_AUTO_SCHEDULE_VALIDATE -> success(request,
+                        _courseServerSrv.validateAutoSchedule((AutoSchedulePlan) request.getData()));
+                case IConstant.MSG_COURSE_AUTO_SCHEDULE_DEMO_LOAD -> success(request,
+                        _courseServerSrv.loadAutoScheduleDemoData());
                 case IConstant.MSG_COURSE_DASHBOARD_QUERY -> success(request,
                         _courseServerSrv.queryDashboard());
+                case IConstant.MSG_COURSE_SCORE_STUDENT_QUERY -> success(request,
+                        _courseServerSrv.queryStudentScores((String) request.getData()));
+                case IConstant.MSG_COURSE_SCORE_TEACHER_QUERY -> success(request,
+                        _courseServerSrv.queryTeacherScores((String) request.getData()));
+                case IConstant.MSG_COURSE_SCORE_SUBMIT -> handleScoreSubmit(request);
+                case IConstant.MSG_COURSE_SCORE_PENDING_QUERY -> success(request,
+                        _courseServerSrv.queryPendingScores());
+                case IConstant.MSG_COURSE_SCORE_REVIEW -> handleScoreReview(request);
                 case IConstant.MSG_COURSE_ADD -> success(
                         request, _courseServerSrv.addCourse((Course) request.getData()));
                 case IConstant.MSG_COURSE_UPDATE -> success(
@@ -187,6 +208,24 @@ public class CourseHandler implements ModuleHandler {
                     "存在同名教师账号，请联系管理员核对授课信息");
         }
         return success(request, _courseServerSrv.queryTeacherCourseEnrollments(teacherName));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Message handleScoreSubmit(Message request)
+            throws SQLException, IOException, CourseServiceException {
+        Map<String, Object> data = (Map<String, Object>) request.getData();
+        Object values = data.get("scores");
+        if (!(values instanceof List<?> list)) throw new CourseServiceException("成绩请求格式错误");
+        return success(request, _courseServerSrv.submitScores((String) data.get("teacher"),
+                (List<CourseScore>) list));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Message handleScoreReview(Message request)
+            throws SQLException, IOException, CourseServiceException {
+        Map<String, Object> data = (Map<String, Object>) request.getData();
+        return success(request, _courseServerSrv.reviewScore((String) data.get("scoreId"),
+                Boolean.TRUE.equals(data.get("approved"))));
     }
 
     /** 将请求 data 校验并转换为字符串参数表。 */

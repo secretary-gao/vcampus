@@ -1,26 +1,12 @@
-/*
- * ScheduleAdminPane
- *
- * Version 1.1
- *
- * 2026-09-08
- *
- * Copyright (c) 2026 Vcampus Team
- */
 package vcampus.client.view.course;
 
 import javafx.collections.FXCollections;
-import javafx.event.ActionEvent;
-import javafx.geometry.Pos;
-import javafx.scene.Node;
+import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
+import javafx.scene.control.SplitPane;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
@@ -32,354 +18,71 @@ import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.TeachingClass;
-
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/** 教务管理员排课页面，使用结构化对话框维护排课并呈现服务端冲突信息。 */
+/** 排课主从工作区；右侧表单的提交始终经过服务端冲突校验。 */
 public class ScheduleAdminPane extends VBox {
+    private final ICourseClientSrv client;
+    private final TableView<Row> table = new TableView<>();
+    private final Label status = new Label();
+    private final Label detailStatus = new Label("请从左侧选择排课，或点击“新增排课”");
+    private final Button saveButton = button("确认新增排课", "primary", this::save);
+    private final Button deleteButton = button("删除排课", "danger", this::delete);
+    private List<Choice> choices = List.of();
+    private final ComboBox<Choice> teachingClass = new ComboBox<>();
+    private final ComboBox<Integer> day = new ComboBox<>(FXCollections.observableArrayList(1,2,3,4,5,6,7));
+    private final TextField room = field("例如：教三-303");
+    private final TextField weekStart = field("1");
+    private final TextField weekEnd = field("16");
+    private final TextField periodStart = field("1");
+    private final TextField periodEnd = field("2");
+    private final TextField startTime = field("08:00");
+    private final TextField endTime = field("09:35");
+    private Row selected;
 
-    private final ICourseClientSrv _client;
-    private final TableView<ScheduleRow> _table = new TableView<>();
-    private final Label _statusLabel = new Label();
-    private List<TeachingClassChoice> _teachingClasses = List.of();
-
-    /** 创建管理员排课页面。 */
-    public ScheduleAdminPane(ICourseClientSrv client) {
-        this._client = client;
-        getStyleClass().add("course-page");
-        buildView();
-        refresh();
-    }
-
-    /** 从服务器各读取一次课程主数据与排课。 */
+    public ScheduleAdminPane(ICourseClientSrv client) { this.client=client;getStyleClass().add("course-page");build();fresh();refresh(); }
     public void refresh() {
-        _statusLabel.setText("正在读取排课…");
-        CourseViewSupport.runAsync(this, this::loadSnapshot, snapshot -> {
-            _teachingClasses = snapshot.teachingClasses();
-            _table.setItems(FXCollections.observableArrayList(snapshot.rows()));
-            _statusLabel.setText("共 " + snapshot.rows().size() + " 条排课");
-        });
+        status.setText("正在读取排课…");
+        CourseViewSupport.runAsync(this, () -> {
+            Map<String,Course> courses=client.queryCourse("").stream().collect(Collectors.toMap(Course::getCourseId,Function.identity(),(a,b)->a));
+            Map<String,TeachingClass> classes=client.queryTeachingClass("").stream().collect(Collectors.toMap(TeachingClass::getTeachingClassId,Function.identity(),(a,b)->a));
+            List<Choice> values=classes.values().stream().map(c->new Choice(c,courses.get(c.getCourseId()))).toList();
+            return new Snapshot(values,client.querySchedule().stream().map(s->new Row(s,courses.get(s.getCourseId()),classes.get(s.getTeachingClassId()))).toList());
+        }, snapshot->{choices=snapshot.choices;teachingClass.setItems(FXCollections.observableArrayList(choices));table.setItems(FXCollections.observableArrayList(snapshot.rows));status.setText("共 "+snapshot.rows.size()+" 条排课");});
     }
-
-    @SuppressWarnings("unchecked")
-    private void buildView() {
-        Label title = new Label("排课管理");
-        title.getStyleClass().add("page-title");
-        Label description = new Label("维护课程时间与教室；教师和教室冲突由服务端规则统一校验");
-        description.getStyleClass().add("page-description");
-        VBox heading = new VBox(3, title, description);
-        HBox.setHgrow(heading, Priority.ALWAYS);
-        Button refreshButton = button("刷新", "secondary", this::refresh);
-        Button addButton = button("+ 新增排课", "primary", () -> openEditor(null));
-        HBox header = new HBox(9, heading, refreshButton, addButton);
-        header.setAlignment(Pos.CENTER_LEFT);
-
-        _table.getColumns().addAll(
-                CourseViewSupport.textColumn("课程 / 教学班", 230, ScheduleRow::displayCourse),
-                CourseViewSupport.textColumn("教师", 110, ScheduleRow::teacher),
-                CourseViewSupport.textColumn("教室", 105,
-                        row -> row.schedule().getClassroom()),
-                CourseViewSupport.textColumn("星期", 75,
-                        row -> CourseViewSupport.dayName(row.schedule().getDayOfWeek())),
-                CourseViewSupport.textColumn("周次", 80,
-                        row -> row.schedule().getWeekStart() + "-"
-                                + row.schedule().getWeekEnd() + " 周"),
-                CourseViewSupport.textColumn("节次", 80,
-                        row -> row.schedule().getStartPeriod() + "-"
-                                + row.schedule().getEndPeriod() + " 节"),
-                CourseViewSupport.textColumn("时间", 120,
-                        row -> CourseViewSupport.timeRange(
-                                row.schedule().getStartTime(), row.schedule().getEndTime())),
-                actionColumn()
-        );
-        CourseViewSupport.configureTable(_table, "暂无排课数据");
-        VBox.setVgrow(_table, Priority.ALWAYS);
-
-        _statusLabel.getStyleClass().add("status-label");
-        getChildren().addAll(header, _table, _statusLabel);
+    private void build() {
+        Label title=new Label("排课管理");title.getStyleClass().add("page-title");
+        Label hint=new Label("选中左侧排课后，在右侧直接编辑；保存和删除会再次执行服务端冲突校验");hint.getStyleClass().add("page-description");
+        Button refresh=button("刷新","secondary",this::refresh), add=button("+ 新增排课","primary",this::fresh);
+        HBox header=new HBox(9,title,refresh,add);HboxGrow(title);header.getStyleClass().add("tool-bar-card");
+        table.getColumns().addAll(CourseViewSupport.textColumn("课程号",100,v->v.schedule.getCourseId()),
+                CourseViewSupport.wrappingTextColumn("课程名称",165,Row::courseName),
+                CourseViewSupport.textColumn("教学班",85,Row::classNumber),
+                CourseViewSupport.textColumn("教师",90,Row::teacher),
+                CourseViewSupport.textColumn("教室",90,v->v.schedule.getClassroom()),
+                CourseViewSupport.textColumn("星期",65,v->CourseViewSupport.dayName(v.schedule.getDayOfWeek())),
+                CourseViewSupport.textColumn("周次",70,v->v.schedule.getWeekStart()+"-"+v.schedule.getWeekEnd()),
+                CourseViewSupport.textColumn("节次",70,v->v.schedule.getStartPeriod()+"-"+v.schedule.getEndPeriod()),
+                CourseViewSupport.textColumn("时间",110,v->CourseViewSupport.timeRange(v.schedule.getStartTime(),v.schedule.getEndTime())));
+        CourseViewSupport.configureTable(table,"暂无排课数据");table.getSelectionModel().selectedItemProperty().addListener((o,a,v)->show(v));
+        VBox left=new VBox(8,table,status);VBox.setVgrow(table,Priority.ALWAYS);
+        teachingClass.setMaxWidth(Double.MAX_VALUE);teachingClass.setConverter(new StringConverter<>(){public String toString(Choice c){return c==null?"":c.course.getCourseId()+" · "+c.course.getCourseName()+" · "+c.teachingClass.getClassNumber()+" 班";}public Choice fromString(String s){return null;}});
+        day.setMaxWidth(Double.MAX_VALUE);day.setConverter(new StringConverter<>(){public String toString(Integer n){return n==null?"":CourseViewSupport.dayName(n);}public Integer fromString(String s){return null;}});
+        GridPane f=new GridPane();f.setHgap(10);f.setVgap(10);f.getStyleClass().add("form-grid");add(f,0,"教学班",teachingClass);add(f,1,"教室",room);add(f,2,"起始周",weekStart);add(f,3,"结束周",weekEnd);add(f,4,"星期",day);add(f,5,"起始节",periodStart);add(f,6,"结束节",periodEnd);add(f,7,"开始时间",startTime);add(f,8,"结束时间",endTime);
+        Label formTitle=new Label("排课详情");formTitle.getStyleClass().add("section-title");
+        detailStatus.getStyleClass().add("status-label");detailStatus.setWrapText(true);
+        HBox actions=new HBox(8,saveButton,deleteButton);
+        VBox right=new VBox(12,formTitle,actions,detailStatus,f);right.setPadding(new Insets(12));right.getStyleClass().add("course-card");
+        SplitPane split=new SplitPane(left,right);split.setOrientation(Orientation.HORIZONTAL);split.setDividerPositions(.68);VBox.setVgrow(split,Priority.ALWAYS);getChildren().addAll(hint,header,split);
     }
-
-    private TableColumn<ScheduleRow, Void> actionColumn() {
-        TableColumn<ScheduleRow, Void> column = new TableColumn<>("操作");
-        column.setPrefWidth(150);
-        column.setSortable(false);
-        column.setCellFactory(ignored -> new TableCell<>() {
-            private final Button _edit = button("编辑", "secondary", () -> {
-                ScheduleRow row = getTableRow().getItem();
-                if (row != null) {
-                    openEditor(row);
-                }
-            });
-            private final Button _delete = button("删除", "danger", () -> {
-                ScheduleRow row = getTableRow().getItem();
-                if (row != null) {
-                    deleteSchedule(row);
-                }
-            });
-            private final HBox _actions = new HBox(7, _edit, _delete);
-
-            {
-                _edit.getStyleClass().add("table-action");
-                _delete.getStyleClass().add("table-action");
-            }
-
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null : _actions);
-            }
-        });
-        return column;
-    }
-
-    private Snapshot loadSnapshot() throws Exception {
-        List<Course> courses = _client.queryCourse("");
-        Map<String, Course> courseMap = courses.stream()
-                .collect(Collectors.toMap(Course::getCourseId, Function.identity(), (a, b) -> a));
-        Map<String, TeachingClass> classMap = _client.queryTeachingClass("").stream()
-                .collect(Collectors.toMap(TeachingClass::getTeachingClassId,
-                        Function.identity(), (a, b) -> a));
-        List<TeachingClassChoice> choices = classMap.values().stream()
-                .map(value -> new TeachingClassChoice(value, courseMap.get(value.getCourseId())))
-                .toList();
-        List<ScheduleRow> rows = _client.querySchedule().stream()
-                .map(schedule -> new ScheduleRow(schedule, courseMap.get(schedule.getCourseId()),
-                        classMap.get(schedule.getTeachingClassId())))
-                .toList();
-        return new Snapshot(choices, rows);
-    }
-
-    private void openEditor(ScheduleRow original) {
-        boolean editing = original != null;
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle(editing ? "编辑排课" : "新增排课");
-        dialog.setHeaderText(editing ? "修改课程安排" : "填写课程安排");
-        ButtonType saveType = new ButtonType(editing ? "保存修改" : "新增排课",
-                ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, saveType);
-        CourseViewSupport.styleDialog(dialog.getDialogPane());
-
-        ComboBox<TeachingClassChoice> courseBox = new ComboBox<>(
-                FXCollections.observableArrayList(_teachingClasses));
-        courseBox.setMaxWidth(Double.MAX_VALUE);
-        courseBox.setPromptText("选择课程");
-        courseBox.setConverter(courseConverter());
-        ComboBox<Integer> dayBox = new ComboBox<>(
-                FXCollections.observableArrayList(1, 2, 3, 4, 5, 6, 7));
-        dayBox.setMaxWidth(Double.MAX_VALUE);
-        dayBox.setPromptText("选择星期");
-        dayBox.setConverter(dayConverter());
-        TextField classroom = field("例如：教一-101");
-        TextField weekStart = field("1");
-        TextField weekEnd = field("16");
-        TextField startPeriod = field("1");
-        TextField endPeriod = field("2");
-        TextField start = field("HH:mm");
-        TextField end = field("HH:mm");
-        start.setText("08:00");
-        end.setText("09:35");
-        weekStart.setText("1");
-        weekEnd.setText("16");
-        startPeriod.setText("1");
-        endPeriod.setText("2");
-
-        if (editing) {
-            CourseSchedule schedule = original.schedule();
-            _teachingClasses.stream()
-                    .filter(choice -> choice.teachingClass().getTeachingClassId()
-                            .equals(schedule.getTeachingClassId()))
-                    .findFirst()
-                    .ifPresent(courseBox::setValue);
-            dayBox.setValue(schedule.getDayOfWeek());
-            classroom.setText(schedule.getClassroom());
-            start.setText(schedule.getStartTime().toString());
-            end.setText(schedule.getEndTime().toString());
-            weekStart.setText(String.valueOf(schedule.getWeekStart()));
-            weekEnd.setText(String.valueOf(schedule.getWeekEnd()));
-            startPeriod.setText(String.valueOf(schedule.getStartPeriod()));
-            endPeriod.setText(String.valueOf(schedule.getEndPeriod()));
-        }
-
-        GridPane form = new GridPane();
-        form.getStyleClass().add("form-grid");
-        addField(form, 0, "教学班", courseBox);
-        addField(form, 1, "教室", classroom);
-        addField(form, 2, "教学周", new HBox(8, weekStart, new Label("至"), weekEnd));
-        addField(form, 3, "星期", dayBox);
-        addField(form, 4, "节次", new HBox(8, startPeriod, new Label("至"), endPeriod));
-        HBox times = new HBox(8, start, new Label("至"), end);
-        times.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(start, Priority.ALWAYS);
-        HBox.setHgrow(end, Priority.ALWAYS);
-        addField(form, 5, "时间", times);
-        dialog.getDialogPane().setContent(form);
-        dialog.getDialogPane().setPrefWidth(480);
-
-        AtomicReference<CourseSchedule> result = new AtomicReference<>();
-        Node saveButton = dialog.getDialogPane().lookupButton(saveType);
-        saveButton.getStyleClass().add("primary");
-        saveButton.addEventFilter(ActionEvent.ACTION, event -> {
-            try {
-                TeachingClassChoice choice = courseBox.getValue();
-                Integer day = dayBox.getValue();
-                String room = required(classroom.getText(), "教室");
-                if (choice == null || day == null) {
-                    throw new IllegalArgumentException("教学班和星期均不能为空");
-                }
-                LocalTime startTime = CourseViewSupport.parseTime(start.getText());
-                LocalTime endTime = CourseViewSupport.parseTime(end.getText());
-                if (!startTime.isBefore(endTime)) {
-                    throw new IllegalArgumentException("结束时间必须晚于开始时间");
-                }
-                String scheduleId = editing ? original.schedule().getScheduleId() : null;
-                CourseSchedule value = new CourseSchedule(scheduleId,
-                        choice.course().getCourseId(),
-                        room, day, startTime, endTime);
-                value.setTeachingClassId(choice.teachingClass().getTeachingClassId());
-                value.setWeekStart(parseNumber(weekStart.getText(), "起始周"));
-                value.setWeekEnd(parseNumber(weekEnd.getText(), "结束周"));
-                value.setStartPeriod(parseNumber(startPeriod.getText(), "起始节次"));
-                value.setEndPeriod(parseNumber(endPeriod.getText(), "结束节次"));
-                result.set(value);
-            } catch (RuntimeException exception) {
-                CourseViewSupport.showError(exception);
-                event.consume();
-            }
-        });
-
-        dialog.showAndWait();
-        CourseSchedule schedule = result.get();
-        if (schedule == null) {
-            return;
-        }
-        if (editing) {
-            updateSchedule(schedule);
-        } else {
-            addSchedule(schedule);
-        }
-    }
-
-    private void addSchedule(CourseSchedule schedule) {
-        CourseViewSupport.runAsync(this, () -> _client.addSchedule(schedule), added -> {
-            _statusLabel.setText("排课新增成功：" + added.getScheduleId());
-            refresh();
-        });
-    }
-
-    private void updateSchedule(CourseSchedule schedule) {
-        CourseViewSupport.runAsync(this, () -> _client.updateSchedule(schedule), ignored -> {
-            _statusLabel.setText("排课修改成功");
-            refresh();
-        });
-    }
-
-    private void deleteSchedule(ScheduleRow row) {
-        if (!CourseViewSupport.confirm("删除该条排课？",
-                row.displayCourse() + " · "
-                        + CourseViewSupport.dayName(row.schedule().getDayOfWeek()) + " "
-                        + CourseViewSupport.timeRange(row.schedule().getStartTime(),
-                        row.schedule().getEndTime()))) {
-            return;
-        }
-        CourseViewSupport.runAsync(this,
-                () -> _client.deleteSchedule(row.schedule().getScheduleId()), ignored -> {
-                    _statusLabel.setText("排课删除成功");
-                    refresh();
-                });
-    }
-
-    private StringConverter<TeachingClassChoice> courseConverter() {
-        return new StringConverter<>() {
-            @Override
-            public String toString(TeachingClassChoice choice) {
-                return choice == null ? "" : choice.course().getCourseId() + " · "
-                        + choice.course().getCourseName() + " · "
-                        + choice.teachingClass().getClassNumber() + " 班 · "
-                        + choice.teachingClass().getTeacher();
-            }
-
-            @Override
-            public TeachingClassChoice fromString(String value) {
-                return null;
-            }
-        };
-    }
-
-    private StringConverter<Integer> dayConverter() {
-        return new StringConverter<>() {
-            @Override
-            public String toString(Integer day) {
-                return day == null ? "" : CourseViewSupport.dayName(day);
-            }
-
-            @Override
-            public Integer fromString(String value) {
-                return null;
-            }
-        };
-    }
-
-    private TextField field(String prompt) {
-        TextField field = new TextField();
-        field.setPromptText(prompt);
-        field.setMaxWidth(Double.MAX_VALUE);
-        return field;
-    }
-
-    private void addField(GridPane form, int row, String name, Node field) {
-        Label label = new Label(name);
-        label.getStyleClass().add("field-label");
-        form.add(label, 0, row);
-        form.add(field, 1, row);
-        GridPane.setHgrow(field, Priority.ALWAYS);
-    }
-
-    private String required(String value, String fieldName) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(fieldName + "不能为空");
-        }
-        return value.trim();
-    }
-
-    private int parseNumber(String value, String fieldName) {
-        try {
-            return Integer.parseInt(required(value, fieldName));
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(fieldName + "必须是整数");
-        }
-    }
-
-    private Button button(String text, String styleClass, Runnable action) {
-        Button button = new Button(text);
-        button.getStyleClass().add(styleClass);
-        button.setOnAction(event -> action.run());
-        return button;
-    }
-
-    /** 页面一次刷新所需的课程与排课快照。 */
-    private record Snapshot(List<TeachingClassChoice> teachingClasses,
-                            List<ScheduleRow> rows) {
-    }
-
-    private record TeachingClassChoice(TeachingClass teachingClass, Course course) {
-    }
-
-    /** 管理表格展示行。 */
-    private record ScheduleRow(CourseSchedule schedule, Course course,
-                               TeachingClass teachingClass) {
-        String displayCourse() {
-            return course == null ? schedule.getCourseId()
-                    : course.getCourseId() + " · " + course.getCourseName() + " · "
-                    + (teachingClass == null ? "—" : teachingClass.getClassNumber() + " 班");
-        }
-
-        String teacher() {
-            return teachingClass == null ? "—" : teachingClass.getTeacher();
-        }
-    }
+    private void show(Row v){selected=v;if(v==null)return;choices.stream().filter(c->c.teachingClass.getTeachingClassId().equals(v.schedule.getTeachingClassId())).findFirst().ifPresent(teachingClass::setValue);room.setText(v.schedule.getClassroom());day.setValue(v.schedule.getDayOfWeek());weekStart.setText(""+v.schedule.getWeekStart());weekEnd.setText(""+v.schedule.getWeekEnd());periodStart.setText(""+v.schedule.getStartPeriod());periodEnd.setText(""+v.schedule.getEndPeriod());startTime.setText(v.schedule.getStartTime().toString());endTime.setText(v.schedule.getEndTime().toString());saveButton.setText("保存排课修改");deleteButton.setDisable(false);detailStatus.setText("正在编辑："+v.name());}
+    private void fresh(){selected=null;table.getSelectionModel().clearSelection();teachingClass.setValue(null);day.setValue(1);room.clear();weekStart.setText("1");weekEnd.setText("16");periodStart.setText("1");periodEnd.setText("2");startTime.setText("08:00");endTime.setText("09:35");saveButton.setText("确认新增排课");deleteButton.setDisable(true);detailStatus.setText("新增模式：填写完整信息后点击“确认新增排课”");}
+    private void save(){try{boolean editing=selected!=null;if(teachingClass.getValue()==null||day.getValue()==null)throw new IllegalArgumentException("教学班和星期不能为空");LocalTime start=CourseViewSupport.parseTime(startTime.getText()),end=CourseViewSupport.parseTime(endTime.getText());if(!start.isBefore(end))throw new IllegalArgumentException("结束时间必须晚于开始时间");Choice c=teachingClass.getValue();CourseSchedule v=new CourseSchedule(editing?selected.schedule.getScheduleId():null,c.course.getCourseId(),required(room,"教室"),day.getValue(),start,end);v.setTeachingClassId(c.teachingClass.getTeachingClassId());v.setWeekStart(number(weekStart,"起始周"));v.setWeekEnd(number(weekEnd,"结束周"));v.setStartPeriod(number(periodStart,"起始节"));v.setEndPeriod(number(periodEnd,"结束节"));CourseViewSupport.runAsync(this,()->{if(!editing)return client.addSchedule(v);client.updateSchedule(v);return v;},x->{detailStatus.setText(editing?"排课修改成功":"排课新增成功："+x.getScheduleId());refresh();});}catch(RuntimeException e){CourseViewSupport.showError(e);}}
+    private void delete(){if(selected==null){CourseViewSupport.showError(new IllegalArgumentException("请先选择排课"));return;}String deletedName=selected.name(),deletedId=selected.schedule.getScheduleId();if(!CourseViewSupport.confirm("删除该条排课？",deletedName))return;CourseViewSupport.runAsync(this,()->client.deleteSchedule(deletedId),x->{fresh();detailStatus.setText("排课删除成功："+deletedName);refresh();});}
+    private static TextField field(String t){TextField f=new TextField();f.setPromptText(t);f.setMaxWidth(Double.MAX_VALUE);return f;}private static void add(GridPane g,int r,String n,javafx.scene.Node v){Label l=new Label(n);l.setMinWidth(72);l.getStyleClass().add("field-label");g.add(l,0,r);g.add(v,1,r);GridPane.setHgrow(v,Priority.ALWAYS);}private static Button button(String t,String css,Runnable r){Button b=new Button(t);b.getStyleClass().add(css);b.setOnAction(e->r.run());return b;}private static void HboxGrow(Label l){HBox.setHgrow(l,Priority.ALWAYS);}private static String required(TextField f,String n){String v=f.getText()==null?"":f.getText().trim();if(v.isBlank())throw new IllegalArgumentException(n+"不能为空");return v;}private static int number(TextField f,String n){try{return Integer.parseInt(required(f,n));}catch(NumberFormatException e){throw new IllegalArgumentException(n+"必须是整数");}}
+    private record Snapshot(List<Choice> choices,List<Row> rows){} private record Choice(TeachingClass teachingClass,Course course){} private record Row(CourseSchedule schedule,Course course,TeachingClass teachingClass){String name(){return course==null?schedule.getCourseId():course.getCourseId()+" · "+course.getCourseName()+" · "+(teachingClass==null?"—":teachingClass.getClassNumber()+" 班");}String courseName(){return course==null?schedule.getCourseId():course.getCourseName();}String classNumber(){return teachingClass==null?schedule.getTeachingClassId():teachingClass.getClassNumber()+" 班";}String teacher(){return teachingClass==null?"—":teachingClass.getTeacher();}}
 }

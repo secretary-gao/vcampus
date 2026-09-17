@@ -19,6 +19,7 @@ import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
 import vcampus.common.vo.User;
+import vcampus.common.vo.CourseScore;
 
 import java.io.IOException;
 import java.util.List;
@@ -40,6 +41,11 @@ public interface ICourseClientSrv {
 
     int applyAutoSchedule(AutoSchedulePlan plan)
             throws IOException, ClassNotFoundException;
+
+    int validateAutoSchedule(AutoSchedulePlan plan)
+            throws IOException, ClassNotFoundException;
+
+    int loadAutoScheduleDemoData() throws IOException, ClassNotFoundException;
 
     CourseDashboardStats queryDashboard() throws IOException, ClassNotFoundException;
 
@@ -98,4 +104,10 @@ public interface ICourseClientSrv {
     /** 查询教师本人课程及选课学生名单。 */
     List<TeacherCourseEnrollment> queryTeacherCourseEnrollments(User currentUser)
             throws IOException, ClassNotFoundException;
+
+    List<CourseScore> queryStudentScores(String studentId) throws IOException, ClassNotFoundException;
+    List<CourseScore> queryTeacherScores(String teacher) throws IOException, ClassNotFoundException;
+    int submitScores(String teacher, List<CourseScore> scores) throws IOException, ClassNotFoundException;
+    List<CourseScore> queryPendingScores() throws IOException, ClassNotFoundException;
+    boolean reviewScore(String scoreId, boolean approved) throws IOException, ClassNotFoundException;
 }
