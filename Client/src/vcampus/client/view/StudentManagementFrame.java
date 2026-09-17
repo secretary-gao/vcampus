@@ -298,12 +298,12 @@ public class StudentManagementFrame extends Application {
             _queryTypeBox.getItems().add(1, "一卡通号");
         }
         _queryTypeBox.setValue("学号");
-        _queryTypeBox.setPrefWidth(120);
+        _queryTypeBox.setPrefWidth(104);
         _queryTypeBox.getStyleClass().add("query-type");
 
         _statusFilterBox.getItems().setAll("全部状态", "在读", "休学", "毕业", "退学");
         _statusFilterBox.setValue("全部状态");
-        _statusFilterBox.setPrefWidth(110);
+        _statusFilterBox.setPrefWidth(104);
         _statusFilterBox.getStyleClass().add("query-type");
 
         updateQueryPrompt();
@@ -318,7 +318,7 @@ public class StudentManagementFrame extends Application {
         if (isAdmin()) {
             _majorFilterBox.setPromptText("选择专业");
             _majorFilterBox.setAccessibleHelp("按专业筛选学生");
-            _majorFilterBox.setPrefWidth(220);
+            _majorFilterBox.setPrefWidth(180);
             _majorFilterBox.getStyleClass().add("query-type");
             _majorFilterBox.setDisable(true);
             _majorFilterBox.valueProperty().addListener(
@@ -336,7 +336,7 @@ public class StudentManagementFrame extends Application {
         if (isTeacher()) {
             _classFilterBox.setPromptText("选择班级");
             _classFilterBox.setAccessibleHelp("选择自己所带的班级");
-            _classFilterBox.setPrefWidth(220);
+            _classFilterBox.setPrefWidth(180);
             _classFilterBox.getStyleClass().add("query-type");
             _classFilterBox.setDisable(true);
             _classFilterBox.valueProperty().addListener(
@@ -351,7 +351,7 @@ public class StudentManagementFrame extends Application {
                         }
                     });
         }
-        _queryField.setPrefWidth(300);
+        _queryField.setPrefWidth(260);
         _queryField.setAccessibleHelp("可按学号、一卡通号或姓名包含关键词查询");
         HBox.setHgrow(_queryField, Priority.ALWAYS);
 
@@ -415,10 +415,10 @@ public class StudentManagementFrame extends Application {
             _operationButtons.add(importButton);
         }
 
-        HBox queryRow = new HBox(8, _queryTypeBox, _queryField, _statusFilterBox, queryButton);
+        HBox queryRow = new HBox(6, _queryTypeBox, _queryField, _statusFilterBox, queryButton);
         queryRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(_queryField, Priority.ALWAYS);
-        FlowPane actionRow = new FlowPane(8, 8, resetButton, refreshButton, exportButton,
+        FlowPane actionRow = new FlowPane(6, 6, resetButton, refreshButton, exportButton,
                 rosterButton, portraitButton, cohortButton, saveViewButton, loadViewButton);
         if (isAdmin()) {
             actionRow.getChildren().add(importButton);
@@ -426,7 +426,7 @@ public class StudentManagementFrame extends Application {
         actionRow.setAlignment(Pos.CENTER_LEFT);
         actionRow.setPrefWrapLength(980);
         actionRow.getStyleClass().add("action-row");
-        VBox searchBar = new VBox(8, queryRow, actionRow);
+        VBox searchBar = new VBox(6, queryRow, actionRow);
         searchBar.getStyleClass().add("search-bar");
         return new VBox(header, searchBar);
     }
@@ -446,11 +446,11 @@ public class StudentManagementFrame extends Application {
         editor.setFitToWidth(true);
         editor.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         editor.getStyleClass().add("editor-scroll");
-        editor.setMinWidth(300);
+        editor.setMinWidth(280);
 
         SplitPane workspace = new SplitPane(tableSection, editor);
         workspace.getStyleClass().add("workspace");
-        workspace.setDividerPositions(0.66);
+        workspace.setDividerPositions(0.72);
         SplitPane.setResizableWithParent(editor, false);
         return workspace;
     }
@@ -524,7 +524,7 @@ public class StudentManagementFrame extends Application {
         if (!isTeacher()) {
             Label yearLabel = new Label("选择年份");
             yearLabel.getStyleClass().add("year-selector-label");
-            HBox yearSelector = new HBox(8);
+            HBox yearSelector = new HBox(6, yearLabel);
             yearSelector.setAlignment(Pos.CENTER_LEFT);
             yearSelector.getStyleClass().add("year-selector");
             for (String year : List.of("2023", "2024", "2025", "2026")) {
@@ -535,13 +535,15 @@ public class StudentManagementFrame extends Application {
                 _operationButtons.add(yearButton);
                 yearSelector.getChildren().add(yearButton);
             }
-            heading.getChildren().add(new HBox(10, yearLabel, yearSelector));
             Label majorLabel = new Label("选择专业");
             majorLabel.getStyleClass().add("year-selector-label");
-            HBox majorSelector = new HBox(10, majorLabel, _majorFilterBox);
+            HBox majorSelector = new HBox(6, majorLabel, _majorFilterBox);
             majorSelector.setAlignment(Pos.CENTER_LEFT);
             majorSelector.getStyleClass().add("major-selector");
-            heading.getChildren().add(majorSelector);
+            HBox rosterFilters = new HBox(16, yearSelector, majorSelector);
+            rosterFilters.setAlignment(Pos.CENTER_LEFT);
+            rosterFilters.getStyleClass().add("roster-filter-row");
+            heading.getChildren().add(rosterFilters);
         }
         if (isTeacher()) {
             Label classLabel = new Label("选择班级");
@@ -2596,6 +2598,7 @@ public class StudentManagementFrame extends Application {
         _statusFilterBox.setDisable(busy);
         _queryField.setDisable(busy);
         updateClassFilterState();
+        updateMajorFilterState();
         _undoButton.setDisable(busy || _undoOperation == null);
         for (Button button : _operationButtons) {
             button.setDisable(busy);

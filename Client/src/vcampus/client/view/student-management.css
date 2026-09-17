@@ -72,15 +72,27 @@
 }
 
 .app-root .search-bar {
-    -fx-padding: 22px 30px 22px 30px;
-    -fx-spacing: 8px;
+    -fx-padding: 16px 24px 16px 24px;
+    -fx-spacing: 6px;
     -fx-background-color: #f6faf7;
     -fx-background-radius: 12px;
     -fx-border-color: #d7e4d3;
     -fx-border-radius: 12px;
     -fx-border-width: 1px;
-    -fx-background-insets: 10px 16px 8px 16px;
-    -fx-border-insets: 10px 16px 8px 16px;
+    -fx-background-insets: 8px 12px 6px 12px;
+    -fx-border-insets: 8px 12px 6px 12px;
+}
+
+.app-root .search-bar .text-field,
+.app-root .search-bar .combo-box {
+    -fx-min-height: 34px;
+    -fx-pref-height: 34px;
+}
+
+.app-root .search-bar .button {
+    -fx-min-height: 34px;
+    -fx-pref-height: 34px;
+    -fx-padding: 0 12px;
 }
 
 .app-root .text-field,
@@ -210,7 +222,7 @@
 }
 
 .app-root .workspace {
-    -fx-padding: 16px 20px 18px 20px;
+    -fx-padding: 12px 16px 14px 16px;
     -fx-background-color: transparent;
 }
 
@@ -260,7 +272,7 @@
 }
 
 .app-root .section-heading {
-    -fx-padding: 14px 15px 12px 15px;
+    -fx-padding: 12px 14px 10px 14px;
     -fx-border-color: transparent transparent -vc-border transparent;
     -fx-border-width: 0 0 1px 0;
 }
@@ -278,29 +290,39 @@
 }
 
 .app-root .year-selector {
-    -fx-padding: 7px 0 0 0;
+    -fx-padding: 0;
 }
 
 .app-root .year-selector-label {
-    -fx-padding: 7px 0 0 0;
+    -fx-padding: 0;
     -fx-text-fill: -vc-text-secondary;
     -fx-font-size: 12px;
     -fx-font-weight: 600;
 }
 
 .app-root .class-selector {
-    -fx-padding: 2px 0 0 0;
+    -fx-padding: 6px 0 0 0;
 }
 
 .app-root .major-selector {
-    -fx-padding: 2px 0 0 0;
+    -fx-padding: 0;
+}
+
+.app-root .roster-filter-row {
+    -fx-padding: 6px 0 0 0;
+}
+
+.app-root .roster-filter-row .combo-box,
+.app-root .class-selector .combo-box {
+    -fx-min-height: 32px;
+    -fx-pref-height: 32px;
 }
 
 .app-root .year-button {
-    -fx-min-width: 72px;
-    -fx-min-height: 32px;
-    -fx-pref-height: 32px;
-    -fx-padding: 0 14px;
+    -fx-min-width: 62px;
+    -fx-min-height: 30px;
+    -fx-pref-height: 30px;
+    -fx-padding: 0 10px;
 }
 
 .app-root .year-button.year-selected {
