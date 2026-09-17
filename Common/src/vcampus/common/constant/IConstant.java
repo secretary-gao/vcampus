@@ -158,6 +158,24 @@ public interface IConstant {
 
     /** 消息名：校园卡充值。 */
     String MSG_SHOP_RECHARGE = "shopRecharge";
+
+    /** 消息名：购物车结算（一次提交多个商品，服务器生成一个含多条明细的订单）。 */
+    String MSG_SHOP_CHECKOUT = "shopCheckout";
+
+    /** 消息名：查询订单（含订单明细，普通用户查本人，管理员查全部）。 */
+    String MSG_SHOP_QUERY_ORDERS = "shopQueryOrders";
+
+    /** 消息名：查询全部促销活动（管理员配置"每日特价"用）。 */
+    String MSG_SHOP_QUERY_PROMOTIONS = "shopQueryPromotions";
+
+    /** 消息名：新增促销活动（管理员）。 */
+    String MSG_SHOP_ADD_PROMOTION = "shopAddPromotion";
+
+    /** 消息名：修改促销活动（管理员）。 */
+    String MSG_SHOP_UPDATE_PROMOTION = "shopUpdatePromotion";
+
+    /** 消息名：删除促销活动（管理员）。 */
+    String MSG_SHOP_DELETE_PROMOTION = "shopDeletePromotion";
     // ========== 医院模块新增常量 ==========
     /** 查询全部医生 */
     String MSG_HOSPITAL_QUERY_ALL_DOCTOR = "hospital_query_all_doctor";

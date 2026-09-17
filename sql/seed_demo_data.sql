@@ -55,6 +55,23 @@ INSERT IGNORE INTO tblAppointment (appointmentId, userId, doctorId, appointmentT
     ('AP2609042442', '09010210', 'D0000002', '2026-08-30 11:00:00', '已取消');
 
 -- 6. 商店模块：多加几条购买记录
+-- 6.0 购物车改造后 tblPurchase.orderId 是外键 -> tblOrder.orderId：如果数据库已经是
+--     "订单主表 + 订单明细"新结构，要先补上对应的订单主表记录，否则下面 4 条购买记录
+--     会因为外键校验不通过而被 INSERT IGNORE 静默跳过（不报错，但数据进不去）。
+--     这段用 information_schema 判断，旧结构的库上会自动跳过，不影响原有行为。
+SET @has_order_tbl := (SELECT COUNT(*) FROM information_schema.TABLES
+                       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tblOrder');
+SET @seed_orders := IF(@has_order_tbl > 0,
+    'INSERT IGNORE INTO tblOrder (orderId, userId, totalAmount, orderTime) VALUES
+       (''ORDER202609070001'', ''20230011'', 15.00, ''2026-09-05 09:20:00''),
+       (''ORDER202609070002'', ''20230012'', 10.00, ''2026-09-06 16:40:00''),
+       (''ORDER202609070003'', ''88888888'', 45.00, ''2026-09-06 20:05:00''),
+       (''ORDER202609070004'', ''09010210'', 30.00, ''2026-09-07 08:15:00'')',
+    'DO 0');
+PREPARE seed_order_stmt FROM @seed_orders;
+EXECUTE seed_order_stmt;
+DEALLOCATE PREPARE seed_order_stmt;
+
 INSERT IGNORE INTO tblPurchase (orderId, userId, goodsId, quantity, totalPrice, orderTime) VALUES
     ('ORDER202609070001', '20230011', 'G003', 3, 15.00, '2026-09-05 09:20:00'),
     ('ORDER202609070002', '20230012', 'G005', 5, 10.00, '2026-09-06 16:40:00'),

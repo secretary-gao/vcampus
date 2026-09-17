@@ -9,7 +9,10 @@
  */
 package vcampus.server.srv;
 
+import vcampus.common.vo.CartItem;
 import vcampus.common.vo.Goods;
+import vcampus.common.vo.Order;
+import vcampus.common.vo.Promotion;
 import vcampus.common.vo.PurchaseRecord;
 
 import java.io.IOException;
@@ -51,7 +54,7 @@ public interface IStoreServerSrv {
             throws ShopException, SQLException, IOException;
 
     /**
-     * 查询购买记录：指定用户返回其本人记录；userId 为空则返回全部记录（管理员）。
+     * 查询购买记录（订单明细行）：指定用户返回其本人记录；userId 为空则返回全部记录（管理员）。
      *
      * @param userId 购买人ID，可为 {@code null} 或空串（表示查询全部）
      * @return 购买记录列表
@@ -59,6 +62,29 @@ public interface IStoreServerSrv {
      * @throws IOException  数据库配置文件读取异常
      */
     List<PurchaseRecord> queryPurchaseRecords(String userId) throws SQLException, IOException;
+
+    /**
+     * 购物车结算：把购物车中的多个商品作为一个订单提交，原子性地完成
+     * "写订单主表 + 写多条订单明细 + 扣减库存 + 扣减整单金额"。
+     *
+     * @param userId 下单人ID
+     * @param items  购物车条目（同一个商品重复出现会合并数量）
+     * @return 结算成功后的订单（含订单号、订单总金额与明细列表）
+     * @throws ShopException 购物车为空/商品不存在/库存不足/余额不足等业务规则不满足
+     * @throws SQLException  数据库操作异常
+     * @throws IOException   数据库配置文件读取异常
+     */
+    Order checkout(String userId, List<CartItem> items) throws ShopException, SQLException, IOException;
+
+    /**
+     * 查询订单（含订单明细）：指定用户返回其本人订单；userId 为空则返回全部订单（管理员）。
+     *
+     * @param userId 下单人ID，可为 {@code null} 或空串（表示查询全部）
+     * @return 订单列表（每个订单内含明细），按下单时间倒序
+     * @throws SQLException 数据库操作异常
+     * @throws IOException  数据库配置文件读取异常
+     */
+    List<Order> queryOrders(String userId) throws SQLException, IOException;
 
     /**
      * 新增商品（管理员）：商品编号已存在时抛出业务异常。
@@ -114,4 +140,46 @@ public interface IStoreServerSrv {
      * @throws IOException   数据库配置文件读取异常
      */
     BigDecimal recharge(String userId, BigDecimal amount) throws ShopException, SQLException, IOException;
+
+    /**
+     * 查询全部促销活动（管理员配置"每日特价"用，含 7 天与每天特价）。
+     *
+     * @return 全部活动列表
+     * @throws SQLException 数据库操作异常
+     * @throws IOException  数据库配置文件读取异常
+     */
+    List<Promotion> queryPromotions() throws SQLException, IOException;
+
+    /**
+     * 新增促销活动（管理员）。
+     *
+     * @param promotion 活动对象（商品必须存在，折扣率 0~1 之间，星期 0~7）
+     * @return 新增后的活动对象
+     * @throws ShopException 字段不合法/商品不存在/促销编号重复/同商品同天已有活动
+     * @throws SQLException  数据库操作异常
+     * @throws IOException   数据库配置文件读取异常
+     */
+    Promotion addPromotion(Promotion promotion) throws ShopException, SQLException, IOException;
+
+    /**
+     * 修改促销活动（管理员，按促销编号定位）。
+     *
+     * @param promotion 活动对象
+     * @return 修改后的活动对象
+     * @throws ShopException 活动不存在/字段不合法/同商品同天已有活动
+     * @throws SQLException  数据库操作异常
+     * @throws IOException   数据库配置文件读取异常
+     */
+    Promotion updatePromotion(Promotion promotion) throws ShopException, SQLException, IOException;
+
+    /**
+     * 删除促销活动（管理员）。
+     *
+     * @param promoId 促销编号
+     * @return 删除成功返回 {@code true}
+     * @throws ShopException 活动不存在或未选择活动
+     * @throws SQLException  数据库操作异常
+     * @throws IOException   数据库配置文件读取异常
+     */
+    boolean deletePromotion(String promoId) throws ShopException, SQLException, IOException;
 }

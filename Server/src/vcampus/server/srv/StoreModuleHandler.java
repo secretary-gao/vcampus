@@ -13,6 +13,8 @@ import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Goods;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
+import vcampus.common.vo.Order;
+import vcampus.common.vo.Promotion;
 import vcampus.common.vo.PurchaseRecord;
 import vcampus.common.vo.ShopRequest;
 
@@ -48,7 +50,13 @@ public class StoreModuleHandler implements ModuleHandler {
                 IConstant.MSG_SHOP_UPDATE_GOODS,
                 IConstant.MSG_SHOP_DELETE_GOODS,
                 IConstant.MSG_SHOP_QUERY_BALANCE,
-                IConstant.MSG_SHOP_RECHARGE
+                IConstant.MSG_SHOP_RECHARGE,
+                IConstant.MSG_SHOP_CHECKOUT,
+                IConstant.MSG_SHOP_QUERY_ORDERS,
+                IConstant.MSG_SHOP_QUERY_PROMOTIONS,
+                IConstant.MSG_SHOP_ADD_PROMOTION,
+                IConstant.MSG_SHOP_UPDATE_PROMOTION,
+                IConstant.MSG_SHOP_DELETE_PROMOTION
         );
     }
 
@@ -74,6 +82,18 @@ public class StoreModuleHandler implements ModuleHandler {
                 return handleQueryBalance(request);
             case IConstant.MSG_SHOP_RECHARGE:
                 return handleRecharge(request);
+            case IConstant.MSG_SHOP_CHECKOUT:
+                return handleCheckout(request);
+            case IConstant.MSG_SHOP_QUERY_ORDERS:
+                return handleQueryOrders(request);
+            case IConstant.MSG_SHOP_QUERY_PROMOTIONS:
+                return handleQueryPromotions(request);
+            case IConstant.MSG_SHOP_ADD_PROMOTION:
+                return handleAddPromotion(request);
+            case IConstant.MSG_SHOP_UPDATE_PROMOTION:
+                return handleUpdatePromotion(request);
+            case IConstant.MSG_SHOP_DELETE_PROMOTION:
+                return handleDeletePromotion(request);
             default:
                 return new Message(request.getUid(), request.getName(), MessageType.DATA,
                         IConstant.STATUS_ERROR, "未知的商店操作：" + request.getName(), "Server");
@@ -235,6 +255,126 @@ public class StoreModuleHandler implements ModuleHandler {
                     e.getStatusCode(), e.getMessage(), "Server");
         } catch (SQLException | IOException e) {
             return new Message(request.getUid(), IConstant.MSG_SHOP_RECHARGE, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理"购物车结算"。
+     *
+     * @param request 结算请求，{@code data} 为 {@link ShopRequest}（含 items）
+     * @return 结算结果消息：{@code data} 为 {@link Order}（含订单号、总金额与明细）
+     */
+    private Message handleCheckout(Message request) {
+        try {
+            ShopRequest req = (ShopRequest) request.getData();
+            Order order = _storeServerSrv.checkout(req.getUserId(), req.getItems());
+            return new Message(request.getUid(), IConstant.MSG_SHOP_CHECKOUT, MessageType.DATA,
+                    IConstant.STATUS_SUCCESS, order, "Server");
+        } catch (ShopException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_CHECKOUT, MessageType.DATA,
+                    e.getStatusCode(), e.getMessage(), "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_CHECKOUT, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理"查询订单（含明细）"。
+     *
+     * @param request 查询请求，{@code data} 为 {@link ShopRequest}
+     * @return 查询结果消息：{@code data} 为 {@code List<Order>}
+     */
+    private Message handleQueryOrders(Message request) {
+        try {
+            ShopRequest req = (ShopRequest) request.getData();
+            List<Order> orders = _storeServerSrv.queryOrders(req.getUserId());
+            return new Message(request.getUid(), IConstant.MSG_SHOP_QUERY_ORDERS, MessageType.DATA,
+                    IConstant.STATUS_SUCCESS, orders, "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_QUERY_ORDERS, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理"查询全部促销活动"（管理员配置每日特价用）。
+     *
+     * @param request 查询请求，{@code data} 为 {@link ShopRequest}
+     * @return 查询结果消息：{@code data} 为 {@code List<Promotion>}
+     */
+    private Message handleQueryPromotions(Message request) {
+        try {
+            List<Promotion> promotions = _storeServerSrv.queryPromotions();
+            return new Message(request.getUid(), IConstant.MSG_SHOP_QUERY_PROMOTIONS, MessageType.DATA,
+                    IConstant.STATUS_SUCCESS, promotions, "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_QUERY_PROMOTIONS, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理"新增促销活动"（管理员）。
+     *
+     * @param request 新增请求，{@code data} 为 {@link ShopRequest}（含 promotion）
+     * @return 新增结果消息：{@code data} 为新增后的 {@link Promotion}
+     */
+    private Message handleAddPromotion(Message request) {
+        try {
+            ShopRequest req = (ShopRequest) request.getData();
+            Promotion promotion = _storeServerSrv.addPromotion(req.getPromotion());
+            return new Message(request.getUid(), IConstant.MSG_SHOP_ADD_PROMOTION, MessageType.DATA,
+                    IConstant.STATUS_SUCCESS, promotion, "Server");
+        } catch (ShopException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_ADD_PROMOTION, MessageType.DATA,
+                    e.getStatusCode(), e.getMessage(), "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_ADD_PROMOTION, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理"修改促销活动"（管理员）。
+     *
+     * @param request 修改请求，{@code data} 为 {@link ShopRequest}（含 promotion）
+     * @return 修改结果消息：{@code data} 为修改后的 {@link Promotion}
+     */
+    private Message handleUpdatePromotion(Message request) {
+        try {
+            ShopRequest req = (ShopRequest) request.getData();
+            Promotion promotion = _storeServerSrv.updatePromotion(req.getPromotion());
+            return new Message(request.getUid(), IConstant.MSG_SHOP_UPDATE_PROMOTION, MessageType.DATA,
+                    IConstant.STATUS_SUCCESS, promotion, "Server");
+        } catch (ShopException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_UPDATE_PROMOTION, MessageType.DATA,
+                    e.getStatusCode(), e.getMessage(), "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_UPDATE_PROMOTION, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
+    /**
+     * 处理"删除促销活动"（管理员）。
+     *
+     * @param request 删除请求，{@code data} 为 {@link ShopRequest}（含 promoId）
+     * @return 删除结果消息：{@code data} 为提示文本
+     */
+    private Message handleDeletePromotion(Message request) {
+        try {
+            ShopRequest req = (ShopRequest) request.getData();
+            boolean ok = _storeServerSrv.deletePromotion(req.getPromoId());
+            return new Message(request.getUid(), IConstant.MSG_SHOP_DELETE_PROMOTION, MessageType.DATA,
+                    ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR,
+                    ok ? "删除活动成功" : "删除活动失败", "Server");
+        } catch (ShopException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_DELETE_PROMOTION, MessageType.DATA,
+                    e.getStatusCode(), e.getMessage(), "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_SHOP_DELETE_PROMOTION, MessageType.DATA,
                     IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
         }
     }
