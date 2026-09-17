@@ -79,6 +79,8 @@ SOURCE sql/course/migration_course_requirement_group.sql;
 .\build.bat
 java -cp "bin;lib/mysql-connector-j-9.7.0.jar" vcampus.server.srv.StudentPermissionTest
 java -cp "bin;lib/mysql-connector-j-9.7.0.jar" vcampus.client.biz.StudentCourseEnrollmentTest
+java -cp "bin;lib/mysql-connector-j-9.7.0.jar" vcampus.client.biz.StudentManagementIntegrationTest
+java -cp "bin;lib/mysql-connector-j-9.7.0.jar" --module-path "lib/javafx/lib" --add-modules javafx.controls,javafx.fxml vcampus.client.view.StudentManagementFrameSmokeTest
 ```
 
 第一个测试不访问数据库，验证服务端角色权限。
@@ -87,6 +89,10 @@ java -cp "bin;lib/mysql-connector-j-9.7.0.jar" vcampus.client.biz.StudentCourseE
 经真实客户端验证同课不同教师、选课可见、跨教师不可见、字段范围、只读权限、
 状态更新、多课去重、退课撤权、重新选课、账号禁用/待审核、同名教师和任课教师变更。
 结束后只清理本次创建的记录。
+第三个测试连接正在运行的统一服务器，临时插入四个年级、多个班级/专业和多种学籍状态，
+覆盖管理员、教师、学生的查询、摘要、关注名单、增删改冲突、状态联动和密码重置，
+结束后按唯一 ID 清理测试数据。第四个测试不连接数据库，构建三种角色的 JavaFX 界面，
+检查年份/专业/班级控件、学生端按钮可见性，以及筛选和空字段画像逻辑。
 
 界面验收可检查：未选学生时按钮不可用，加载中仍可关闭弹窗，失败后可重新加载，
 退课后旧名单无法继续查看学籍，刷新保留教学班，Enter 可打开所选学生学籍，

@@ -1192,7 +1192,7 @@ public class StudentManagementFrame extends Application {
         if (overview.getPendingAppointmentCount() > 0) tags.add("有待就诊");
         if (overview.getSelectedCourseCount() == 0) tags.add("暂无选课");
         if (overview.getWarnings().size() > 0) tags.add("需要关注");
-        if (student != null && (student.getClassName() == null || student.getMajor() == null)) {
+        if (student != null && (!hasText(student.getClassName()) || !hasText(student.getMajor()))) {
             tags.add("资料待补全");
         }
         return tags;
@@ -1776,23 +1776,7 @@ public class StudentManagementFrame extends Application {
         if (!isAdmin()) {
             return;
         }
-        Map<String, List<Student>> groups = students.stream()
-                .filter(student -> hasText(student.getGrade()))
-                .filter(student -> GRADE_OPTIONS.contains(student.getGrade().trim()))
-                .collect(java.util.stream.Collectors.groupingBy(
-                        student -> student.getGrade().trim(), java.util.TreeMap::new,
-                        java.util.stream.Collectors.toList()));
-        if (groups.size() < 2) {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION,
-                    groups.isEmpty() ? "当前权限范围内没有完整的年级信息。"
-                            : "当前权限范围内只有一个年级，暂时无法进行年级对比。",
-                    ButtonType.OK);
-            alert.setTitle("年级对比");
-            alert.setHeaderText("至少需要两个可用年级");
-            styleDialog(alert);
-            alert.showAndWait();
-            return;
-        }
+        Map<String, List<Student>> groups = buildCohortGroups(students);
 
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("选择对比年级");
@@ -1862,6 +1846,19 @@ public class StudentManagementFrame extends Application {
                 .sorted()
                 .toList();
         showCohortComparisonDialog(groups, selectedGrades);
+    }
+
+    /** 固定保留四个可选年级，让无学生年级也能参与对比并显示为 0 人。 */
+    static Map<String, List<Student>> buildCohortGroups(List<Student> students) {
+        Map<String, List<Student>> groups = new LinkedHashMap<>();
+        GRADE_OPTIONS.forEach(grade -> groups.put(grade, new ArrayList<>()));
+        if (students == null) return groups;
+        students.stream()
+                .filter(student -> student != null && hasText(student.getGrade()))
+                .map(student -> Map.entry(student.getGrade().trim(), student))
+                .filter(entry -> groups.containsKey(entry.getKey()))
+                .forEach(entry -> groups.get(entry.getKey()).add(entry.getValue()));
+        return groups;
     }
 
     private void showCohortComparisonDialog(Map<String, List<Student>> groups,
@@ -2015,11 +2012,13 @@ public class StudentManagementFrame extends Application {
             this.withdrawn = countStatus(students, StudentStatus.WITHDRAWN);
             this.classCount = (int) students.stream()
                     .map(Student::getClassName)
-                    .filter(value -> value != null && !value.isBlank())
+                    .filter(StudentManagementFrame::hasText)
+                    .map(String::trim)
                     .distinct().count();
             Map<String, Long> majors = students.stream()
                     .map(Student::getMajor)
-                    .filter(value -> value != null && !value.isBlank())
+                    .filter(StudentManagementFrame::hasText)
+                    .map(String::trim)
                     .collect(java.util.stream.Collectors.groupingBy(Function.identity(),
                             java.util.LinkedHashMap::new, java.util.stream.Collectors.counting()));
             this.majorCount = majors.size();
@@ -2121,9 +2120,6 @@ public class StudentManagementFrame extends Application {
             }
             runOperation("正在导入学籍...", "批量导入完成",
                     () -> importRows(preview), summary -> {
-                        _students.addAll(filterStudentsForCurrentScope(summary.successes(),
-                                _queryTypeBox.getValue(), _queryField.getText(),
-                                _statusFilterBox.getValue()));
                         showImportSummary(summary);
                         if (!summary.successes().isEmpty()) {
                             setUndo("撤回本次导入", () -> {
@@ -2132,6 +2128,8 @@ public class StudentManagementFrame extends Application {
                                 }
                                 return null;
                             }, ignored -> refreshStudents());
+                            // 导入可能带来新专业，重新读取列表以同步筛选选项并保持排序。
+                            javafx.application.Platform.runLater(this::refreshStudents);
                         }
                     });
         } catch (Exception exception) {
@@ -2217,10 +2215,7 @@ public class StudentManagementFrame extends Application {
             return new BatchUpdateSummary(successes, failures, before);
         }, summary -> {
             for (Student updated : summary.successes()) {
-                int index = findStudentIndex(updated.getStudentId());
-                if (index >= 0) {
-                    _students.set(index, updated);
-                }
+                applyUpdatedStudentToTable(updated.getStudentId(), updated);
             }
             if (!summary.failures().isEmpty()) {
                 showBatchFailureSummary(summary.failures());
@@ -2297,8 +2292,7 @@ public class StudentManagementFrame extends Application {
             return new BatchUpdateSummary(successes, failures, before);
         }, summary -> {
             for (Student updated : summary.successes()) {
-                int index = findStudentIndex(updated.getStudentId());
-                if (index >= 0) _students.set(index, updated);
+                applyUpdatedStudentToTable(updated.getStudentId(), updated);
             }
             if (!summary.failures().isEmpty()) showBatchFailureSummary(summary.failures());
             if (!summary.successes().isEmpty()) {
@@ -2320,6 +2314,21 @@ public class StudentManagementFrame extends Application {
             if (studentId.equals(_students.get(index).getStudentId())) return index;
         }
         return -1;
+    }
+
+    /** 把批量修改后的记录重新应用当前范围，避免状态/年级变化后残留脏行。 */
+    private void applyUpdatedStudentToTable(String originalStudentId, Student updated) {
+        int index = findStudentIndex(originalStudentId);
+        if (index < 0) return;
+        List<Student> visible = filterStudentsForCurrentScope(List.of(updated),
+                _queryTypeBox.getValue(), _queryField.getText(), _statusFilterBox.getValue());
+        if (visible.isEmpty()) {
+            _students.remove(index);
+            _table.getSelectionModel().clearSelection();
+            clearForm();
+        } else {
+            _students.set(index, updated);
+        }
     }
 
     private static Student copyStudent(Student source) {
@@ -2582,16 +2591,14 @@ public class StudentManagementFrame extends Application {
         Student formStudent = readForm(null);
         runOperation("正在新增...", "学生新增成功",
                 () -> _studentClientSrv.addStudent(formStudent), saved -> {
-            if (!filterStudentsForCurrentScope(List.of(saved), _queryTypeBox.getValue(),
-                    _queryField.getText(), _statusFilterBox.getValue()).isEmpty()) {
-                _students.add(saved);
-            }
             _table.getSelectionModel().clearSelection();
             clearForm();
             setUndo("撤回新增档案", () -> {
                 _studentClientSrv.deleteStudent(saved.getStudentId());
                 return null;
             }, ignored -> refreshStudents());
+            // 新增可能引入新的专业或班级，统一刷新当前范围和下拉选项。
+            javafx.application.Platform.runLater(this::refreshStudents);
         });
     }
 
@@ -2667,6 +2674,8 @@ public class StudentManagementFrame extends Application {
                 _studentClientSrv.addStudent(snapshot);
                 return null;
             }, ignoredValue -> refreshStudents());
+            // 删除最后一条记录后及时移除失效的专业/班级选项。
+            javafx.application.Platform.runLater(this::refreshStudents);
         });
     }
 
@@ -2910,11 +2919,13 @@ public class StudentManagementFrame extends Application {
         _suspendedStatLabel.setText(String.valueOf(suspended));
         _graduatedStatLabel.setText(String.valueOf(graduated));
         _withdrawnStatLabel.setText(String.valueOf(withdrawn));
-        Map<String, Long> grades = _students.stream().filter(student -> student.getGrade() != null)
-                .collect(java.util.stream.Collectors.groupingBy(Student::getGrade,
+        Map<String, Long> grades = _students.stream()
+                .filter(student -> hasText(student.getGrade()))
+                .collect(java.util.stream.Collectors.groupingBy(student -> student.getGrade().trim(),
                         java.util.LinkedHashMap::new, java.util.stream.Collectors.counting()));
-        Map<String, Long> majors = _students.stream().filter(student -> student.getMajor() != null)
-                .collect(java.util.stream.Collectors.groupingBy(Student::getMajor,
+        Map<String, Long> majors = _students.stream()
+                .filter(student -> hasText(student.getMajor()))
+                .collect(java.util.stream.Collectors.groupingBy(student -> student.getMajor().trim(),
                         java.util.LinkedHashMap::new, java.util.stream.Collectors.counting()));
         _breakdownStatLabel.setText("年级：" + compactBreakdown(grades)
                 + "　专业：" + compactBreakdown(majors));
