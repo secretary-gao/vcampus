@@ -1613,22 +1613,160 @@ public class StudentManagementFrame extends Application {
             setInlineStatus("当前没有完整年级信息", true);
             return;
         }
+
+        List<CohortSummary> summaries = groups.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> new CohortSummary(entry.getKey(), entry.getValue()))
+                .toList();
+        List<Student> cohortStudents = groups.values().stream()
+                .flatMap(List::stream)
+                .toList();
+        int total = summaries.stream().mapToInt(summary -> summary.total).sum();
+        int enrolled = summaries.stream().mapToInt(summary -> summary.enrolled).sum();
+        long classCount = distinctNonBlankCount(cohortStudents, Student::getClassName);
+        long majorCount = distinctNonBlankCount(cohortStudents, Student::getMajor);
+
+        Label title = new Label("年级画像对比");
+        title.getStyleClass().add("cohort-dialog-title");
+        Label subtitle = new Label("统计范围：当前学生列表（已应用搜索、状态及年份/班级筛选） · 共 "
+                + total + " 人，覆盖 " + summaries.size() + " 个年级");
+        subtitle.getStyleClass().add("cohort-dialog-subtitle");
+
+        Label summaryLabel = new Label("整体在读率 " + formatRate(enrolled, total)
+                + "　·　班级数 " + classCount + "　·　专业数 " + majorCount);
+        summaryLabel.getStyleClass().add("cohort-summary-label");
+
+        TableView<CohortSummary> table = new TableView<>(FXCollections.observableArrayList(summaries));
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        table.setPrefHeight(Math.min(360, 92 + summaries.size() * 42));
+        table.setMinHeight(220);
+        table.getStyleClass().addAll("student-table", "cohort-table");
+        addCohortColumn(table, "年级", 74, summary -> summary.grade);
+        addCohortColumn(table, "总人数", 70, summary -> String.valueOf(summary.total));
+        addCohortColumn(table, "在读", 62, summary -> String.valueOf(summary.enrolled));
+        addCohortColumn(table, "休学", 62, summary -> String.valueOf(summary.suspended));
+        addCohortColumn(table, "毕业", 62, summary -> String.valueOf(summary.graduated));
+        addCohortColumn(table, "退学", 62, summary -> String.valueOf(summary.withdrawn));
+        addCohortColumn(table, "在读率", 76, summary -> formatRate(summary.enrolled, summary.total));
+        addCohortColumn(table, "班级数", 70, summary -> String.valueOf(summary.classCount));
+        addCohortColumn(table, "专业数", 70, summary -> String.valueOf(summary.majorCount));
+        addCohortColumn(table, "主要专业", 210, summary -> summary.topMajors);
+
         BarChart<String, Number> chart = new BarChart<>(new CategoryAxis(), new NumberAxis());
-        chart.setTitle("年级人数对比");
-        chart.setLegendVisible(false);
+        chart.setTitle("各年级学籍状态构成");
+        chart.setLegendVisible(true);
         chart.setAnimated(false);
-        javafx.scene.chart.XYChart.Series<String, Number> series = new javafx.scene.chart.XYChart.Series<>();
-        groups.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry ->
-                series.getData().add(new javafx.scene.chart.XYChart.Data<>(entry.getKey(), entry.getValue().size())));
-        chart.getData().add(series);
-        chart.setPrefSize(620, 360);
+        chart.setCategoryGap(18);
+        chart.setBarGap(2);
+        chart.setPrefHeight(300);
+        chart.setMinHeight(250);
+        chart.getXAxis().setLabel("年级");
+        chart.getYAxis().setLabel("人数");
         chart.getStyleClass().add("student-bar-chart");
+        for (StudentStatus status : StudentStatus.values()) {
+            javafx.scene.chart.XYChart.Series<String, Number> series =
+                    new javafx.scene.chart.XYChart.Series<>();
+            series.setName(status.toString());
+            summaries.forEach(summary -> series.getData().add(
+                    new javafx.scene.chart.XYChart.Data<>(summary.grade, summary.count(status))));
+            chart.getData().add(series);
+        }
+
+        VBox content = new VBox(10, new VBox(2, title, subtitle), summaryLabel, table, chart);
+        content.getStyleClass().add("cohort-dialog-content");
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("年级 cohort 对比");
+        dialog.setTitle("年级画像对比");
         dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
-        dialog.getDialogPane().setContent(chart);
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setMinWidth(980);
+        dialog.getDialogPane().setPrefWidth(1120);
+        dialog.getDialogPane().setMinHeight(620);
+        dialog.getDialogPane().setPrefHeight(720);
+        dialog.getDialogPane().getStyleClass().addAll("statistics-dialog", "cohort-dialog");
         styleDialog(dialog);
         dialog.showAndWait();
+    }
+
+    private static void addCohortColumn(TableView<CohortSummary> table, String title,
+                                         double width, Function<CohortSummary, String> getter) {
+        TableColumn<CohortSummary, String> column = new TableColumn<>(title);
+        column.setCellValueFactory(cell -> new SimpleStringProperty(getter.apply(cell.getValue())));
+        column.setPrefWidth(width);
+        column.setMinWidth(Math.min(width, 58));
+        column.setCellFactory(ignored -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty ? null : item);
+                setTooltip(empty || item == null || item.isBlank() ? null : new Tooltip(item));
+                setAlignment(Pos.CENTER_LEFT);
+            }
+        });
+        table.getColumns().add(column);
+    }
+
+    private static String formatRate(int numerator, int denominator) {
+        if (denominator <= 0) return "0.0%";
+        return String.format(Locale.ROOT, "%.1f%%", numerator * 100.0 / denominator);
+    }
+
+    private static long distinctNonBlankCount(List<Student> students,
+                                               Function<Student, String> getter) {
+        return students.stream()
+                .map(getter)
+                .filter(value -> value != null && !value.isBlank())
+                .distinct().count();
+    }
+
+    private static final class CohortSummary {
+        private final String grade;
+        private final int total;
+        private final int enrolled;
+        private final int suspended;
+        private final int graduated;
+        private final int withdrawn;
+        private final int classCount;
+        private final int majorCount;
+        private final String topMajors;
+
+        private CohortSummary(String grade, List<Student> students) {
+            this.grade = grade;
+            this.total = students.size();
+            this.enrolled = countStatus(students, StudentStatus.ENROLLED);
+            this.suspended = countStatus(students, StudentStatus.SUSPENDED);
+            this.graduated = countStatus(students, StudentStatus.GRADUATED);
+            this.withdrawn = countStatus(students, StudentStatus.WITHDRAWN);
+            this.classCount = (int) students.stream()
+                    .map(Student::getClassName)
+                    .filter(value -> value != null && !value.isBlank())
+                    .distinct().count();
+            Map<String, Long> majors = students.stream()
+                    .map(Student::getMajor)
+                    .filter(value -> value != null && !value.isBlank())
+                    .collect(java.util.stream.Collectors.groupingBy(Function.identity(),
+                            java.util.LinkedHashMap::new, java.util.stream.Collectors.counting()));
+            this.majorCount = majors.size();
+            String majorSummary = majors.entrySet().stream()
+                    .sorted(Map.Entry.<String, Long>comparingByValue().reversed()
+                            .thenComparing(Map.Entry.comparingByKey()))
+                    .limit(3)
+                    .map(entry -> entry.getKey() + "(" + entry.getValue() + ")")
+                    .collect(java.util.stream.Collectors.joining("、"));
+            this.topMajors = majorSummary.isEmpty() ? "暂无" : majorSummary;
+        }
+
+        private int count(StudentStatus status) {
+            return switch (status) {
+                case ENROLLED -> enrolled;
+                case SUSPENDED -> suspended;
+                case GRADUATED -> graduated;
+                case WITHDRAWN -> withdrawn;
+            };
+        }
+
+        private static int countStatus(List<Student> students, StudentStatus status) {
+            return (int) students.stream().filter(student -> student.getStatus() == status).count();
+        }
     }
 
     private void toggleFreezeSelectedStudent() {
