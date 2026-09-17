@@ -1467,38 +1467,117 @@ public class StudentManagementFrame extends Application {
             setInlineStatus("当前没有可生成花名册的学生记录", true);
             return;
         }
-        List<String> classes = _students.stream()
+        if (_students.stream().noneMatch(student -> hasText(student.getClassName()))) {
+            setInlineStatus("当前记录没有完整班级信息", true);
+            return;
+        }
+        ClassMajorSelection selection = chooseClassAndMajor(
+                "生成班级花名册", "选择要生成花名册的班级和专业", _students);
+        if (selection == null) {
+            return;
+        }
+        List<Student> roster = filterClassAndMajor(_students, selection.className(), selection.major());
+        String scopeName = selection.displayName();
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("保存班级花名册");
+        chooser.setInitialFileName("班级花名册-" + scopeName + ".csv");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV 文件", "*.csv"));
+        File file = chooser.showSaveDialog(_root == null ? null : _root.getScene().getWindow());
+        if (file == null) return;
+        try {
+            StudentCsvExporter.write(file.toPath(), roster, isAdmin());
+            setInlineStatus("已生成“" + scopeName + "”花名册，共 " + roster.size() + " 人", false);
+        } catch (Exception exception) {
+            setInlineStatus("花名册生成失败：" + exception.getMessage(), true);
+        }
+    }
+
+    private ClassMajorSelection chooseClassAndMajor(String title, String header,
+                                                      List<Student> source) {
+        List<String> classes = source.stream()
                 .map(Student::getClassName)
-                .filter(value -> value != null && !value.isBlank())
+                .filter(StudentManagementFrame::hasText)
+                .map(String::trim)
                 .distinct()
                 .sorted()
                 .toList();
         if (classes.isEmpty()) {
-            setInlineStatus("当前记录没有完整班级信息", true);
-            return;
+            return null;
         }
-        ChoiceDialog<String> dialog = new ChoiceDialog<>(classes.get(0), classes);
-        dialog.setTitle("生成班级花名册");
-        dialog.setHeaderText("选择要生成花名册的班级");
-        dialog.setContentText("班级：");
-        styleDialog(dialog);
-        dialog.showAndWait().ifPresent(className -> {
-            List<Student> roster = _students.stream()
-                    .filter(student -> className.equals(student.getClassName()))
+
+        ComboBox<String> classBox = new ComboBox<>(FXCollections.observableArrayList(classes));
+        classBox.setValue(classes.get(0));
+        classBox.setPromptText("选择班级");
+        classBox.setPrefWidth(260);
+        ComboBox<String> majorBox = new ComboBox<>();
+        majorBox.setPromptText("选择专业");
+        majorBox.setPrefWidth(260);
+
+        Runnable refreshMajors = () -> {
+            String selectedClass = classBox.getValue();
+            List<String> majors = source.stream()
+                    .filter(student -> selectedClass != null
+                            && selectedClass.equals(valueOrEmpty(student.getClassName()).trim()))
+                    .map(Student::getMajor)
+                    .filter(StudentManagementFrame::hasText)
+                    .map(String::trim)
+                    .distinct()
+                    .sorted()
                     .toList();
-            FileChooser chooser = new FileChooser();
-            chooser.setTitle("保存班级花名册");
-            chooser.setInitialFileName("班级花名册-" + className + ".csv");
-            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV 文件", "*.csv"));
-            File file = chooser.showSaveDialog(_root == null ? null : _root.getScene().getWindow());
-            if (file == null) return;
-            try {
-                StudentCsvExporter.write(file.toPath(), roster, isAdmin());
-                setInlineStatus("已生成“" + className + "”花名册，共 " + roster.size() + " 人", false);
-            } catch (Exception exception) {
-                setInlineStatus("花名册生成失败：" + exception.getMessage(), true);
-            }
-        });
+            majorBox.getItems().setAll("全部专业");
+            majorBox.getItems().addAll(majors);
+            majorBox.setValue("全部专业");
+        };
+        classBox.valueProperty().addListener((observable, oldValue, newValue) -> refreshMajors.run());
+        refreshMajors.run();
+
+        GridPane form = new GridPane();
+        form.setHgap(12);
+        form.setVgap(10);
+        form.getStyleClass().add("selector-form");
+        addSelectorRow(form, 0, "班级", classBox);
+        addSelectorRow(form, 1, "专业", majorBox);
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(title);
+        dialog.setHeaderText(header);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
+        dialog.getDialogPane().setContent(form);
+        dialog.getDialogPane().setPrefWidth(390);
+        dialog.getDialogPane().getStyleClass().add("selector-dialog");
+        styleDialog(dialog);
+        if (dialog.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return null;
+        }
+        return new ClassMajorSelection(classBox.getValue(), majorBox.getValue());
+    }
+
+    private static void addSelectorRow(GridPane form, int row, String labelText,
+                                       ComboBox<String> selector) {
+        Label label = new Label(labelText + "：");
+        label.getStyleClass().add("field-label");
+        selector.getStyleClass().add("query-type");
+        form.add(label, 0, row);
+        form.add(selector, 1, row);
+    }
+
+    private static List<Student> filterClassAndMajor(List<Student> students,
+                                                      String className, String major) {
+        return students.stream()
+                .filter(student -> className.equals(valueOrEmpty(student.getClassName()).trim()))
+                .filter(student -> "全部专业".equals(major)
+                        || major.equals(valueOrEmpty(student.getMajor()).trim()))
+                .toList();
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private record ClassMajorSelection(String className, String major) {
+        private String displayName() {
+            return "全部专业".equals(major) ? className : className + "-" + major;
+        }
     }
 
     private void saveFilterView() {
@@ -1567,21 +1646,18 @@ public class StudentManagementFrame extends Application {
     }
 
     private void showClassPortrait() {
-        Map<String, List<Student>> groups = _students.stream()
-                .filter(student -> student.getClassName() != null && !student.getClassName().isBlank())
-                .collect(java.util.stream.Collectors.groupingBy(Student::getClassName,
-                        java.util.LinkedHashMap::new, java.util.stream.Collectors.toList()));
-        if (groups.isEmpty()) {
+        if (_students.stream().noneMatch(student -> hasText(student.getClassName()))) {
             setInlineStatus("当前没有完整班级信息", true);
             return;
         }
-        ChoiceDialog<String> picker = new ChoiceDialog<>(groups.keySet().iterator().next(),
-                new ArrayList<>(groups.keySet()));
-        picker.setTitle("班级画像");
-        picker.setHeaderText("选择班级");
-        picker.setContentText("班级：");
-        styleDialog(picker);
-        picker.showAndWait().ifPresent(name -> showClassPortraitDialog(name, groups.get(name)));
+        ClassMajorSelection selection = chooseClassAndMajor(
+                "班级画像", "选择要查看画像的班级和专业", _students);
+        if (selection == null) {
+            return;
+        }
+        List<Student> selected = filterClassAndMajor(
+                _students, selection.className(), selection.major());
+        showClassPortraitDialog(selection.displayName(), selected);
     }
 
     private void showClassPortraitDialog(String className, List<Student> students) {
