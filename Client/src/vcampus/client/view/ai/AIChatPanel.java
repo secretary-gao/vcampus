@@ -150,7 +150,8 @@ public class AIChatPanel extends VBox {
         new Thread(() -> {
             String answerText;
             try {
-                Message response = _aiClientSrv.ask(question);
+                Message response = (_aiClientSrv instanceof AIClientSrv client)
+                        ? client.ask(question, _currentUser) : _aiClientSrv.ask(question);
                 boolean success = IConstant.STATUS_SUCCESS.equals(response.getStatusCode());
                 answerText = String.valueOf(response.getData());
                 if (!success) {

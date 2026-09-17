@@ -172,12 +172,18 @@ public class StudentDAO {
 
     /** 修改学生并递增版本号。记录不存在或版本已变化时返回 false。 */
     public boolean update(Student student) throws SQLException, IOException {
-        String sql = "UPDATE tblStudent SET campusCardNo = ?, userId = ?, name = ?, "
+        return update(student.getStudentId(), student);
+    }
+
+    /** 按原学号定位记录；数据库外键负责把学号变化同步到选课记录。 */
+    public boolean update(String originalStudentId, Student student)
+            throws SQLException, IOException {
+        String sql = "UPDATE tblStudent SET studentId = ?, campusCardNo = ?, userId = ?, name = ?, "
                 + "className = ?, major = ?, grade = ?, enrollmentDate = ?, status = ?, "
                 + "version = version + 1 WHERE studentId = ? AND version = ?";
         try (Connection connection = DbHelper.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            bindUpdateValues(statement, student);
+            bindUpdateValues(statement, originalStudentId, student);
             int affectedRows = statement.executeUpdate();
             if (affectedRows == 1) {
                 student.setVersion(student.getVersion() + 1);
@@ -233,18 +239,20 @@ public class StudentDAO {
         statement.setString(9, statusValue(student.getStatus()));
     }
 
-    private static void bindUpdateValues(PreparedStatement statement, Student student)
+    private static void bindUpdateValues(PreparedStatement statement, String originalStudentId,
+                                         Student student)
             throws SQLException {
-        statement.setString(1, student.getCampusCardNo());
-        statement.setString(2, student.getUserId());
-        statement.setString(3, student.getName());
-        statement.setString(4, student.getClassName());
-        statement.setString(5, student.getMajor());
-        statement.setString(6, student.getGrade());
-        setLocalDate(statement, 7, student.getEnrollmentDate());
-        statement.setString(8, statusValue(student.getStatus()));
-        statement.setString(9, student.getStudentId());
-        statement.setLong(10, student.getVersion());
+        statement.setString(1, student.getStudentId());
+        statement.setString(2, student.getCampusCardNo());
+        statement.setString(3, student.getUserId());
+        statement.setString(4, student.getName());
+        statement.setString(5, student.getClassName());
+        statement.setString(6, student.getMajor());
+        statement.setString(7, student.getGrade());
+        setLocalDate(statement, 8, student.getEnrollmentDate());
+        statement.setString(9, statusValue(student.getStatus()));
+        statement.setString(10, originalStudentId);
+        statement.setLong(11, student.getVersion());
     }
 
     private static String statusValue(StudentStatus status) {

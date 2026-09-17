@@ -24,6 +24,7 @@ public class StudentSocketRoleTest {
         String adminUserId = "A" + String.format("%07d", suffix % 10_000_000L);
         String unrelatedUserId = "U" + String.format("%07d", suffix % 10_000_000L);
         String studentId = "S" + String.format("%09d", suffix);
+        String changedStudentId = "R" + String.format("%09d", suffix);
         String unrelatedStudentId = "U" + String.format("%09d", suffix);
         String teacherName = "师" + String.format("%06d", suffix);
         String courseId = "ROLE-C" + suffix;
@@ -79,10 +80,27 @@ public class StudentSocketRoleTest {
             Student updated = adminClient.updateStudent(adminView);
             require(updated.getStatus() == StudentStatus.SUSPENDED, "管理员审核状态未保存");
 
+            updated.setStudentId(unrelatedStudentId);
+            expectConflict(() -> adminClient.updateStudent(studentId, updated),
+                    "管理员把学号修改为已有学号");
+            updated.setStudentId(changedStudentId);
+            updated.setCampusCardNo(unrelatedStudent.getCampusCardNo());
+            expectConflict(() -> adminClient.updateStudent(studentId, updated),
+                    "管理员把一卡通号修改为已有一卡通号");
+            updated.setCampusCardNo(student.getCampusCardNo());
+            Student renamed = adminClient.updateStudent(studentId, updated);
+            require(changedStudentId.equals(renamed.getStudentId()), "管理员修改学号未保存");
+            require(adminClient.findByStudentId(studentId) == null,
+                    "学号修改后仍能按原学号查询到档案");
+            require(selectionUsesStudentId(selectId, changedStudentId),
+                    "学号修改后选课记录未同步更新");
+            require(teacherClient.findByStudentId(changedStudentId) != null,
+                    "学号修改后教师无法查看该学生学籍");
+
             System.out.println("Student socket role tests passed");
         } finally {
             cleanup(selectId, courseId, schemaState,
-                    List.of(studentId, unrelatedStudentId),
+                    List.of(studentId, changedStudentId, unrelatedStudentId),
                     List.of(studentUserId, teacherUserId, adminUserId, unrelatedUserId));
         }
     }
@@ -174,14 +192,65 @@ public class StudentSocketRoleTest {
                 statement.setString(2, teacherName);
                 statement.executeUpdate();
             }
-            try (PreparedStatement statement = connection.prepareStatement(
-                    "INSERT INTO tblSelectCourse "
-                            + "(selectId, studentId, courseId, selectTime) VALUES (?, ?, ?, ?)")) {
-                statement.setString(1, selectId);
-                statement.setString(2, studentId);
-                statement.setString(3, courseId);
-                statement.setObject(4, LocalDateTime.now());
-                statement.executeUpdate();
+            if (columnExists(connection, "tblSelectCourse", "teachingClassId")) {
+                String teachingClassId = courseId + "-01";
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "INSERT INTO tblTeachingClass "
+                                + "(teachingClassId, courseId, classNumber, teacher, capacity, selectedCount) "
+                                + "VALUES (?, ?, '01', ?, 10, 1)")) {
+                    statement.setString(1, teachingClassId);
+                    statement.setString(2, courseId);
+                    statement.setString(3, teacherName);
+                    statement.executeUpdate();
+                }
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "INSERT INTO tblSelectCourse "
+                                + "(selectId, studentId, teachingClassId, courseId, selectTime) "
+                                + "VALUES (?, ?, ?, ?, ?)")) {
+                    statement.setString(1, selectId);
+                    statement.setString(2, studentId);
+                    statement.setString(3, teachingClassId);
+                    statement.setString(4, courseId);
+                    statement.setObject(5, LocalDateTime.now());
+                    statement.executeUpdate();
+                }
+            } else {
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "INSERT INTO tblSelectCourse "
+                                + "(selectId, studentId, courseId, selectTime) VALUES (?, ?, ?, ?)")) {
+                    statement.setString(1, selectId);
+                    statement.setString(2, studentId);
+                    statement.setString(3, courseId);
+                    statement.setObject(4, LocalDateTime.now());
+                    statement.executeUpdate();
+                }
+            }
+        }
+    }
+
+    private static boolean columnExists(Connection connection, String tableName,
+                                        String columnName) throws Exception {
+        String sql = "SELECT 1 FROM information_schema.COLUMNS "
+                + "WHERE TABLE_SCHEMA = DATABASE() AND LOWER(TABLE_NAME) = LOWER(?) "
+                + "AND LOWER(COLUMN_NAME) = LOWER(?)";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, tableName);
+            statement.setString(2, columnName);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        }
+    }
+
+    private static boolean selectionUsesStudentId(String selectId, String studentId)
+            throws Exception {
+        try (Connection connection = DbHelper.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT 1 FROM tblSelectCourse WHERE selectId = ? AND studentId = ?")) {
+            statement.setString(1, selectId);
+            statement.setString(2, studentId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
             }
         }
     }
@@ -197,6 +266,13 @@ public class StudentSocketRoleTest {
                 }
             }
             if (tableExists(connection, "tblCourse")) {
+                if (tableExists(connection, "tblTeachingClass")) {
+                    try (PreparedStatement statement = connection.prepareStatement(
+                            "DELETE FROM tblTeachingClass WHERE courseId = ?")) {
+                        statement.setString(1, courseId);
+                        statement.executeUpdate();
+                    }
+                }
                 try (PreparedStatement statement = connection.prepareStatement(
                         "DELETE FROM tblCourse WHERE courseId = ?")) {
                     statement.setString(1, courseId);
@@ -250,6 +326,16 @@ public class StudentSocketRoleTest {
         } catch (StudentClientException exception) {
             require(StudentProtocol.STATUS_FORBIDDEN.equals(exception.getStatusCode()),
                     "预期权限不足，实际状态码为 " + exception.getStatusCode());
+        }
+    }
+
+    private static void expectConflict(CheckedCall call, String error) throws Exception {
+        try {
+            call.run();
+            throw new AssertionError(error);
+        } catch (StudentClientException exception) {
+            require(StudentProtocol.STATUS_CONFLICT.equals(exception.getStatusCode()),
+                    "预期数据冲突，实际状态码为 " + exception.getStatusCode());
         }
     }
 

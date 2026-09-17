@@ -17,6 +17,8 @@ import vcampus.common.vo.AutoSchedulePlan;
 import vcampus.common.vo.AutoScheduleRequest;
 import vcampus.common.vo.Course;
 import vcampus.common.vo.TeachingClass;
+import vcampus.common.vo.User;
+import vcampus.server.dao.UserDAO;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -30,10 +32,11 @@ public class CourseHandler implements ModuleHandler {
 
     /** 选课服务器业务服务。 */
     private final ICourseServerSrv _courseServerSrv;
+    private final UserDAO _userDAO;
 
     /** 使用默认业务服务创建处理器。 */
     public CourseHandler() {
-        this(new CourseServerSrv());
+        this(new CourseServerSrv(), new UserDAO());
     }
 
     /**
@@ -42,7 +45,12 @@ public class CourseHandler implements ModuleHandler {
      * @param courseServerSrv 选课服务器业务服务
      */
     CourseHandler(ICourseServerSrv courseServerSrv) {
+        this(courseServerSrv, new UserDAO());
+    }
+
+    CourseHandler(ICourseServerSrv courseServerSrv, UserDAO userDAO) {
         this._courseServerSrv = courseServerSrv;
+        this._userDAO = userDAO;
     }
 
     /** {@inheritDoc} */
@@ -124,9 +132,8 @@ public class CourseHandler implements ModuleHandler {
                         request, _courseServerSrv.deleteSchedule((String) request.getData()));
                 case IConstant.MSG_STUDENT_TIMETABLE_QUERY -> success(
                         request, _courseServerSrv.queryStudentSchedule((String) request.getData()));
-                case IConstant.MSG_TEACHER_COURSE_ENROLLMENTS_QUERY -> success(
-                        request, _courseServerSrv.queryTeacherCourseEnrollments(
-                                (String) request.getData()));
+                case IConstant.MSG_TEACHER_COURSE_ENROLLMENTS_QUERY ->
+                        handleTeacherCourseEnrollments(request);
                 default -> response(request, IConstant.STATUS_BAD_REQUEST,
                         "未知的选课操作：" + request.getName());
             };
@@ -152,6 +159,34 @@ public class CourseHandler implements ModuleHandler {
         Map<String, String> params = stringMap(request.getData());
         _courseServerSrv.dropCourse(params.get("studentId"), classIdentifier(params));
         return success(request, "退课成功");
+    }
+
+    /** 只允许状态正常的真实教师账号读取自己的教学班名单。 */
+    private Message handleTeacherCourseEnrollments(Message request)
+            throws SQLException, IOException, CourseServiceException {
+        if (!(request.getData() instanceof User credentials)
+                || credentials.getUId() == null || credentials.getUPwd() == null) {
+            return response(request, IConstant.STATUS_FORBIDDEN, "请先以教师账号登录");
+        }
+        User actual = _userDAO.findByUId(credentials.getUId().trim());
+        if (actual == null || !credentials.getUPwd().equals(actual.getUPwd())) {
+            return response(request, IConstant.STATUS_FORBIDDEN, "登录状态无效，请重新登录");
+        }
+        if (!actual.isTeacher()) {
+            return response(request, IConstant.STATUS_FORBIDDEN, "只有教师可以查看教学班学生名单");
+        }
+        if (!User.STATUS_NORMAL.equals(actual.getUStatus())) {
+            return response(request, IConstant.STATUS_FORBIDDEN, "当前账号状态无法查看学生名单");
+        }
+        String teacherName = actual.getUName() == null ? "" : actual.getUName().trim();
+        if (teacherName.isEmpty()) {
+            return response(request, IConstant.STATUS_FORBIDDEN, "教师账号尚未设置姓名");
+        }
+        if (_userDAO.hasOtherTeacherWithName(actual.getUId(), teacherName)) {
+            return response(request, IConstant.STATUS_FORBIDDEN,
+                    "存在同名教师账号，请联系管理员核对授课信息");
+        }
+        return success(request, _courseServerSrv.queryTeacherCourseEnrollments(teacherName));
     }
 
     /** 将请求 data 校验并转换为字符串参数表。 */

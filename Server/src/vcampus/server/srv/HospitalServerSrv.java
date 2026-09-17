@@ -64,6 +64,9 @@ public List<Prescription> queryPrescriptionByAppointId(String appointId) throws 
     
     @Override
     public boolean addAppointment(Appointment appoint) throws SQLException, IOException {
+    if(!StudentStatusGuard.canUseStudentServices(appoint.getUserId())){
+        throw new IOException(StudentStatusGuard.denialMessage("预约校医院"));
+    }
     Date appointTime = appoint.getAppointmentTime();
     Date now = new Date();
     //①校验：不能预约过去时间

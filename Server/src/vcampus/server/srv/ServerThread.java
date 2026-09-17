@@ -21,6 +21,7 @@ import vcampus.common.vo.MessageType;
 import vcampus.common.vo.Prescription;
 import vcampus.common.vo.Student;
 import vcampus.common.vo.User;
+import vcampus.server.dao.StudentDAO;
 import vcampus.server.srv.Library.LibraryHandler;
 import vcampus.server.srv.Library.PaperHandler;
 
@@ -67,9 +68,7 @@ public class ServerThread implements Runnable {
 
     /**
      * 学籍模块业务服务，单独再持有一份（不经过 {@link StudentRequestHandler}），
-     * 专门给"学生自助注册顺带写学籍记录"这个场景用——{@code StudentRequestHandler}
-     * 那层的新增/修改学籍是管理员专属操作，会做权限校验，但注册时创建自己的
-     * 学籍记录不应该被这个校验拦住，所以直接调业务层，绕开权限检查这一层。
+     * 学籍新增/修改统一经过 {@code StudentRequestHandler} 的管理员权限校验。
      */
     private final StudentServerSrv _studentServerSrv = new StudentServerSrv();
 
@@ -196,8 +195,10 @@ public class ServerThread implements Runnable {
         _handlerMap.put(StudentProtocol.ADD, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.UPDATE, this::handleStudentRequest);
         _handlerMap.put(StudentProtocol.DELETE, this::handleStudentRequest);
+        _handlerMap.put(StudentProtocol.OVERVIEW, this::handleStudentRequest);
         _handlerMap.put(IConstant.MSG_USER_SET_STATUS, this::handleSetUserStatus);
         _handlerMap.put(IConstant.MSG_USER_LIST_PENDING, this::handleListPendingUsers);
+        _handlerMap.put(IConstant.MSG_USER_RESET_PASSWORD, this::handleResetStudentPassword);
         _handlerMap.put(IConstant.MSG_REGISTER_STUDENT, this::handleRegisterStudent);
         _handlerMap.put(IConstant.MSG_AI_ASK, this::handleAiAsk);
 
@@ -273,6 +274,10 @@ _handlerMap.put(IConstant.MSG_HOSPITAL_ADMIN_DELETE_MED,this::handleAdminDeleteM
     private Message handleRegister(Message request) {
         try {
             User newUser = (User) request.getData();
+            if (newUser != null && "学生".equals(newUser.getURole())) {
+                return new Message(request.getUid(), IConstant.MSG_REGISTER, MessageType.DATA,
+                        IConstant.STATUS_BAD_REQUEST, "学生账号只能由管理员新增学籍时创建", "Server");
+            }
             boolean ok = _userServerSrv.register(newUser);
             String statusCode = ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR;
             String data = ok ? "注册成功" : "注册失败，请稍后重试";
@@ -290,56 +295,10 @@ _handlerMap.put(IConstant.MSG_HOSPITAL_ADMIN_DELETE_MED,this::handleAdminDeleteM
         }
     }
 
-    /**
-     * 处理"学生"角色自助注册请求：先按普通流程创建登录账号（状态强制为
-     * 待审核），成功后紧接着直接调用学籍模块的业务层 {@link StudentServerSrv}
-     * 插入一条对应的学籍记录——学号、一卡通号由服务器根据登录ID自动生成，
-     * 不用学生自己填，也不会跟已有数据冲突。
-     *
-     * <p>注意这里是直接调 {@code StudentServerSrv}，不经过
-     * {@link StudentRequestHandler}（那一层的新增学籍是管理员专属操作，
-     * 会做权限校验），因为这是注册流程内部触发的，不是学生自己调用了
-     * 管理员接口。</p>
-     *
-     * @param request 请求消息，{@code data} 约定为
-     *                {@code Object[]{User newUser, Student profile}}
-     * @return 处理结果消息
-     */
+    /** 拒绝已经废弃的学生自助注册协议，学生账号只能由管理员建档时创建。 */
     private Message handleRegisterStudent(Message request) {
-        try {
-            Object[] args = (Object[]) request.getData();
-            User newUser = (User) args[0];
-            Student profile = (Student) args[1];
-
-            boolean userOk = _userServerSrv.register(newUser);
-            if (!userOk) {
-                return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
-                        IConstant.STATUS_ERROR, "注册失败，请稍后重试", "Server");
-            }
-
-            profile.setUserId(newUser.getUId());
-            profile.setEnrollmentDate(java.time.LocalDate.now());
-            if (profile.getStatus() == null) {
-                profile.setStatus(vcampus.common.vo.StudentStatus.ENROLLED);
-            }
-            _studentServerSrv.addStudent(profile);
-
-            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
-                    IConstant.STATUS_SUCCESS, "注册成功，账号和学籍信息都已提交，请等待管理员审核", "Server");
-        } catch (IllegalArgumentException | ClassCastException e) {
-            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
-                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
-        } catch (UserExistsException e) {
-            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
-                    IConstant.STATUS_USER_EXISTS, e.getMessage(), "Server");
-        } catch (StudentServiceException e) {
-            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
-                    IConstant.STATUS_ERROR,
-                    "账号已创建，但学籍信息保存失败（" + e.getMessage() + "），请联系管理员补录", "Server");
-        } catch (SQLException | IOException e) {
-            return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
-                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
-        }
+        return new Message(request.getUid(), IConstant.MSG_REGISTER_STUDENT, MessageType.DATA,
+                IConstant.STATUS_BAD_REQUEST, "学生账号只能由管理员新增学籍时创建", "Server");
     }
 
     /**
@@ -571,6 +530,25 @@ _handlerMap.put(IConstant.MSG_HOSPITAL_ADMIN_DELETE_MED,this::handleAdminDeleteM
         }
     }
 
+    private Message handleResetStudentPassword(Message request) {
+        try {
+            Object[] args = (Object[]) request.getData();
+            boolean ok = _userServerSrv.resetStudentPassword((String) args[0], (String) args[1]);
+            String data = ok ? "学生密码已重置为 123456" : "密码重置失败，请稍后重试";
+            return new Message(request.getUid(), IConstant.MSG_USER_RESET_PASSWORD, MessageType.DATA,
+                    ok ? IConstant.STATUS_SUCCESS : IConstant.STATUS_ERROR, data, "Server");
+        } catch (PermissionDeniedException e) {
+            return new Message(request.getUid(), IConstant.MSG_USER_RESET_PASSWORD, MessageType.DATA,
+                    IConstant.STATUS_FORBIDDEN, e.getMessage(), "Server");
+        } catch (IllegalArgumentException | ClassCastException e) {
+            return new Message(request.getUid(), IConstant.MSG_USER_RESET_PASSWORD, MessageType.DATA,
+                    IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
+        } catch (SQLException | IOException e) {
+            return new Message(request.getUid(), IConstant.MSG_USER_RESET_PASSWORD, MessageType.DATA,
+                    IConstant.STATUS_ERROR, "服务器内部异常：" + e.getMessage(), "Server");
+        }
+    }
+
     /**
      * 处理 AI 问答请求。
      *
@@ -579,14 +557,36 @@ _handlerMap.put(IConstant.MSG_HOSPITAL_ADMIN_DELETE_MED,this::handleAdminDeleteM
      */
     private Message handleAiAsk(Message request) {
         try {
-            String question = (String) request.getData();
+            String question;
+            String context = "";
+            if (request.getData() instanceof Object[] values && values.length >= 1) {
+                question = (String) values[0];
+                if (values.length > 1 && values[1] instanceof User user) {
+                    Student profile = new StudentDAO().findByUserId(user.getUId());
+                    if (profile != null) {
+                        context = "当前用户是学生，姓名为" + profile.getName()
+                                + "，学号为" + profile.getStudentId()
+                                + "，专业为" + profile.getMajor()
+                                + "，年级为" + profile.getGrade()
+                                + "，学籍状态为" + profile.getStatus() + "。";
+                    } else {
+                        context = "当前登录用户角色为" + user.getURole() + "。";
+                    }
+                }
+            } else {
+                question = (String) request.getData();
+            }
+            if (!context.isEmpty()) {
+                question = "【系统上下文，仅用于回答当前问题，不要主动泄露账号、密码或一卡通号】"
+                        + context + "\n用户问题：" + question;
+            }
             String answer = _aiServerSrv.ask(question);
             return new Message(request.getUid(), IConstant.MSG_AI_ASK, MessageType.DATA,
                     IConstant.STATUS_SUCCESS, answer, "Server");
         } catch (IllegalArgumentException | ClassCastException e) {
             return new Message(request.getUid(), IConstant.MSG_AI_ASK, MessageType.DATA,
                     IConstant.STATUS_BAD_REQUEST, e.getMessage(), "Server");
-        } catch (IOException e) {
+        } catch (SQLException | IOException e) {
             return new Message(request.getUid(), IConstant.MSG_AI_ASK, MessageType.DATA,
                     IConstant.STATUS_ERROR, e.getMessage(), "Server");
         }

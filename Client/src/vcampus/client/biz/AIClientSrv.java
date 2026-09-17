@@ -12,6 +12,7 @@ package vcampus.client.biz;
 import vcampus.common.constant.IConstant;
 import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
+import vcampus.common.vo.User;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -29,8 +30,15 @@ public class AIClientSrv implements IAIClientSrv {
      */
     @Override
     public Message ask(String question) throws IOException, ClassNotFoundException {
+        return ask(question, null);
+    }
+
+    /** 携带当前登录用户上下文，供校园 AI 做学籍相关的个性化回答。 */
+    public Message ask(String question, User currentUser)
+            throws IOException, ClassNotFoundException {
+        Object data = currentUser == null ? question : new Object[] {question, currentUser};
         Message request = new Message(System.currentTimeMillis(), IConstant.MSG_AI_ASK,
-                MessageType.COMMAND, null, question, null);
+                MessageType.COMMAND, null, data, currentUser);
         return sendAndReceive(request);
     }
 
