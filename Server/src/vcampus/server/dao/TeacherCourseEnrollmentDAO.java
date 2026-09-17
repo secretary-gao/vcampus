@@ -31,7 +31,8 @@ public class TeacherCourseEnrollmentDAO {
                 + "FROM tblTeachingClass tc JOIN tblCourse c ON c.courseId=tc.courseId "
                 + "LEFT JOIN tblSelectCourse sc ON sc.teachingClassId=tc.teachingClassId "
                 + "LEFT JOIN tblStudent s ON s.studentId = sc.studentId "
-                + "WHERE tc.teacher = ? ORDER BY c.courseId, tc.classNumber, s.studentId";
+                + "WHERE BINARY tc.teacher = BINARY ? "
+                + "ORDER BY c.courseId, tc.classNumber, s.studentId";
         try (Connection conn = DbHelper.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, teacher);

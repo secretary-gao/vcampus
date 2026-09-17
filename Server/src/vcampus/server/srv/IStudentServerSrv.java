@@ -1,6 +1,8 @@
 package vcampus.server.srv;
 
+import vcampus.common.constant.StudentProtocol;
 import vcampus.common.vo.Student;
+import vcampus.common.vo.StudentCampusOverview;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -38,6 +40,17 @@ public interface IStudentServerSrv {
     Student updateStudent(Student student)
             throws SQLException, IOException, StudentServiceException;
 
+    /** 按原学号定位档案，并保存包括新学号在内的修改。 */
+    default Student updateStudent(String originalStudentId, Student student)
+            throws SQLException, IOException, StudentServiceException {
+        return updateStudent(student);
+    }
+
     void deleteStudent(String studentId)
             throws SQLException, IOException, StudentServiceException;
+
+    default StudentCampusOverview loadOverview(String studentId)
+            throws SQLException, IOException, StudentServiceException {
+        throw new StudentServiceException(StudentProtocol.STATUS_ERROR, "跨模块摘要暂不可用");
+    }
 }

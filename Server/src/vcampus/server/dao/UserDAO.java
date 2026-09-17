@@ -10,6 +10,7 @@
 package vcampus.server.dao;
 
 import vcampus.common.vo.User;
+import vcampus.common.util.MD5Util;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -49,6 +50,21 @@ public class UserDAO {
         return null;
     }
 
+    /** 检查是否存在另一名使用相同姓名的教师账号。 */
+    public boolean hasOtherTeacherWithName(String userId, String name)
+            throws SQLException, IOException {
+        String sql = "SELECT 1 FROM tblUser WHERE uRole = '教师'"
+                + " AND BINARY uName = BINARY ? AND uId <> ? LIMIT 1";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setString(2, userId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     /**
      * 插入一个新用户（用于注册）。
      *
@@ -76,6 +92,16 @@ public class UserDAO {
             pstmt.setString(6, user.getURole());
             pstmt.setString(7, user.getUStatus());
 
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /** 删除指定登录账号，供管理员新增学籍失败时回滚自动创建的账号。 */
+    public boolean deleteByUId(String uId) throws SQLException, IOException {
+        String sql = "DELETE FROM tblUser WHERE uId = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, uId);
             return pstmt.executeUpdate() > 0;
         }
     }
@@ -148,6 +174,17 @@ public class UserDAO {
             pstmt.setString(1, status);
             pstmt.setString(2, uId);
 
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /** 将账号密码重置为系统约定的初始密码。 */
+    public boolean resetPassword(String uId) throws SQLException, IOException {
+        String sql = "UPDATE tblUser SET uPwd = ? WHERE uId = ? AND uRole = '学生'";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, MD5Util.md5("123456"));
+            pstmt.setString(2, uId);
             return pstmt.executeUpdate() > 0;
         }
     }

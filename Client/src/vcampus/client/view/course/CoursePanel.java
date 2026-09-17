@@ -91,6 +91,7 @@ public class CoursePanel extends BorderPane {
             addTab("课程管理", new CourseAdminPane(_client, schedulePane::refresh));
             addTab("排课管理", schedulePane);
             addTab("自动排课", new AutoSchedulePane(_client, schedulePane::refresh));
+            addTab("成绩审核", new ScoreReviewPane(_client));
             setCenter(_tabs);
             return;
         }
@@ -100,6 +101,7 @@ public class CoursePanel extends BorderPane {
                 return;
             }
             addTab("教师工作台", new TeacherCoursesPane(_client, _currentUser));
+            addTab("成绩录入", new TeacherScorePane(_client, _currentUser));
             setCenter(_tabs);
             return;
         }
@@ -138,6 +140,7 @@ public class CoursePanel extends BorderPane {
         addTab("课程大厅", _hallPane);
         addTab("我的课程", _selectedPane);
         addTab("我的课表", _timetablePane);
+        addTab("成绩查询", new StudentScoresPane(_client, studentId));
         setCenter(_tabs);
     }
 

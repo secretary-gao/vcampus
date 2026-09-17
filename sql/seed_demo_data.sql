@@ -47,6 +47,14 @@ INSERT IGNORE INTO tblStudent
     ('22301004', '2023010104', '20230011', '孙悦', '土木2301', '土木工程', '2023', '2023-09-01', '在读'),
     ('22301005', '2023010105', '20230012', '周天成', '自动化2301', '自动化', '2023', '2023-09-01', '在读');
 
+-- 4a. 修复早期演示数据中与学籍绑定但角色错误的账号。
+-- 12345678 曾被旧演示数据误配置为教师；现在学籍账号必须是学生，
+-- 因此恢复为学生账号并使用管理员建档约定的初始密码 123456。
+UPDATE tblUser u
+JOIN tblStudent s ON s.userId = u.uId
+SET u.uRole = '学生', u.uPwd = MD5('123456'), u.uStatus = '正常', u.uName = s.name
+WHERE u.uId = '12345678' AND s.studentId = '22301002';
+
 -- 5. 医院模块：多加几条不同状态的挂号预约记录
 INSERT IGNORE INTO tblAppointment (appointmentId, userId, doctorId, appointmentTime, status) VALUES
     ('AP2609042439', '12345678', 'D0000002', '2026-09-08 10:00:00', '待就诊'),
@@ -55,6 +63,23 @@ INSERT IGNORE INTO tblAppointment (appointmentId, userId, doctorId, appointmentT
     ('AP2609042442', '09010210', 'D0000002', '2026-08-30 11:00:00', '已取消');
 
 -- 6. 商店模块：多加几条购买记录
+-- 6.0 购物车改造后 tblPurchase.orderId 是外键 -> tblOrder.orderId：如果数据库已经是
+--     "订单主表 + 订单明细"新结构，要先补上对应的订单主表记录，否则下面 4 条购买记录
+--     会因为外键校验不通过而被 INSERT IGNORE 静默跳过（不报错，但数据进不去）。
+--     这段用 information_schema 判断，旧结构的库上会自动跳过，不影响原有行为。
+SET @has_order_tbl := (SELECT COUNT(*) FROM information_schema.TABLES
+                       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tblOrder');
+SET @seed_orders := IF(@has_order_tbl > 0,
+    'INSERT IGNORE INTO tblOrder (orderId, userId, totalAmount, orderTime) VALUES
+       (''ORDER202609070001'', ''20230011'', 15.00, ''2026-09-05 09:20:00''),
+       (''ORDER202609070002'', ''20230012'', 10.00, ''2026-09-06 16:40:00''),
+       (''ORDER202609070003'', ''88888888'', 45.00, ''2026-09-06 20:05:00''),
+       (''ORDER202609070004'', ''09010210'', 30.00, ''2026-09-07 08:15:00'')',
+    'DO 0');
+PREPARE seed_order_stmt FROM @seed_orders;
+EXECUTE seed_order_stmt;
+DEALLOCATE PREPARE seed_order_stmt;
+
 INSERT IGNORE INTO tblPurchase (orderId, userId, goodsId, quantity, totalPrice, orderTime) VALUES
     ('ORDER202609070001', '20230011', 'G003', 3, 15.00, '2026-09-05 09:20:00'),
     ('ORDER202609070002', '20230012', 'G005', 5, 10.00, '2026-09-06 16:40:00'),

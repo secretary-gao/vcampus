@@ -71,7 +71,7 @@ public class AIServerSrv implements IAIServerSrv {
         Properties config = loadProperties();
         String apiHost = config.getProperty("dashscope.api-host");
         String apiKey = config.getProperty("dashscope.api-key");
-        String model = config.getProperty("dashscope.model", "qwen-turbo");
+        String model = config.getProperty("dashscope.model", "qwen3-coder-plus");
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IOException("未配置通义千问 API Key，请在 " + CONFIG_PATH

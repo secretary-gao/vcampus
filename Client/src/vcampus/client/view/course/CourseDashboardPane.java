@@ -64,6 +64,8 @@ public class CourseDashboardPane extends VBox {
         _metrics.setHgap(12);
         _metrics.setVgap(12);
         _popular.setTitle("热门教学班 Top 5");
+        _popular.getStyleClass().add("dashboard-popular-chart");
+        _popular.setCategoryGap(18);
         _popular.setLegendVisible(false);
         _popular.setAnimated(false);
         _available.getColumns().addAll(

@@ -89,4 +89,8 @@ public interface IUserServerSrv {
      */
     List<User> listPendingUsers(String operatorUId)
             throws SQLException, IOException, PermissionDeniedException;
+
+    /** 将指定学生账号密码重置为 123456，仅管理员可操作。 */
+    boolean resetStudentPassword(String operatorUId, String targetUId)
+            throws SQLException, IOException, PermissionDeniedException;
 }

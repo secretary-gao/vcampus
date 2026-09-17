@@ -1,6 +1,10 @@
 package vcampus.server.srv;
 import vcampus.common.vo.Appointment;
 import vcampus.common.vo.Doctor;
+import vcampus.common.vo.HealthArticle;
+import vcampus.common.vo.Medicine;
+import vcampus.common.vo.Prescription;
+
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
@@ -44,8 +48,37 @@ public interface IHospitalServerSrv {
  */
 boolean deleteCancelAppointment(String appointId) throws SQLException, IOException;
 
-List<java.sql.Timestamp> getDoctorOccupiedTime(String doctorId) throws SQLException, IOException;
+/**
+ * 医生查看自己全部待就诊预约
+ * @param doctorId 当前登录医生ID
+ * @return 待就诊预约列表
+ */
+List<Appointment> queryDoctorPendingAppoint(String doctorId) throws SQLException,IOException;
 
+/**
+ * 完成就诊，待就诊→已就诊；做权限校验，只能操作自己医生的记录
+ * @param appointId 预约id
+ * @param doctorId 操作医生登录id
+ * @return true成功 false权限/状态不满足
+ */
+boolean finishAppointment(String appointId,String doctorId) throws SQLException,IOException;
+
+List<java.sql.Timestamp> getDoctorOccupiedTime(String doctorId) throws SQLException, IOException;
+List<HealthArticle> queryAllHealthArticle() throws SQLException,IOException;
+List<Medicine> queryAllMedicine() throws SQLException, IOException;
+int savePrescriptionBatch(List<Prescription> presList) throws SQLException, IOException;
+List<Prescription> queryPrescriptionByAppointId(String appointId) throws SQLException, IOException;
+//药房取药
+List<Prescription> queryUserNoTakePres(String userId) throws SQLException,IOException;
+boolean takeMedicine(String presId,String userId) throws SQLException,IOException;
+double getMemBalance(String userId);
+boolean memRecharge(String userId,double money);
+boolean memPayPrescription(String presId,String userId,double totalMoney) throws SQLException,IOException;
+List<Medicine> adminQueryAllMedicine() throws SQLException,IOException;
+boolean adminUpdateMedicineStock(String medId,int newStock) throws SQLException,IOException;
+boolean adminAddMedicine(Medicine med) throws SQLException,IOException;
+boolean adminUpdateMedicine(Medicine med) throws SQLException,IOException;
+boolean adminDeleteMedicine(String medId) throws SQLException,IOException;
 
     // 管理员维护医生
     boolean addDoctor(Doctor doctor) throws SQLException, IOException;

@@ -18,6 +18,7 @@ import vcampus.common.vo.CourseDashboardStats;
 import vcampus.common.vo.SelectCourse;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
+import vcampus.common.vo.CourseScore;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -48,6 +49,11 @@ public interface ICourseServerSrv {
 
     int applyAutoSchedule(AutoSchedulePlan plan)
             throws SQLException, IOException, CourseServiceException;
+
+    int validateAutoSchedule(AutoSchedulePlan plan)
+            throws SQLException, IOException, CourseServiceException;
+
+    int loadAutoScheduleDemoData() throws SQLException, IOException, CourseServiceException;
 
     CourseDashboardStats queryDashboard() throws SQLException, IOException;
 
@@ -143,5 +149,13 @@ public interface ICourseServerSrv {
 
     /** 按登录教师姓名查询本人课程及选课学生名单。 */
     List<TeacherCourseEnrollment> queryTeacherCourseEnrollments(String teacherName)
+            throws SQLException, IOException, CourseServiceException;
+
+    List<CourseScore> queryStudentScores(String studentId) throws SQLException, IOException;
+    List<CourseScore> queryTeacherScores(String teacher) throws SQLException, IOException;
+    int submitScores(String teacher, List<CourseScore> scores)
+            throws SQLException, IOException, CourseServiceException;
+    List<CourseScore> queryPendingScores() throws SQLException, IOException;
+    boolean reviewScore(String scoreId, boolean approved)
             throws SQLException, IOException, CourseServiceException;
 }

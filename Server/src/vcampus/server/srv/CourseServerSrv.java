@@ -16,6 +16,8 @@ import vcampus.common.vo.CourseSchedule;
 import vcampus.common.vo.CourseRequirementGroup;
 import vcampus.common.vo.CourseDashboardStats;
 import vcampus.common.vo.SelectCourse;
+import vcampus.common.vo.Student;
+import vcampus.common.vo.StudentStatus;
 import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.TeachingClass;
 import vcampus.server.dao.CourseDAO;
@@ -25,8 +27,11 @@ import vcampus.server.dao.CourseDashboardDAO;
 import vcampus.server.dao.CourseStudentDAO;
 import vcampus.server.dao.DbHelper;
 import vcampus.server.dao.SelectCourseDAO;
+import vcampus.server.dao.StudentDAO;
 import vcampus.server.dao.TeacherCourseEnrollmentDAO;
 import vcampus.server.dao.TeachingClassDAO;
+import vcampus.server.dao.CourseScoreDAO;
+import vcampus.common.vo.CourseScore;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -47,6 +52,14 @@ import java.util.Map;
  */
 public class CourseServerSrv implements ICourseServerSrv {
 
+    private static final List<DemoCourse> AUTO_SCHEDULE_DEMO_COURSES = List.of(
+            new DemoCourse("DEMO_AI001", "智能系统导论", "演示教师甲"),
+            new DemoCourse("DEMO_AI002", "数据工程实践", "演示教师乙"),
+            new DemoCourse("DEMO_AI003", "分布式系统基础", "演示教师丙"),
+            new DemoCourse("DEMO_AI004", "网络空间安全", "演示教师丁"),
+            new DemoCourse("DEMO_AI005", "人机交互设计", "演示教师戊")
+    );
+
     /** 课程数据访问对象。 */
     private final CourseDAO _courseDAO;
 
@@ -66,10 +79,12 @@ public class CourseServerSrv implements ICourseServerSrv {
 
     /** 登录用户与正式学号映射查询。 */
     private final CourseStudentDAO _courseStudentDAO = new CourseStudentDAO();
+    private final StudentDAO _studentDAO = new StudentDAO();
 
     /** 教师课程名单查询。 */
     private final TeacherCourseEnrollmentDAO _teacherEnrollmentDAO =
             new TeacherCourseEnrollmentDAO();
+    private final CourseScoreDAO _courseScoreDAO = new CourseScoreDAO();
 
     /**
      * 使用默认 DAO 创建业务服务。
@@ -162,6 +177,46 @@ public class CourseServerSrv implements ICourseServerSrv {
     }
 
     @Override
+    public int validateAutoSchedule(AutoSchedulePlan plan)
+            throws SQLException, IOException, CourseServiceException {
+        if (plan == null || plan.getAssignments() == null
+                || plan.getAssignments().isEmpty()) {
+            throw new CourseServiceException("请先生成自动排课预览");
+        }
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                List<CourseSchedule> existing = _courseScheduleDAO.findAll(conn);
+                Set<String> classIds = new LinkedHashSet<>();
+                List<ValidatedSchedule> validated = new ArrayList<>();
+                for (CourseSchedule schedule : plan.getAssignments()) {
+                    validateSchedule(schedule, true);
+                    TeachingClass teachingClass = resolveScheduleTeachingClass(conn, schedule);
+                    if (!classIds.add(schedule.getTeachingClassId())) {
+                        throw new CourseServiceException("方案中教学班重复："
+                                + schedule.getTeachingClassId());
+                    }
+                    if (existing.stream().anyMatch(value -> value.getTeachingClassId()
+                            .equals(schedule.getTeachingClassId()))) {
+                        throw new CourseServiceException("教学班已存在排课，预览已过期："
+                                + schedule.getTeachingClassId());
+                    }
+                    checkScheduleConflicts(conn, schedule, teachingClass.getTeacher(), null);
+                    for (ValidatedSchedule prior : validated) {
+                        checkPreviewConflict(schedule, teachingClass, prior);
+                    }
+                    validated.add(new ValidatedSchedule(schedule, teachingClass));
+                }
+                conn.rollback();
+                return validated.size();
+            } catch (SQLException | CourseServiceException | RuntimeException exception) {
+                rollback(conn, exception);
+                throw exception;
+            }
+        }
+    }
+
+    @Override
     public int applyAutoSchedule(AutoSchedulePlan plan)
             throws SQLException, IOException, CourseServiceException {
         if (plan == null || plan.getAssignments() == null
@@ -194,6 +249,69 @@ public class CourseServerSrv implements ICourseServerSrv {
                 conn.commit();
                 return plan.getAssignments().size();
             } catch (SQLException | CourseServiceException | RuntimeException exception) {
+                rollback(conn, exception);
+                throw exception;
+            }
+        }
+    }
+
+    @Override
+    public int loadAutoScheduleDemoData()
+            throws SQLException, IOException, CourseServiceException {
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                int createdClasses = 0;
+                for (DemoCourse demo : AUTO_SCHEDULE_DEMO_COURSES) {
+                    Course course = _courseDAO.findById(conn, demo.courseId());
+                    if (course == null) {
+                        course = new Course(demo.courseId(), demo.courseName(),
+                                demo.teacher(), 2, 50, 0);
+                        course.setCourseNature("任选");
+                        course.setOpeningUnit("人工智能学院");
+                        if (!_courseDAO.insertCourse(conn, course)) {
+                            throw new SQLException("创建演示课程失败：" + demo.courseId());
+                        }
+                    } else {
+                        course.setCourseName(demo.courseName());
+                        course.setTeacher(demo.teacher());
+                        course.setCredit(2);
+                        course.setCourseNature("任选");
+                        course.setOpeningUnit("人工智能学院");
+                        course.setCapacity(50);
+                        if (!_courseDAO.updateCourse(conn, course)) {
+                            throw new SQLException("更新演示课程失败：" + demo.courseId());
+                        }
+                    }
+
+                    String teachingClassId = demo.courseId() + "-01";
+                    TeachingClass teachingClass = _teachingClassDAO.findById(
+                            conn, teachingClassId, false);
+                    if (teachingClass == null) {
+                        teachingClass = new TeachingClass(teachingClassId,
+                                demo.courseId(), "01", demo.teacher(), 50, 0,
+                                "中文", "自动排课演示数据");
+                        if (!_teachingClassDAO.insert(conn, teachingClass)) {
+                            throw new SQLException("创建演示教学班失败：" + teachingClassId);
+                        }
+                        createdClasses++;
+                    } else {
+                        teachingClass.setClassNumber("01");
+                        teachingClass.setTeacher(demo.teacher());
+                        teachingClass.setCapacity(50);
+                        teachingClass.setTeachingLanguage("中文");
+                        teachingClass.setRemark("自动排课演示数据");
+                        if (!_teachingClassDAO.update(conn, teachingClass)) {
+                            throw new SQLException("更新演示教学班失败：" + teachingClassId);
+                        }
+                    }
+                }
+                conn.commit();
+                return createdClasses;
+            } catch (SQLIntegrityConstraintViolationException exception) {
+                rollback(conn, exception);
+                throw new CourseServiceException("演示数据已存在或与现有数据冲突");
+            } catch (SQLException | RuntimeException exception) {
                 rollback(conn, exception);
                 throw exception;
             }
@@ -432,6 +550,10 @@ public class CourseServerSrv implements ICourseServerSrv {
                 if (!_selectCourseDAO.lockStudent(conn, normalizedStudentId)) {
                     throw new CourseServiceException("学生不存在：" + normalizedStudentId);
                 }
+                Student student = _studentDAO.findByStudentId(normalizedStudentId);
+                if (student != null && student.getStatus() != StudentStatus.ENROLLED) {
+                    throw new CourseServiceException(StudentStatusGuard.denialMessage("选课"));
+                }
                 TeachingClass teachingClass = resolveTeachingClass(conn, normalizedClassId, true);
                 String normalizedCourseId = teachingClass.getCourseId();
                 if (_selectCourseDAO.findByStudentAndCourse(
@@ -666,6 +788,79 @@ public class CourseServerSrv implements ICourseServerSrv {
         return _teacherEnrollmentDAO.findByTeacher(teacherName.trim());
     }
 
+    @Override
+    public List<CourseScore> queryStudentScores(String studentId) throws SQLException, IOException {
+        return _courseScoreDAO.findByStudent(studentId, true);
+    }
+
+    @Override
+    public List<CourseScore> queryTeacherScores(String teacher) throws SQLException, IOException {
+        return _courseScoreDAO.findByTeacher(teacher);
+    }
+
+    @Override
+    public int submitScores(String teacher, List<CourseScore> scores)
+            throws SQLException, IOException, CourseServiceException {
+        if (teacher == null || teacher.isBlank() || scores == null || scores.isEmpty()) {
+            throw new CourseServiceException("教师和待提交成绩不能为空");
+        }
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                int submitted = 0;
+                for (CourseScore score : scores) {
+                    if (score == null || score.getStudentId() == null || score.getTeachingClassId() == null
+                            || score.getScore() == null || score.getScore() < 0 || score.getScore() > 100) {
+                        throw new CourseServiceException("成绩必须在 0 到 100 之间");
+                    }
+                    TeachingClass teachingClass = _teachingClassDAO.findById(
+                            conn, score.getTeachingClassId(), true);
+                    if (teachingClass == null || !teacher.trim().equals(teachingClass.getTeacher())) {
+                        throw new CourseServiceException("只能录入本人教学班的成绩：" + score.getTeachingClassId());
+                    }
+                    if (!_selectCourseDAO.existsByStudentAndTeachingClass(conn, score.getStudentId(),
+                            score.getTeachingClassId())) {
+                        throw new CourseServiceException("学生未选择该教学班：" + score.getStudentId());
+                    }
+                    score.setScoreId(score.getScoreId() == null || score.getScoreId().isBlank()
+                            ? "SCORE" + UUID.randomUUID().toString().replace("-", "").substring(0, 19)
+                            : score.getScoreId());
+                    score.setCourseId(teachingClass.getCourseId());
+                    score.setTeacher(teacher.trim());
+                    if (!_courseScoreDAO.upsert(conn, score)) throw new SQLException("成绩保存失败");
+                    submitted++;
+                }
+                conn.commit(); return submitted;
+            } catch (SQLException | CourseServiceException | RuntimeException e) {
+                rollback(conn, e); throw e;
+            }
+        }
+    }
+
+    @Override
+    public List<CourseScore> queryPendingScores() throws SQLException, IOException {
+        return _courseScoreDAO.findPending();
+    }
+
+    @Override
+    public boolean reviewScore(String scoreId, boolean approved)
+            throws SQLException, IOException, CourseServiceException {
+        if (scoreId == null || scoreId.isBlank()) throw new CourseServiceException("成绩记录不存在");
+        try (Connection conn = DbHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                CourseScore score = _courseScoreDAO.findById(conn, scoreId);
+                if (score == null || !"PENDING".equals(score.getStatus())) {
+                    throw new CourseServiceException("该成绩已审核或不存在");
+                }
+                boolean result = _courseScoreDAO.review(conn, scoreId, approved ? "APPROVED" : "REJECTED");
+                conn.commit(); return result;
+            } catch (SQLException | CourseServiceException | RuntimeException e) {
+                rollback(conn, e); throw e;
+            }
+        }
+    }
+
     /** 校验并规范化课程主数据。 */
     private void validateCourse(Course course) throws CourseServiceException {
         if (course == null) {
@@ -812,6 +1007,25 @@ public class CourseServerSrv implements ICourseServerSrv {
         }
     }
 
+    private void checkPreviewConflict(CourseSchedule schedule, TeachingClass teachingClass,
+                                      ValidatedSchedule prior)
+            throws CourseServiceException {
+        if (!CourseAutoScheduler.overlaps(schedule, prior.schedule())) return;
+        String pair = prior.schedule().getTeachingClassId() + " 与 "
+                + schedule.getTeachingClassId();
+        if (schedule.getTeachingClassId().equals(prior.schedule().getTeachingClassId())) {
+            throw new CourseServiceException("方案内部教学班时间重复：" + pair);
+        }
+        if (schedule.getClassroom().equals(prior.schedule().getClassroom())) {
+            throw new CourseServiceException("方案内部教室时间冲突：" + pair
+                    + "，教室 " + schedule.getClassroom());
+        }
+        if (teachingClass.getTeacher().equals(prior.teachingClass().getTeacher())) {
+            throw new CourseServiceException("方案内部教师时间冲突：" + pair
+                    + "，教师 " + teachingClass.getTeacher());
+        }
+    }
+
     /** 生成不超过 varchar(20) 的排课记录号。 */
     private String newScheduleId() {
         return "CSH" + UUID.randomUUID().toString().replace("-", "").substring(0, 17);
@@ -847,6 +1061,13 @@ public class CourseServerSrv implements ICourseServerSrv {
         if (minutes < 1190) return 11;
         if (minutes < 1240) return 12;
         return 13;
+    }
+
+    private record DemoCourse(String courseId, String courseName, String teacher) {
+    }
+
+    private record ValidatedSchedule(CourseSchedule schedule,
+                                     TeachingClass teachingClass) {
     }
 
     /** 回滚事务；若回滚本身失败，将异常附加到原异常上。 */

@@ -14,20 +14,24 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 商品购买记录（订单）实体类，对应数据库 tblPurchase 表，用于在客户端与服务器端
+ * 购买记录（订单明细行）实体类，对应数据库 tblPurchase 表，用于在客户端与服务器端
  * 之间传输购买记录（购买、查询购买记录等场景）。因为需要通过 Socket 传输，
  * 所以实现 {@link Serializable} 接口。
  *
  * <p>字段设计对应共享说明书中 tblPurchase 表：orderId（订单号）、userId（购买人）、
- * goodsId（商品编号）、quantity（数量）、totalPrice（订单总价）、orderTime（下单时间）。
+ * goodsId（商品编号）、quantity（数量）、totalPrice（金额）、orderTime（下单时间）。
  * {@code _goodsName} 为查询时通过 LEFT JOIN tblGoods 附带得到，便于界面展示，不单独入库。</p>
+ *
+ * <p>购物车功能上线后，一个订单可以包含多个商品，本类在实际存储中表示订单的<b>一行明细</b>：
+ * {@code _totalPrice} 为该行小计（单价×数量），订单总金额存在订单主表
+ * {@link Order#getTotalAmount()} 中；一个订单的多行明细通过同一个 {@code orderId} 关联。</p>
  */
 public class PurchaseRecord implements Serializable {
 
     /** 序列化版本号。 */
     private static final long serialVersionUID = 1L;
 
-    /** 订单号（主键，服务器生成）。 */
+    /** 订单号（服务器生成，一个订单的多行明细共用同一个订单号）。 */
     private String _orderId;
 
     /** 购买人ID（外键 -> tblUser.uId）。 */
@@ -42,7 +46,7 @@ public class PurchaseRecord implements Serializable {
     /** 购买数量（>0）。 */
     private int _quantity;
 
-    /** 订单总价（= 单价 * 数量，>=0）。 */
+    /** 本行小计（= 单价 * 数量，>=0）。 */
     private BigDecimal _totalPrice;
 
     /** 下单时间。 */
@@ -145,18 +149,18 @@ public class PurchaseRecord implements Serializable {
     }
 
     /**
-     * 获取订单总价。
+     * 获取本行小计。
      *
-     * @return 订单总价
+     * @return 本行小计
      */
     public BigDecimal getTotalPrice() {
         return _totalPrice;
     }
 
     /**
-     * 设置订单总价。
+     * 设置本行小计。
      *
-     * @param totalPrice 订单总价
+     * @param totalPrice 本行小计
      */
     public void setTotalPrice(BigDecimal totalPrice) {
         this._totalPrice = totalPrice;
