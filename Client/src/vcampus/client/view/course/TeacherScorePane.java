@@ -14,6 +14,7 @@ import javafx.scene.layout.VBox;
 import vcampus.client.biz.ICourseClientSrv;
 import vcampus.common.vo.CourseScore;
 import vcampus.common.vo.TeacherCourseEnrollment;
+import vcampus.common.vo.User;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,14 +25,16 @@ public class TeacherScorePane extends VBox {
     private static final String UNENTERED = "UNENTERED";
     private static final String DRAFT = "LOCAL_DRAFT";
     private final ICourseClientSrv client;
+    private final User currentUser;
     private final String teacher;
     private final ComboBox<String> classes = new ComboBox<>();
     private final TableView<ScoreRow> table = new TableView<>();
     private final Label status = new Label();
 
-    public TeacherScorePane(ICourseClientSrv client, String teacher) {
+    public TeacherScorePane(ICourseClientSrv client, User currentUser) {
         this.client = client;
-        this.teacher = teacher;
+        this.currentUser = currentUser;
+        this.teacher = currentUser == null ? "" : currentUser.getUName();
         getStyleClass().add("course-page");
         Label title = new Label("成绩录入");
         title.getStyleClass().add("page-title");
@@ -106,7 +109,7 @@ public class TeacherScorePane extends VBox {
 
     private void refresh() {
         status.setText("正在读取本人教学班…");
-        CourseViewSupport.runAsync(this, () -> client.queryTeacherCourseEnrollments(teacher), rows -> {
+        CourseViewSupport.runAsync(this, () -> client.queryTeacherCourseEnrollments(currentUser), rows -> {
             String previous = classes.getValue();
             List<String> ids = rows.stream().map(TeacherCourseEnrollment::getTeachingClassId)
                     .filter(value -> value != null).distinct().toList();
@@ -125,7 +128,7 @@ public class TeacherScorePane extends VBox {
         if (classId == null) return;
         status.setText("正在读取成绩…");
         CourseViewSupport.runAsync(this, () -> {
-            List<TeacherCourseEnrollment> roster = client.queryTeacherCourseEnrollments(teacher)
+            List<TeacherCourseEnrollment> roster = client.queryTeacherCourseEnrollments(currentUser)
                     .stream().filter(value -> classId.equals(value.getTeachingClassId())
                             && value.getStudentId() != null).toList();
             Map<String, CourseScore> stored = new LinkedHashMap<>();

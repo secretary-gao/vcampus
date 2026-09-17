@@ -101,7 +101,7 @@ public class CoursePanel extends BorderPane {
                 return;
             }
             addTab("教师工作台", new TeacherCoursesPane(_client, _currentUser));
-            addTab("成绩录入", new TeacherScorePane(_client, _currentUser.getUName()));
+            addTab("成绩录入", new TeacherScorePane(_client, _currentUser));
             setCenter(_tabs);
             return;
         }
