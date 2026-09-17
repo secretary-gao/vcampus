@@ -8,33 +8,52 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.function.Function;
 
 /** UTF-8 BOM CSV writer for Excel-compatible student record exports. */
 final class StudentCsvExporter {
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final ExportField STUDENT_ID = new ExportField(
+            "studentId", "学号", Student::getStudentId);
+    private static final ExportField CAMPUS_CARD_NO = new ExportField(
+            "campusCardNo", "一卡通号", Student::getCampusCardNo);
+    private static final ExportField USER_ID = new ExportField(
+            "userId", "用户账号", Student::getUserId);
+    private static final ExportField NAME = new ExportField(
+            "name", "姓名", Student::getName);
+    private static final ExportField CLASS_NAME = new ExportField(
+            "className", "班级", Student::getClassName);
+    private static final ExportField MAJOR = new ExportField(
+            "major", "专业", Student::getMajor);
+    private static final ExportField GRADE = new ExportField(
+            "grade", "年级", Student::getGrade);
+    private static final ExportField ENROLLMENT_DATE = new ExportField(
+            "enrollmentDate", "入学日期", StudentCsvExporter::formatDate);
+    private static final ExportField STATUS = new ExportField(
+            "status", "状态", StudentCsvExporter::formatStatus);
+    private static final List<ExportField> ADMIN_FIELDS = List.of(
+            STUDENT_ID, CAMPUS_CARD_NO, USER_ID, NAME, CLASS_NAME, MAJOR,
+            GRADE, ENROLLMENT_DATE, STATUS);
+    private static final List<ExportField> TEACHER_FIELDS = List.of(
+            STUDENT_ID, CAMPUS_CARD_NO, NAME, CLASS_NAME, MAJOR, GRADE, STATUS);
 
     private StudentCsvExporter() {
     }
 
     static void write(Path path, List<Student> students, boolean includePrivateFields)
             throws IOException {
-        String header = includePrivateFields
-                ? "studentId,campusCardNo,userId,name,className,major,grade,enrollmentDate,status\r\n"
-                : "studentId,campusCardNo,name,className,major,grade,status\r\n";
-        StringBuilder csv = new StringBuilder("\uFEFF").append(header);
+        List<ExportField> fields = fields(includePrivateFields);
+        StringBuilder csv = new StringBuilder("\uFEFF");
+        appendHeader(csv, fields);
         for (Student student : students) {
-            if (includePrivateFields) {
-                line(csv, student.getStudentId(), student.getCampusCardNo(), student.getUserId(),
-                        student.getName(), student.getClassName(), student.getMajor(),
-                        student.getGrade(), formatDate(student), formatStatus(student));
-            } else {
-                line(csv, student.getStudentId(), student.getCampusCardNo(), student.getName(),
-                        student.getClassName(), student.getMajor(), student.getGrade(),
-                        formatStatus(student));
-            }
+            appendStudent(csv, fields, student);
         }
         Files.writeString(path, csv, StandardCharsets.UTF_8);
+    }
+
+    static List<ExportField> fields(boolean includePrivateFields) {
+        return includePrivateFields ? ADMIN_FIELDS : TEACHER_FIELDS;
     }
 
     private static String formatDate(Student student) {
@@ -45,17 +64,56 @@ final class StudentCsvExporter {
         return student.getStatus() == null ? "" : student.getStatus().toString();
     }
 
-    private static void line(StringBuilder target, Object... values) {
-        for (int index = 0; index < values.length; index++) {
+    private static void appendHeader(StringBuilder target, List<ExportField> fields) {
+        for (int index = 0; index < fields.size(); index++) {
             if (index > 0) {
                 target.append(',');
             }
-            target.append(escape(values[index] == null ? "" : String.valueOf(values[index])));
+            target.append(fields.get(index).getCsvHeader());
+        }
+        target.append("\r\n");
+    }
+
+    private static void appendStudent(StringBuilder target, List<ExportField> fields,
+                                      Student student) {
+        for (int index = 0; index < fields.size(); index++) {
+            if (index > 0) {
+                target.append(',');
+            }
+            target.append(escape(fields.get(index).valueOf(student)));
         }
         target.append("\r\n");
     }
 
     private static String escape(String value) {
         return '"' + value.replace("\"", "\"\"") + '"';
+    }
+
+    /** One field shared by the CSV writer and its on-screen export preview. */
+    static final class ExportField {
+
+        private final String _csvHeader;
+        private final String _displayName;
+        private final Function<Student, String> _valueFactory;
+
+        private ExportField(String csvHeader, String displayName,
+                            Function<Student, String> valueFactory) {
+            _csvHeader = csvHeader;
+            _displayName = displayName;
+            _valueFactory = valueFactory;
+        }
+
+        String getCsvHeader() {
+            return _csvHeader;
+        }
+
+        String getDisplayName() {
+            return _displayName;
+        }
+
+        String valueOf(Student student) {
+            String value = _valueFactory.apply(student);
+            return value == null ? "" : value;
+        }
     }
 }

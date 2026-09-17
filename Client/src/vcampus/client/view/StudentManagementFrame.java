@@ -12,6 +12,7 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
@@ -1482,6 +1483,10 @@ public class StudentManagementFrame extends Application {
             setInlineStatus("当前没有可导出的学生记录", true);
             return;
         }
+        List<Student> students = List.copyOf(_students);
+        if (!showCsvExportPreview("学生学籍导出预览", "当前学生列表", students)) {
+            return;
+        }
         FileChooser chooser = new FileChooser();
         chooser.setTitle("导出学生学籍");
         chooser.setInitialFileName("student-records.csv");
@@ -1491,8 +1496,8 @@ public class StudentManagementFrame extends Application {
             return;
         }
         try {
-            StudentCsvExporter.write(file.toPath(), List.copyOf(_students), isAdmin());
-            setInlineStatus("已导出 " + _students.size() + " 条记录：" + file.getName(), false);
+            StudentCsvExporter.write(file.toPath(), students, isAdmin());
+            setInlineStatus("已导出 " + students.size() + " 条记录：" + file.getName(), false);
         } catch (Exception exception) {
             setInlineStatus("导出失败：" + exception.getMessage(), true);
         }
@@ -1515,6 +1520,9 @@ public class StudentManagementFrame extends Application {
                 .filter(student -> className.equals(valueOrEmpty(student.getClassName()).trim()))
                 .toList();
         String scopeName = className;
+        if (!showCsvExportPreview("班级花名册导出预览", "班级：" + scopeName, roster)) {
+            return;
+        }
         FileChooser chooser = new FileChooser();
         chooser.setTitle("保存班级花名册");
         chooser.setInitialFileName("班级花名册-" + scopeName + ".csv");
@@ -1527,6 +1535,82 @@ public class StudentManagementFrame extends Application {
         } catch (Exception exception) {
             setInlineStatus("花名册生成失败：" + exception.getMessage(), true);
         }
+    }
+
+    private boolean showCsvExportPreview(String title, String scope, List<Student> students) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(title);
+        dialog.setHeaderText(null);
+        dialog.setResizable(true);
+
+        ButtonType confirmExport = new ButtonType("确认导出", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, confirmExport);
+        dialog.getDialogPane().getStyleClass().add("csv-preview-dialog");
+        dialog.getDialogPane().setMinWidth(980);
+        dialog.getDialogPane().setPrefWidth(1120);
+        dialog.getDialogPane().setMinHeight(620);
+        dialog.getDialogPane().setPrefHeight(720);
+
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("csv-preview-title");
+        Label summaryLabel = new Label("导出范围：" + scope + " · 共 " + students.size() + " 条记录");
+        summaryLabel.getStyleClass().add("csv-preview-summary");
+        Label hintLabel = new Label("请核对以下内容。点击“确认导出”后，系统才会让你选择保存位置。预览字段与最终 CSV 文件一致。");
+        hintLabel.setWrapText(true);
+        hintLabel.getStyleClass().add("csv-preview-hint");
+
+        TableView<Student> previewTable = new TableView<>(
+                FXCollections.observableArrayList(students));
+        previewTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        previewTable.setFixedCellSize(42);
+        previewTable.setMinHeight(430);
+        previewTable.setPrefHeight(520);
+        previewTable.setAccessibleText(title + "，共 " + students.size() + " 条记录");
+        previewTable.getStyleClass().add("csv-preview-table");
+        for (StudentCsvExporter.ExportField field : StudentCsvExporter.fields(isAdmin())) {
+            addCsvPreviewColumn(previewTable, field);
+        }
+
+        VBox content = new VBox(6, titleLabel, summaryLabel, hintLabel, previewTable);
+        VBox.setVgrow(previewTable, Priority.ALWAYS);
+        content.getStyleClass().add("csv-preview-content");
+        dialog.getDialogPane().setContent(content);
+        styleDialog(dialog);
+        return dialog.showAndWait().orElse(ButtonType.CANCEL) == confirmExport;
+    }
+
+    private static void addCsvPreviewColumn(TableView<Student> table,
+                                            StudentCsvExporter.ExportField field) {
+        TableColumn<Student, String> column = new TableColumn<>(field.getDisplayName());
+        column.setCellValueFactory(cell ->
+                new SimpleStringProperty(field.valueOf(cell.getValue())));
+        column.setPrefWidth(csvPreviewColumnWidth(field.getCsvHeader()));
+        column.setMinWidth(Math.min(column.getPrefWidth(), 72));
+        column.setCellFactory(ignored -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setTooltip(null);
+                    return;
+                }
+                setText(item);
+                setTooltip(item.isBlank() ? null : new Tooltip(item));
+            }
+        });
+        table.getColumns().add(column);
+    }
+
+    private static double csvPreviewColumnWidth(String csvHeader) {
+        return switch (csvHeader) {
+            case "studentId", "campusCardNo", "userId" -> 120;
+            case "className" -> 145;
+            case "major" -> 180;
+            case "enrollmentDate" -> 110;
+            case "name" -> 90;
+            default -> 78;
+        };
     }
 
     private String chooseClass(String title, String header, List<Student> source) {
