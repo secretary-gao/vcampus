@@ -1741,11 +1741,16 @@ public class StudentManagementFrame extends Application {
 
     private void showClassPortraitDialog(String className, List<Student> students) {
         Map<StudentStatus, Long> statuses = students.stream().collect(
-                java.util.stream.Collectors.groupingBy(Student::getStatus,
-                        java.util.LinkedHashMap::new, java.util.stream.Collectors.counting()));
+                java.util.stream.Collectors.filtering(student -> student.getStatus() != null,
+                        java.util.stream.Collectors.groupingBy(Student::getStatus,
+                                java.util.LinkedHashMap::new,
+                                java.util.stream.Collectors.counting())));
         Map<String, Long> majors = students.stream().collect(
-                java.util.stream.Collectors.groupingBy(Student::getMajor,
-                        java.util.LinkedHashMap::new, java.util.stream.Collectors.counting()));
+                java.util.stream.Collectors.filtering(student -> hasText(student.getMajor()),
+                        java.util.stream.Collectors.groupingBy(
+                                student -> student.getMajor().trim(),
+                                java.util.LinkedHashMap::new,
+                                java.util.stream.Collectors.counting())));
         String text = "学生人数：" + students.size() + " 人\n"
                 + "在读：" + statuses.getOrDefault(StudentStatus.ENROLLED, 0L) + " 人\n"
                 + "休学：" + statuses.getOrDefault(StudentStatus.SUSPENDED, 0L) + " 人\n"
@@ -1768,6 +1773,9 @@ public class StudentManagementFrame extends Application {
     }
 
     private void showCohortGradeSelector(List<Student> students) {
+        if (!isAdmin()) {
+            return;
+        }
         Map<String, List<Student>> groups = students.stream()
                 .filter(student -> hasText(student.getGrade()))
                 .filter(student -> GRADE_OPTIONS.contains(student.getGrade().trim()))
@@ -1802,6 +1810,8 @@ public class StudentManagementFrame extends Application {
         Label hint = new Label("可多选，至少选择两个年级；结果仅统计当前账号有权查看的学生。");
         hint.setWrapText(true);
         hint.getStyleClass().add("cohort-selector-hint");
+        Label choicesLabel = new Label("可用年级");
+        choicesLabel.getStyleClass().add("cohort-selector-section-label");
         Label selectionSummary = new Label();
         selectionSummary.getStyleClass().add("cohort-selection-summary");
 
@@ -1819,7 +1829,7 @@ public class StudentManagementFrame extends Application {
             choices.getChildren().add(checkBox);
         });
 
-        VBox content = new VBox(6, title, hint, choices, selectionSummary);
+        VBox content = new VBox(6, title, hint, choicesLabel, choices, selectionSummary);
         content.getStyleClass().add("cohort-selector-content");
         dialog.getDialogPane().setContent(content);
         styleDialog(dialog);
@@ -1856,6 +1866,9 @@ public class StudentManagementFrame extends Application {
 
     private void showCohortComparisonDialog(Map<String, List<Student>> groups,
                                             List<String> selectedGrades) {
+        if (!isAdmin() || selectedGrades.size() < 2) {
+            return;
+        }
 
         List<CohortSummary> summaries = selectedGrades.stream()
                 .map(grade -> new CohortSummary(grade, groups.getOrDefault(grade, List.of())))
@@ -1878,9 +1891,12 @@ public class StudentManagementFrame extends Application {
         subtitle.setWrapText(true);
         subtitle.getStyleClass().add("cohort-dialog-subtitle");
 
-        Label summaryLabel = new Label("整体在读率 " + formatRate(enrolled, total)
-                + "　·　班级数 " + classCount + "　·　专业数 " + majorCount);
-        summaryLabel.getStyleClass().add("cohort-summary-label");
+        HBox metrics = new HBox(10,
+                cohortMetric("学生总数", String.valueOf(total), "cohort-metric-total"),
+                cohortMetric("整体在读率", formatRate(enrolled, total), "cohort-metric-rate"),
+                cohortMetric("班级数", String.valueOf(classCount), "cohort-metric-neutral"),
+                cohortMetric("专业数", String.valueOf(majorCount), "cohort-metric-neutral"));
+        metrics.getStyleClass().add("cohort-metrics");
 
         TableView<CohortSummary> table = new TableView<>(FXCollections.observableArrayList(summaries));
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
@@ -1908,7 +1924,7 @@ public class StudentManagementFrame extends Application {
         chart.setMinHeight(250);
         chart.getXAxis().setLabel("年级");
         chart.getYAxis().setLabel("人数");
-        chart.getStyleClass().add("student-bar-chart");
+        chart.getStyleClass().addAll("student-bar-chart", "cohort-chart");
         for (StudentStatus status : StudentStatus.values()) {
             javafx.scene.chart.XYChart.Series<String, Number> series =
                     new javafx.scene.chart.XYChart.Series<>();
@@ -1918,12 +1934,16 @@ public class StudentManagementFrame extends Application {
             chart.getData().add(series);
         }
 
-        VBox content = new VBox(10, new VBox(2, title, subtitle), summaryLabel, table, chart);
+        VBox content = new VBox(12, new VBox(2, title, subtitle), metrics, table, chart);
         content.getStyleClass().add("cohort-dialog-content");
+        ScrollPane comparisonScroll = new ScrollPane(content);
+        comparisonScroll.setFitToWidth(true);
+        comparisonScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        comparisonScroll.getStyleClass().add("cohort-dialog-scroll");
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("年级画像对比");
         dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
-        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setContent(comparisonScroll);
         dialog.getDialogPane().setMinWidth(980);
         dialog.getDialogPane().setPrefWidth(1120);
         dialog.getDialogPane().setMinHeight(620);
@@ -1931,6 +1951,17 @@ public class StudentManagementFrame extends Application {
         dialog.getDialogPane().getStyleClass().addAll("statistics-dialog", "cohort-dialog");
         styleDialog(dialog);
         dialog.showAndWait();
+    }
+
+    private static VBox cohortMetric(String label, String value, String valueStyle) {
+        Label labelNode = new Label(label);
+        labelNode.getStyleClass().add("cohort-metric-label");
+        Label valueNode = new Label(value);
+        valueNode.getStyleClass().addAll("cohort-metric-value", valueStyle);
+        VBox metric = new VBox(3, labelNode, valueNode);
+        metric.getStyleClass().add("cohort-metric");
+        HBox.setHgrow(metric, Priority.ALWAYS);
+        return metric;
     }
 
     private static void addCohortColumn(TableView<CohortSummary> table, String title,
