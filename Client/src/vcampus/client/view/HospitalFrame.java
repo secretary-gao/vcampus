@@ -31,6 +31,8 @@ import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Stop;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -1149,7 +1151,6 @@ tvAdminMedicine.getSelectionModel().selectedItemProperty().addListener((obs,oldV
     if(newVal != null){
         tfMedId.setText(newVal.getMedicineId());
         tfMedName.setText(newVal.getMedicineName());
-        tfDept.setText(newVal.getDepartment());
         tfPrice.setText(String.valueOf(newVal.getPrice()));
         tfStock.setText(String.valueOf(newVal.getStock()));
     }
@@ -1160,7 +1161,6 @@ tvAdminMedicine.getSelectionModel().selectedItemProperty().addListener((obs,oldV
 btnClearForm.setOnAction(e->{
     tfMedId.clear();
     tfMedName.clear();
-    tfDept.clear();
     tfPrice.clear();
     tfStock.clear();
     tvAdminMedicine.getSelectionModel().clearSelection();
@@ -1170,21 +1170,20 @@ btnClearForm.setOnAction(e->{
 btnAddMed.setOnAction(e->{
     String medId = tfMedId.getText().trim();
     String medName = tfMedName.getText().trim();
-    String dept = tfDept.getText().trim();
-    double price;
+    BigDecimal price;
     int stock;
     try{
-        price = Double.parseDouble(tfPrice.getText().trim());
+        price = new BigDecimal(tfPrice.getText().trim());
         stock = Integer.parseInt(tfStock.getText().trim());
-        if(medId.isBlank() || medName.isBlank() || dept.isBlank() || price<0 || stock<0){
-            showAlert(Alert.AlertType.WARNING,"输入校验","编号/名称/科室不能为空，单价库存不能负数");
+        if(medId.isBlank() || medName.isBlank() || price.compareTo(BigDecimal.ZERO)<0 || stock<0){
+            showAlert(Alert.AlertType.WARNING,"输入校验","编号/名称不能为空，单价库存不能负数");
             return;
         }
     }catch (Exception ex){
-        showAlert(Alert.AlertType.WARNING,"输入错误","单价必须是小数，库存必须是整数");
+        showAlert(Alert.AlertType.WARNING,"输入错误","单价输入合法小数，库存输入整数");
         return;
     }
-    Medicine newMed = new Medicine();
+    Medicine newMed = new Medicine(medId,medName,price,stock);
     new Thread(()->{
         try {
             Message msg=_hospitalSrv.adminAddMedicine(newMed);
@@ -1207,21 +1206,20 @@ btnAddMed.setOnAction(e->{
 btnUpdateMed.setOnAction(e->{
     String medId = tfMedId.getText().trim();
     String medName = tfMedName.getText().trim();
-    String dept = tfDept.getText().trim();
-    double price;
+    BigDecimal price;
     int stock;
     try{
-        price = Double.parseDouble(tfPrice.getText().trim());
+        price = new BigDecimal(tfPrice.getText().trim());
         stock = Integer.parseInt(tfStock.getText().trim());
-        if(medId.isBlank() || medName.isBlank() || dept.isBlank() || price<0 || stock<0){
-            showAlert(Alert.AlertType.WARNING,"输入校验","编号/名称/科室不能为空，单价库存不能负数");
+        if(medId.isBlank() || medName.isBlank() || price.compareTo(BigDecimal.ZERO)<0 || stock<0){
+            showAlert(Alert.AlertType.WARNING,"输入校验","编号/名称不能为空，单价库存不能负数");
             return;
         }
     }catch (Exception ex){
-        showAlert(Alert.AlertType.WARNING,"输入错误","单价必须是小数，库存必须是整数");
+        showAlert(Alert.AlertType.WARNING,"输入错误","单价输入合法小数，库存输入整数");
         return;
     }
-    Medicine updateMed = new Medicine();
+    Medicine updateMed = new Medicine(medId,medName,price,stock);
     new Thread(()->{
         try {
             Message msg=_hospitalSrv.adminUpdateMedicine(updateMed);
@@ -1239,6 +1237,16 @@ btnUpdateMed.setOnAction(e->{
         }
     }).start();
 });
+
+//清空表单事件，也要删掉tfDept.clear()
+btnClearForm.setOnAction(e->{
+    tfMedId.clear();
+    tfMedName.clear();
+    tfPrice.clear();
+    tfStock.clear();
+    tvAdminMedicine.getSelectionModel().clearSelection();
+});
+
 
 //删除药品
 btnDeleteMed.setOnAction(e->{

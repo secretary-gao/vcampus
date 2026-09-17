@@ -65,31 +65,31 @@ public boolean updateStock(String medicineId,int newStock) throws SQLException, 
     }
 }
 
+/**新增药品 */
 public boolean addMedicine(Medicine med) throws SQLException, IOException{
-    String sql="INSERT INTO tblMedicine(medicineId,medicineName,department,price,stock) VALUES (?,?,?,?,?)";
+    String sql="INSERT INTO tblMedicine(medicineId,medicineName,price,stock) VALUES (?,?,?,?)";
     try(Connection conn=DbHelper.getConnection();
         PreparedStatement pstmt=conn.prepareStatement(sql)){
         pstmt.setString(1,med.getMedicineId());
         pstmt.setString(2,med.getMedicineName());
-        pstmt.setString(3,med.getDepartment());
-        pstmt.setBigDecimal(4, med.getPrice());
-        pstmt.setInt(5,med.getStock());
+        pstmt.setBigDecimal(3, med.getPrice());
+        pstmt.setInt(4,med.getStock());
+        return pstmt.executeUpdate()>0;
+    }
+}
+/**修改药品 */
+public boolean updateMedicine(Medicine med) throws SQLException, IOException{
+    String sql="UPDATE tblMedicine SET medicineName=?,price=?,stock=? WHERE medicineId=?";
+    try(Connection conn=DbHelper.getConnection();
+        PreparedStatement pstmt=conn.prepareStatement(sql)){
+        pstmt.setString(1,med.getMedicineName());
+        pstmt.setBigDecimal(2, med.getPrice());
+        pstmt.setInt(3,med.getStock());
+        pstmt.setString(4,med.getMedicineId());
         return pstmt.executeUpdate()>0;
     }
 }
 
-public boolean updateMedicine(Medicine med) throws SQLException, IOException{
-    String sql="UPDATE tblMedicine SET medicineName=?,department=?,price=?,stock=? WHERE medicineId=?";
-    try(Connection conn=DbHelper.getConnection();
-        PreparedStatement pstmt=conn.prepareStatement(sql)){
-        pstmt.setString(1,med.getMedicineName());
-        pstmt.setString(2,med.getDepartment());
-        pstmt.setBigDecimal(3, med.getPrice());
-        pstmt.setInt(4,med.getStock());
-        pstmt.setString(5,med.getMedicineId());
-        return pstmt.executeUpdate()>0;
-    }
-}
 
 /**删除药品*/
 public boolean deleteMedicine(String medId) throws SQLException, IOException{
