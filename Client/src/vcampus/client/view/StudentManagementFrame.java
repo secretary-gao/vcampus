@@ -14,6 +14,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
 import javafx.scene.control.ContextMenu;
@@ -89,6 +90,7 @@ import java.util.function.Supplier;
 public class StudentManagementFrame extends Application {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final List<String> GRADE_OPTIONS = List.of("2023", "2024", "2025", "2026");
     private static final String STYLE_FILE =
             "Client/src/vcampus/client/view/student-management.css";
 
@@ -397,6 +399,7 @@ public class StudentManagementFrame extends Application {
         portraitButton.setOnAction(event -> showClassPortrait());
         Button cohortButton = new Button("年级对比");
         cohortButton.getStyleClass().addAll("button", "quiet-button");
+        cohortButton.setTooltip(new Tooltip("选择两个或以上年级查看学籍画像对比"));
         cohortButton.setOnAction(event -> showCohortComparison());
         Button saveViewButton = new Button("保存筛选");
         saveViewButton.getStyleClass().addAll("button", "quiet-button");
@@ -411,16 +414,20 @@ public class StudentManagementFrame extends Application {
             }
         });
         _operationButtons.addAll(List.of(queryButton, resetButton, refreshButton, exportButton,
-                rosterButton, portraitButton, cohortButton, saveViewButton, loadViewButton));
+                rosterButton, portraitButton, saveViewButton, loadViewButton));
         if (isAdmin()) {
-            _operationButtons.add(importButton);
+            _operationButtons.addAll(List.of(cohortButton, importButton));
         }
 
         HBox queryRow = new HBox(6, _queryTypeBox, _queryField, _statusFilterBox, queryButton);
         queryRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(_queryField, Priority.ALWAYS);
         FlowPane actionRow = new FlowPane(6, 6, resetButton, refreshButton, exportButton,
-                rosterButton, portraitButton, cohortButton, saveViewButton, loadViewButton);
+                rosterButton, portraitButton);
+        if (isAdmin()) {
+            actionRow.getChildren().add(cohortButton);
+        }
+        actionRow.getChildren().addAll(saveViewButton, loadViewButton);
         if (isAdmin()) {
             actionRow.getChildren().add(importButton);
         }
@@ -528,7 +535,7 @@ public class StudentManagementFrame extends Application {
             HBox yearSelector = new HBox(6, yearLabel);
             yearSelector.setAlignment(Pos.CENTER_LEFT);
             yearSelector.getStyleClass().add("year-selector");
-            for (String year : List.of("2023", "2024", "2025", "2026")) {
+            for (String year : GRADE_OPTIONS) {
                 Button yearButton = new Button(year);
                 yearButton.getStyleClass().addAll("button", "quiet-button", "year-button");
                 yearButton.setOnAction(event -> selectYear(year));
@@ -796,7 +803,11 @@ public class StudentManagementFrame extends Application {
         _progressIndicator.setPrefSize(15, 15);
         _progressIndicator.setMaxSize(15, 15);
         _progressIndicator.setVisible(false);
-        HBox statusBar = new HBox(8, spacer, _undoButton, _progressIndicator, _statusLabel);
+        HBox statusBar = new HBox(8, spacer);
+        if (!isStudent()) {
+            statusBar.getChildren().add(_undoButton);
+        }
+        statusBar.getChildren().addAll(_progressIndicator, _statusLabel);
         statusBar.setAlignment(Pos.CENTER_LEFT);
         statusBar.getStyleClass().add("status-bar");
         return statusBar;
@@ -1749,21 +1760,108 @@ public class StudentManagementFrame extends Application {
     }
 
     private void showCohortComparison() {
-        Map<String, List<Student>> groups = _students.stream()
-                .filter(student -> student.getGrade() != null && !student.getGrade().isBlank())
-                .collect(java.util.stream.Collectors.groupingBy(Student::getGrade,
-                        java.util.LinkedHashMap::new, java.util.stream.Collectors.toList()));
-        if (groups.isEmpty()) {
-            setInlineStatus("当前没有完整年级信息", true);
+        if (!isAdmin()) {
+            return;
+        }
+        runOperation("正在读取年级数据...", "年级数据已加载",
+                _studentClientSrv::findAll, this::showCohortGradeSelector);
+    }
+
+    private void showCohortGradeSelector(List<Student> students) {
+        Map<String, List<Student>> groups = students.stream()
+                .filter(student -> hasText(student.getGrade()))
+                .filter(student -> GRADE_OPTIONS.contains(student.getGrade().trim()))
+                .collect(java.util.stream.Collectors.groupingBy(
+                        student -> student.getGrade().trim(), java.util.TreeMap::new,
+                        java.util.stream.Collectors.toList()));
+        if (groups.size() < 2) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION,
+                    groups.isEmpty() ? "当前权限范围内没有完整的年级信息。"
+                            : "当前权限范围内只有一个年级，暂时无法进行年级对比。",
+                    ButtonType.OK);
+            alert.setTitle("年级对比");
+            alert.setHeaderText("至少需要两个可用年级");
+            styleDialog(alert);
+            alert.showAndWait();
             return;
         }
 
-        List<CohortSummary> summaries = groups.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> new CohortSummary(entry.getKey(), entry.getValue()))
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("选择对比年级");
+        dialog.setHeaderText(null);
+        ButtonType compareButtonType = new ButtonType(
+                "开始对比", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, compareButtonType);
+        dialog.getDialogPane().getStyleClass().addAll(
+                "selector-dialog", "cohort-selector-dialog");
+        dialog.getDialogPane().setMinWidth(520);
+        dialog.getDialogPane().setPrefWidth(600);
+
+        Label title = new Label("选择需要对比的年级");
+        title.getStyleClass().add("cohort-selector-title");
+        Label hint = new Label("可多选，至少选择两个年级；结果仅统计当前账号有权查看的学生。");
+        hint.setWrapText(true);
+        hint.getStyleClass().add("cohort-selector-hint");
+        Label selectionSummary = new Label();
+        selectionSummary.getStyleClass().add("cohort-selection-summary");
+
+        FlowPane choices = new FlowPane(10, 10);
+        choices.getStyleClass().add("cohort-grade-choices");
+        List<CheckBox> checkBoxes = new ArrayList<>();
+        groups.forEach((grade, gradeStudents) -> {
+            CheckBox checkBox = new CheckBox(
+                    grade + " 级（" + gradeStudents.size() + " 人）");
+            checkBox.setUserData(grade);
+            checkBox.setMinWidth(240);
+            checkBox.setAccessibleHelp("选择后将 " + grade + " 级加入对比");
+            checkBox.getStyleClass().add("cohort-grade-check");
+            checkBoxes.add(checkBox);
+            choices.getChildren().add(checkBox);
+        });
+
+        VBox content = new VBox(6, title, hint, choices, selectionSummary);
+        content.getStyleClass().add("cohort-selector-content");
+        dialog.getDialogPane().setContent(content);
+        styleDialog(dialog);
+
+        Button compareButton = (Button) dialog.getDialogPane().lookupButton(compareButtonType);
+        Runnable updateSelection = () -> {
+            long selectedCount = checkBoxes.stream().filter(CheckBox::isSelected).count();
+            compareButton.setDisable(selectedCount < 2);
+            selectionSummary.getStyleClass().removeAll(
+                    "cohort-selection-needed", "cohort-selection-ready");
+            if (selectedCount < 2) {
+                selectionSummary.setText("已选择 " + selectedCount + " 个年级，还需选择 "
+                        + (2 - selectedCount) + " 个");
+                selectionSummary.getStyleClass().add("cohort-selection-needed");
+            } else {
+                selectionSummary.setText("已选择 " + selectedCount + " 个年级，可以开始对比");
+                selectionSummary.getStyleClass().add("cohort-selection-ready");
+            }
+        };
+        checkBoxes.forEach(checkBox -> checkBox.selectedProperty().addListener(
+                (observable, oldValue, newValue) -> updateSelection.run()));
+        updateSelection.run();
+
+        if (dialog.showAndWait().orElse(ButtonType.CANCEL) != compareButtonType) {
+            return;
+        }
+        List<String> selectedGrades = checkBoxes.stream()
+                .filter(CheckBox::isSelected)
+                .map(checkBox -> String.valueOf(checkBox.getUserData()))
+                .sorted()
                 .toList();
-        List<Student> cohortStudents = groups.values().stream()
-                .flatMap(List::stream)
+        showCohortComparisonDialog(groups, selectedGrades);
+    }
+
+    private void showCohortComparisonDialog(Map<String, List<Student>> groups,
+                                            List<String> selectedGrades) {
+
+        List<CohortSummary> summaries = selectedGrades.stream()
+                .map(grade -> new CohortSummary(grade, groups.getOrDefault(grade, List.of())))
+                .toList();
+        List<Student> cohortStudents = selectedGrades.stream()
+                .flatMap(grade -> groups.getOrDefault(grade, List.of()).stream())
                 .toList();
         int total = summaries.stream().mapToInt(summary -> summary.total).sum();
         int enrolled = summaries.stream().mapToInt(summary -> summary.enrolled).sum();
@@ -1772,8 +1870,12 @@ public class StudentManagementFrame extends Application {
 
         Label title = new Label("年级画像对比");
         title.getStyleClass().add("cohort-dialog-title");
-        Label subtitle = new Label("统计范围：当前学生列表（已应用搜索、状态及年份/班级筛选） · 共 "
-                + total + " 人，覆盖 " + summaries.size() + " 个年级");
+        String gradeText = selectedGrades.stream()
+                .map(grade -> grade + " 级")
+                .collect(java.util.stream.Collectors.joining("、"));
+        Label subtitle = new Label("对比年级：" + gradeText + " · 共 " + total
+                + " 人，覆盖 " + summaries.size() + " 个年级");
+        subtitle.setWrapText(true);
         subtitle.getStyleClass().add("cohort-dialog-subtitle");
 
         Label summaryLabel = new Label("整体在读率 " + formatRate(enrolled, total)

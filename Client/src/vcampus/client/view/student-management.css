@@ -454,6 +454,74 @@
     -fx-padding: 4px 0 2px 0;
 }
 
+.app-root .cohort-selector-content {
+    -fx-padding: 4px 0 2px 0;
+}
+
+.app-root .cohort-selector-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -vc-text;
+}
+
+.app-root .cohort-selector-hint {
+    -fx-padding: 0 0 10px 0;
+    -fx-font-size: 12px;
+    -fx-text-fill: -vc-text-muted;
+}
+
+.app-root .cohort-grade-choices {
+    -fx-padding: 2px 0 10px 0;
+}
+
+.app-root .cohort-grade-check {
+    -fx-min-height: 38px;
+    -fx-padding: 0 8px 0 2px;
+    -fx-text-fill: -vc-text-secondary;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+}
+
+.app-root .cohort-grade-check:selected {
+    -fx-text-fill: -vc-primary;
+}
+
+.app-root .cohort-grade-check .box {
+    -fx-background-color: -vc-surface;
+    -fx-border-color: -vc-border-strong;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.app-root .cohort-grade-check:selected .box {
+    -fx-background-color: -vc-primary;
+    -fx-border-color: -vc-primary;
+}
+
+.app-root .cohort-grade-check:selected .mark {
+    -fx-background-color: white;
+}
+
+.app-root .cohort-grade-check:focused .box {
+    -fx-border-color: -vc-focus;
+    -fx-border-width: 2px;
+    -fx-effect: dropshadow(three-pass-box, -vc-focus-shadow, 4, 0, 0, 0);
+}
+
+.app-root .cohort-selection-summary {
+    -fx-padding: 8px 0 1px 0;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+.app-root .cohort-selection-needed {
+    -fx-text-fill: -vc-warning;
+}
+
+.app-root .cohort-selection-ready {
+    -fx-text-fill: -vc-primary;
+}
+
 .app-root.statistics-dialog {
     -fx-background-color: -vc-surface;
     -fx-background-radius: 12px;
