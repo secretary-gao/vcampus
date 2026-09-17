@@ -292,6 +292,10 @@
     -fx-padding: 2px 0 0 0;
 }
 
+.app-root .major-selector {
+    -fx-padding: 2px 0 0 0;
+}
+
 .app-root .year-button {
     -fx-min-width: 72px;
     -fx-min-height: 32px;

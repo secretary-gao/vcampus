@@ -109,6 +109,7 @@ public class StudentManagementFrame extends Application {
     private final ComboBox<String> _queryTypeBox = new ComboBox<>();
     private final ComboBox<String> _statusFilterBox = new ComboBox<>();
     private final ComboBox<String> _classFilterBox = new ComboBox<>();
+    private final ComboBox<String> _majorFilterBox = new ComboBox<>();
     private final TextField _queryField = new TextField();
     private final Map<String, String[]> _savedFilterViews = new LinkedHashMap<>();
     private final Map<String, LocalDateTime> _knownStudentUpdates = new HashMap<>();
@@ -146,11 +147,14 @@ public class StudentManagementFrame extends Application {
     private String _dateError;
     private String _selectedYear;
     private String _selectedClass;
+    private String _selectedMajor;
     private String _pendingClass;
+    private String _pendingMajor;
     private Label _emptyStateTitle;
     private Label _emptyStateHint;
     private boolean _suppressFilterRefresh;
     private boolean _suppressClassRefresh;
+    private boolean _suppressMajorRefresh;
     private boolean _operationRunning;
     private BorderPane _root;
     private Dialog<ButtonType> _statisticsDialog;
@@ -311,6 +315,24 @@ public class StudentManagementFrame extends Application {
                         queryStudents(_queryTypeBox.getValue(), _queryField.getText());
                     }
                 });
+        if (isAdmin()) {
+            _majorFilterBox.setPromptText("选择专业");
+            _majorFilterBox.setAccessibleHelp("按专业筛选学生");
+            _majorFilterBox.setPrefWidth(220);
+            _majorFilterBox.getStyleClass().add("query-type");
+            _majorFilterBox.setDisable(true);
+            _majorFilterBox.valueProperty().addListener(
+                    (observable, oldValue, newValue) -> {
+                        _selectedMajor = newValue == null || newValue.isBlank()
+                                ? null : newValue;
+                        _students.clear();
+                        updateEmptyState();
+                        updateCount();
+                        if (!_suppressMajorRefresh) {
+                            queryStudents(_queryTypeBox.getValue(), _queryField.getText());
+                        }
+                    });
+        }
         if (isTeacher()) {
             _classFilterBox.setPromptText("选择班级");
             _classFilterBox.setAccessibleHelp("选择自己所带的班级");
@@ -343,6 +365,9 @@ public class StudentManagementFrame extends Application {
         resetButton.setOnAction(event -> {
             _queryField.clear();
             _statusFilterBox.setValue("全部状态");
+            if (isAdmin()) {
+                _majorFilterBox.setValue("全部专业");
+            }
             refreshStudents();
         });
 
@@ -511,6 +536,12 @@ public class StudentManagementFrame extends Application {
                 yearSelector.getChildren().add(yearButton);
             }
             heading.getChildren().add(new HBox(10, yearLabel, yearSelector));
+            Label majorLabel = new Label("选择专业");
+            majorLabel.getStyleClass().add("year-selector-label");
+            HBox majorSelector = new HBox(10, majorLabel, _majorFilterBox);
+            majorSelector.setAlignment(Pos.CENTER_LEFT);
+            majorSelector.getStyleClass().add("major-selector");
+            heading.getChildren().add(majorSelector);
         }
         if (isTeacher()) {
             Label classLabel = new Label("选择班级");
@@ -1331,6 +1362,7 @@ public class StudentManagementFrame extends Application {
         }
         if (!isTeacher() && _selectedYear == null) {
             _students.clear();
+            updateMajorFilterState();
             updateEmptyState();
             updateCount();
             return;
@@ -1339,10 +1371,12 @@ public class StudentManagementFrame extends Application {
         String keyword = _queryField.getText();
         String status = _statusFilterBox.getValue();
         runOperation("正在刷新...", "已刷新学生列表",
-                () -> filterStudentsForCurrentScope(_studentClientSrv.findAll(), type, keyword, status),
+                _studentClientSrv::findAll,
                 (List<Student> students) -> {
+                    updateMajorOptions(students);
                     List<Student> changed = findChangedStudents(students);
-                    _students.setAll(students);
+                    _students.setAll(filterStudentsForCurrentScope(
+                            students, type, keyword, status));
                     loadTeacherFocuses();
                     notifyDataChanges(changed);
                 });
@@ -1471,14 +1505,14 @@ public class StudentManagementFrame extends Application {
             setInlineStatus("当前记录没有完整班级信息", true);
             return;
         }
-        ClassMajorSelection selection = chooseClassAndMajor(
-                "生成班级花名册", isAdmin()
-                        ? "选择要生成花名册的班级和专业" : "选择要生成花名册的班级", _students);
-        if (selection == null) {
+        String className = chooseClass("生成班级花名册", "选择要生成花名册的班级", _students);
+        if (className == null) {
             return;
         }
-        List<Student> roster = filterClassAndMajor(_students, selection.className(), selection.major());
-        String scopeName = selection.displayName();
+        List<Student> roster = _students.stream()
+                .filter(student -> className.equals(valueOrEmpty(student.getClassName()).trim()))
+                .toList();
+        String scopeName = className;
         FileChooser chooser = new FileChooser();
         chooser.setTitle("保存班级花名册");
         chooser.setInitialFileName("班级花名册-" + scopeName + ".csv");
@@ -1493,8 +1527,7 @@ public class StudentManagementFrame extends Application {
         }
     }
 
-    private ClassMajorSelection chooseClassAndMajor(String title, String header,
-                                                      List<Student> source) {
+    private String chooseClass(String title, String header, List<Student> source) {
         List<String> classes = source.stream()
                 .map(Student::getClassName)
                 .filter(StudentManagementFrame::hasText)
@@ -1506,85 +1539,16 @@ public class StudentManagementFrame extends Application {
             return null;
         }
 
-        ComboBox<String> classBox = new ComboBox<>(FXCollections.observableArrayList(classes));
-        classBox.setValue(classes.get(0));
-        classBox.setPromptText("选择班级");
-        classBox.setPrefWidth(260);
-        ComboBox<String> majorBox = new ComboBox<>();
-        majorBox.setPromptText("选择专业");
-        majorBox.setPrefWidth(260);
-
-        Runnable refreshMajors = () -> {
-            String selectedClass = classBox.getValue();
-            List<String> majors = source.stream()
-                    .filter(student -> selectedClass != null
-                            && selectedClass.equals(valueOrEmpty(student.getClassName()).trim()))
-                    .map(Student::getMajor)
-                    .filter(StudentManagementFrame::hasText)
-                    .map(String::trim)
-                    .distinct()
-                    .sorted()
-                    .toList();
-            majorBox.getItems().setAll("全部专业");
-            majorBox.getItems().addAll(majors);
-            majorBox.setValue("全部专业");
-        };
-        if (isAdmin()) {
-            classBox.valueProperty().addListener((observable, oldValue, newValue) -> refreshMajors.run());
-            refreshMajors.run();
-        } else {
-            majorBox.setValue("全部专业");
-        }
-
-        GridPane form = new GridPane();
-        form.setHgap(12);
-        form.setVgap(10);
-        form.getStyleClass().add("selector-form");
-        addSelectorRow(form, 0, "班级", classBox);
-        if (isAdmin()) {
-            addSelectorRow(form, 1, "专业", majorBox);
-        }
-
-        Dialog<ButtonType> dialog = new Dialog<>();
+        ChoiceDialog<String> dialog = new ChoiceDialog<>(classes.get(0), classes);
         dialog.setTitle(title);
         dialog.setHeaderText(header);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
-        dialog.getDialogPane().setContent(form);
-        dialog.getDialogPane().setPrefWidth(isAdmin() ? 390 : 330);
-        dialog.getDialogPane().getStyleClass().add("selector-dialog");
+        dialog.setContentText("班级：");
         styleDialog(dialog);
-        if (dialog.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
-            return null;
-        }
-        return new ClassMajorSelection(classBox.getValue(), majorBox.getValue());
-    }
-
-    private static void addSelectorRow(GridPane form, int row, String labelText,
-                                       ComboBox<String> selector) {
-        Label label = new Label(labelText + "：");
-        label.getStyleClass().add("field-label");
-        selector.getStyleClass().add("query-type");
-        form.add(label, 0, row);
-        form.add(selector, 1, row);
-    }
-
-    private static List<Student> filterClassAndMajor(List<Student> students,
-                                                      String className, String major) {
-        return students.stream()
-                .filter(student -> className.equals(valueOrEmpty(student.getClassName()).trim()))
-                .filter(student -> "全部专业".equals(major)
-                        || major.equals(valueOrEmpty(student.getMajor()).trim()))
-                .toList();
+        return dialog.showAndWait().orElse(null);
     }
 
     private static boolean hasText(String value) {
         return value != null && !value.isBlank();
-    }
-
-    private record ClassMajorSelection(String className, String major) {
-        private String displayName() {
-            return "全部专业".equals(major) ? className : className + "-" + major;
-        }
     }
 
     private void saveFilterView() {
@@ -1595,7 +1559,7 @@ public class StudentManagementFrame extends Application {
         styleDialog(dialog);
         dialog.showAndWait().map(String::trim).filter(value -> !value.isEmpty()).ifPresent(name -> {
             _savedFilterViews.put(name, new String[]{_queryTypeBox.getValue(), _queryField.getText(),
-                    _statusFilterBox.getValue(), _selectedYear, _selectedClass});
+                    _statusFilterBox.getValue(), _selectedYear, _selectedClass, _selectedMajor});
             setInlineStatus("已保存筛选视图“" + name + "”", false);
         });
     }
@@ -1624,6 +1588,7 @@ public class StudentManagementFrame extends Application {
                 _suppressClassRefresh = false;
             }
             _pendingClass = isTeacher() && values.length > 4 ? values[4] : null;
+            _pendingMajor = isAdmin() && values.length > 5 ? values[5] : null;
             if (isTeacher()) {
                 _selectedYear = null;
                 _selectedClass = null;
@@ -1641,9 +1606,19 @@ public class StudentManagementFrame extends Application {
                 updateCount();
                 refreshStudents();
             } else if (values.length > 3 && values[3] != null && !values[3].isBlank()) {
-                selectYear(values[3], _pendingClass);
+                selectYear(values[3], _pendingClass, _pendingMajor);
             } else {
                 _selectedYear = null;
+                _selectedMajor = null;
+                _pendingMajor = null;
+                _suppressMajorRefresh = true;
+                try {
+                    _majorFilterBox.getItems().clear();
+                    _majorFilterBox.setValue(null);
+                } finally {
+                    _suppressMajorRefresh = false;
+                }
+                updateMajorFilterState();
                 _yearButtons.forEach((value, button) -> button.getStyleClass().remove("year-selected"));
                 _students.clear();
                 updateEmptyState();
@@ -1657,15 +1632,14 @@ public class StudentManagementFrame extends Application {
             setInlineStatus("当前没有完整班级信息", true);
             return;
         }
-        ClassMajorSelection selection = chooseClassAndMajor(
-                "班级画像", isAdmin()
-                        ? "选择要查看画像的班级和专业" : "选择要查看画像的班级", _students);
-        if (selection == null) {
+        String className = chooseClass("班级画像", "选择要查看画像的班级", _students);
+        if (className == null) {
             return;
         }
-        List<Student> selected = filterClassAndMajor(
-                _students, selection.className(), selection.major());
-        showClassPortraitDialog(selection.displayName(), selected);
+        List<Student> selected = _students.stream()
+                .filter(student -> className.equals(valueOrEmpty(student.getClassName()).trim()))
+                .toList();
+        showClassPortraitDialog(className, selected);
     }
 
     private void showClassPortraitDialog(String className, List<Student> students) {
@@ -2206,6 +2180,11 @@ public class StudentManagementFrame extends Application {
                     .filter(student -> _selectedClass.equals(
                             valueOrEmpty(student.getClassName()).trim()))
                     .toList();
+        } else if (_selectedMajor != null && !"全部专业".equals(_selectedMajor)) {
+            scoped = scoped.stream()
+                    .filter(student -> _selectedMajor.equals(
+                            valueOrEmpty(student.getMajor()).trim()))
+                    .toList();
         }
         return filterStudents(scoped, type, value, status);
     }
@@ -2252,14 +2231,54 @@ public class StudentManagementFrame extends Application {
         }
     }
 
+    private void updateMajorOptions(List<Student> students) {
+        if (!isAdmin()) {
+            return;
+        }
+        List<String> majors = studentsForSelectedYear(students).stream()
+                .map(student -> valueOrEmpty(student.getMajor()).trim())
+                .filter(value -> !value.isEmpty())
+                .distinct()
+                .sorted()
+                .toList();
+        String preferredMajor = _pendingMajor != null ? _pendingMajor : _selectedMajor;
+        String majorToSelect = preferredMajor != null && majors.contains(preferredMajor)
+                ? preferredMajor : "全部专业";
+        _pendingMajor = null;
+        _suppressMajorRefresh = true;
+        try {
+            _majorFilterBox.getItems().setAll("全部专业");
+            _majorFilterBox.getItems().addAll(majors);
+            _majorFilterBox.setValue(majorToSelect);
+            _selectedMajor = majorToSelect;
+        } finally {
+            _suppressMajorRefresh = false;
+        }
+        updateMajorFilterState();
+        updateEmptyState();
+    }
+
+    private void updateMajorFilterState() {
+        if (isAdmin()) {
+            _majorFilterBox.setDisable(_operationRunning
+                    || _selectedYear == null || _majorFilterBox.getItems().size() <= 1);
+        }
+    }
+
     private void selectYear(String year) {
-        selectYear(year, null);
+        selectYear(year, null, null);
     }
 
     private void selectYear(String year, String pendingClass) {
+        selectYear(year, pendingClass, null);
+    }
+
+    private void selectYear(String year, String pendingClass, String pendingMajor) {
         _selectedYear = year;
         _selectedClass = null;
+        _selectedMajor = null;
         _pendingClass = pendingClass;
+        _pendingMajor = pendingMajor;
         _yearButtons.forEach((value, button) -> button.getStyleClass().remove("year-selected"));
         Button selectedButton = _yearButtons.get(year);
         if (selectedButton != null) {
@@ -2274,6 +2293,15 @@ public class StudentManagementFrame extends Application {
                 _suppressClassRefresh = false;
             }
             updateClassFilterState();
+        } else if (isAdmin()) {
+            _suppressMajorRefresh = true;
+            try {
+                _majorFilterBox.getItems().clear();
+                _majorFilterBox.setValue(null);
+            } finally {
+                _suppressMajorRefresh = false;
+            }
+            updateMajorFilterState();
         }
         _table.getSelectionModel().clearSelection();
         _students.clear();
@@ -2303,8 +2331,10 @@ public class StudentManagementFrame extends Application {
             _emptyStateTitle.setText("请选择年份");
             _emptyStateHint.setText("点击上方 2023–2026 查看对应学生");
         } else {
-            _emptyStateTitle.setText("未找到 " + _selectedYear + " 级学生");
-            _emptyStateHint.setText("可修改查询条件或切换年份后重试");
+            String majorText = _selectedMajor != null && !"全部专业".equals(_selectedMajor)
+                    ? "·" + _selectedMajor : "";
+            _emptyStateTitle.setText("未找到 " + _selectedYear + " 级" + majorText + "学生");
+            _emptyStateHint.setText("可修改查询条件、专业或切换年份后重试");
         }
     }
 
