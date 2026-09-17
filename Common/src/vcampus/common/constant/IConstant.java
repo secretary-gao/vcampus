@@ -76,6 +76,9 @@ public interface IConstant {
      */
     String MSG_USER_LIST_PENDING = "userListPending";
 
+    /** 消息名：管理员将学生密码重置为系统初始密码。 */
+    String MSG_USER_RESET_PASSWORD = "userResetPassword";
+
     /**
      * 消息名：学生角色自助注册请求（跟普通 {@link #MSG_REGISTER} 分开，
      * 因为学生注册除了写 tblUser，还要顺带写一条 tblStudent 学籍记录）。
@@ -119,7 +122,14 @@ public interface IConstant {
     String MSG_COURSE_REQUIREMENT_GROUP_QUERY = "courseRequirementGroupQuery";
     String MSG_COURSE_AUTO_SCHEDULE_PREVIEW = "courseAutoSchedulePreview";
     String MSG_COURSE_AUTO_SCHEDULE_APPLY = "courseAutoScheduleApply";
+    String MSG_COURSE_AUTO_SCHEDULE_VALIDATE = "courseAutoScheduleValidate";
+    String MSG_COURSE_AUTO_SCHEDULE_DEMO_LOAD = "courseAutoScheduleDemoLoad";
     String MSG_COURSE_DASHBOARD_QUERY = "courseDashboardQuery";
+    String MSG_COURSE_SCORE_STUDENT_QUERY = "courseScoreStudentQuery";
+    String MSG_COURSE_SCORE_TEACHER_QUERY = "courseScoreTeacherQuery";
+    String MSG_COURSE_SCORE_SUBMIT = "courseScoreSubmit";
+    String MSG_COURSE_SCORE_PENDING_QUERY = "courseScorePendingQuery";
+    String MSG_COURSE_SCORE_REVIEW = "courseScoreReview";
 
     // ---------- 虚拟商店模块（store）消息名与状态码 ----------
 
@@ -195,6 +205,30 @@ public interface IConstant {
     String MSG_HOSPITAL_QUERY_CAN_DELETE_DOCTOR = "HOSPITAL_QUERY_CAN_DELETE_DOCTOR";
     // 新增：删除【已取消】预约记录
     String MSG_HOSPITAL_DELETE_CANCEL_APPOINT = "HOSPITAL_DELETE_CANCEL_APPOINT";
+    //==================== 健康教育模块 ====================
+    String MSG_HOSPITAL_QUERY_HEALTH_ARTICLE = "hospital_query_health_article";
+    //=====就诊叫号（医生查看待就诊、完成就诊）=====
+    String MSG_HOSPITAL_DOCTOR_GET_MY_PENDING_APPOINT = "hospital_doctor_get_my_pending_appoint";
+    String MSG_HOSPITAL_FINISH_APPOINT = "hospital_finish_appoint";
+    //====药房开药处方模块====
+String MSG_HOSPITAL_QUERY_ALL_MEDICINE = "hospital_query_all_medicine";
+String MSG_HOSPITAL_SAVE_PRESCRIPTION = "hospital_save_prescription";
+String MSG_HOSPITAL_QUERY_PRES_BY_APPOINT = "hospital_query_pres_by_appoint";
+//====药房取药功能====
+String MSG_HOSPITAL_USER_QUERY_MY_PRES = "hospital_user_query_my_pres";
+String MSG_HOSPITAL_TAKE_MEDICINE = "hospital_take_medicine";
+//药房内存模拟充值支付（内存余额，不修改数据库表）
+String MSG_HOSPITAL_GET_MEM_BALANCE="hospital_get_mem_balance";
+String MSG_HOSPITAL_MEM_RECHARGE="hospital_mem_recharge";
+String MSG_HOSPITAL_MEM_PAY_PRES="hospital_mem_pay_pres";
+//管理员药品库存管理
+String MSG_HOSPITAL_ADMIN_QUERY_ALL_MED="hospital_admin_query_all_med";
+String MSG_HOSPITAL_ADMIN_UPDATE_STOCK="hospital_admin_update_stock";
+String MSG_HOSPITAL_ADMIN_ADD_MED="hospital_admin_add_med";
+String MSG_HOSPITAL_ADMIN_UPDATE_MED="hospital_admin_update_med";
+String MSG_HOSPITAL_ADMIN_DELETE_MED="hospital_admin_delete_med";
+
+
 
     // 医院业务自定义状态码
     /** 预约记录不存在 */

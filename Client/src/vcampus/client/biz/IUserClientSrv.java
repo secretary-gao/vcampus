@@ -79,15 +79,17 @@ public interface IUserClientSrv {
      */
     Message listPendingUsers(String operatorUId) throws IOException, ClassNotFoundException;
 
+    /** 将指定学生账号的密码重置为 123456，仅管理员可操作。 */
+    Message resetStudentPassword(String operatorUId, String targetUId)
+            throws IOException, ClassNotFoundException;
+
     /**
-     * 发起"学生"角色的自助注册请求：除了创建登录账号，还会同步创建一条
-     * 对应的学籍记录（{@code tblStudent}），不然新注册的学生账号进学籍/
-     * 选课模块会因为查不到学籍记录而不能用。
+     * 兼容旧客户端的学生注册请求。当前服务端会拒绝该请求，学生账号只能由
+     * 管理员新增学籍档案时自动创建。
      *
-     * @param newUser 待注册的用户信息（uPwd 已做 MD5 摘要，uRole 应为"学生"）
-     * @param profile 学籍档案（班级/专业/年级等，{@code userId} 会由服务器
-     *                用 {@code newUser.getUId()} 覆盖，不用提前填）
-     * @return 服务器返回的响应消息
+     * @param newUser 旧协议中的账号信息
+     * @param profile 旧协议中的学籍信息
+     * @return 服务器拒绝响应
      * @throws IOException            网络连接异常（如服务器未启动）
      * @throws ClassNotFoundException 反序列化响应对象失败
      */

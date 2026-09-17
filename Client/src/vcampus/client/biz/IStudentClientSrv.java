@@ -1,6 +1,7 @@
 package vcampus.client.biz;
 
 import vcampus.common.vo.Student;
+import vcampus.common.vo.StudentCampusOverview;
 
 import java.io.IOException;
 import java.util.List;
@@ -29,6 +30,15 @@ public interface IStudentClientSrv {
     Student updateStudent(Student student)
             throws IOException, ClassNotFoundException, StudentClientException;
 
+    /** 按原学号定位档案，并保存包括新学号在内的修改。 */
+    default Student updateStudent(String originalStudentId, Student student)
+            throws IOException, ClassNotFoundException, StudentClientException {
+        return updateStudent(student);
+    }
+
     void deleteStudent(String studentId)
+            throws IOException, ClassNotFoundException, StudentClientException;
+
+    StudentCampusOverview loadOverview(String studentId)
             throws IOException, ClassNotFoundException, StudentClientException;
 }

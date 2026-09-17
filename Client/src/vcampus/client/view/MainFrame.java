@@ -73,6 +73,13 @@ public class MainFrame extends Application {
     /** 当前高亮的导航项键名，"dashboard" 表示总览页。 */
     private String _activeModuleKey = "dashboard";
     /**
+     * 校园AI面板缓存：懒加载，只在第一次点进"校园AI"时创建一次，之后每次
+     * 点进来复用同一个对象，不再重新 new。这样切到别的分区再切回来，之前的
+     * 会话历史和背景图布局都还在，只有退出账号重新登录（整个 MainFrame 被
+     * 丢弃重建）才会真正清空。
+     */
+    private AIChatPanel _aiChatPanel;
+    /**
      * 构造方法。
      *
      * @param currentUser 当前登录用户
@@ -368,6 +375,8 @@ public class MainFrame extends Application {
             return;
         }
         if ("ai".equals(moduleKey)) {
+            _activeModuleKey = moduleKey;
+            highlightActiveNav();
             showAiChatPage();
             return;
         }
@@ -705,13 +714,17 @@ public class MainFrame extends Application {
      * 都能用。和图书馆/学籍/教务同一套"左侧选、右侧显示"布局。
      */
     private void showAiChatPage() {
-        AIChatPanel aiChatPanel = new AIChatPanel(_currentUser);
+        // 懒加载 + 复用：只在第一次进来时创建，之后每次点"校园AI"都用同一个
+        // 面板对象，历史会话和背景图布局不会因为切换分区而丢失/重来一遍。
+        if (_aiChatPanel == null) {
+            _aiChatPanel = new AIChatPanel(_currentUser);
+        }
 
-        VBox wrapper = new VBox(0, aiChatPanel);
-        VBox.setVgrow(aiChatPanel, javafx.scene.layout.Priority.ALWAYS);
+        VBox wrapper = new VBox(0, _aiChatPanel);
+        VBox.setVgrow(_aiChatPanel, javafx.scene.layout.Priority.ALWAYS);
         wrapper.setMaxWidth(1120);
         wrapper.setMaxHeight(Double.MAX_VALUE);
-        wrapper.setStyle(CARD_STYLE);
+        wrapper.setStyle("-fx-effect: dropshadow(gaussian, rgba(35,74,42,0.12), 20, 0.12, 0, 8);");
         _contentStack.getChildren().setAll(wrapper);
     }
 

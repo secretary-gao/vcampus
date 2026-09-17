@@ -14,7 +14,6 @@ import vcampus.client.biz.UserClientSrv;
 import vcampus.common.constant.IConstant;
 import vcampus.common.util.MD5Util;
 import vcampus.common.vo.Message;
-import vcampus.common.vo.Student;
 import vcampus.common.vo.User;
 
 import javafx.application.Application;
@@ -47,7 +46,8 @@ import javafx.util.Duration;
 import java.io.IOException;
 
 /**
- * 客户端登录/注册窗口。用户填写登录ID、密码、角色后，点击"登录"或"注册"
+ * 客户端登录/注册窗口。用户填写登录ID、密码后点击"登录"；教师和管理员
+ * 可以通过注册入口创建账号，学生账号由管理员新增学籍时统一创建。
  * 按钮，通过 {@link UserClientSrv} 把请求发给服务器，并根据响应弹窗提示
  * 成功或失败。界面参照东南大学"身份认证中心"统一登录页的视觉风格：
  * 居中的单张白色卡片 + 校徽 + 简洁表单。
@@ -268,7 +268,7 @@ public class LoginFrame extends Application {
     }
 
     /**
-     * 构建底部操作区：整宽的绿色"登录"主按钮 + "还没有账号？立即注册"链接行。
+     * 构建底部操作区：整宽的绿色"登录"主按钮 + 教师/管理员注册链接行。
      *
      * @return 按钮区
      */
@@ -281,11 +281,11 @@ public class LoginFrame extends Application {
                 + " -fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"
                 + " -fx-background-radius: 23; -fx-cursor: hand;");
 
-        Label registerTip = new Label("还没有账号？");
+        Label registerTip = new Label("教师/管理员账号？");
         registerTip.setTextFill(Color.web("#8b96a4"));
         registerTip.setFont(Font.font("System", 12.5));
 
-        Button registerLink = new Button("立即注册");
+        Button registerLink = new Button("注册");
         registerLink.setOnAction(e -> onRegister());
         registerLink.setStyle("-fx-background-color: transparent; -fx-text-fill: #2d6a9f;"
                 + " -fx-font-size: 12.5px; -fx-font-weight: bold; -fx-underline: true;"
@@ -383,16 +383,14 @@ public class LoginFrame extends Application {
     }
 
     /**
-     * "立即注册"链接的点击处理：弹出独立的注册窗口，角色选择放在
-     * 注册窗口里（登录界面不再需要选角色）。
+     * 注册入口只用于教师和管理员，学生账号由管理员新增学籍时创建。
      */
     private void onRegister() {
         openRegisterDialog();
     }
 
     /**
-     * 弹出独立的注册窗口：登录ID、密码、确认密码、角色（角色选择从
-     * 登录界面挪到这里）。注册成功后账号是"待审核"状态，不能立即
+     * 弹出教师/管理员注册窗口。注册成功后账号是"待审核"状态，不能立即
      * 登录，要等管理员在"账号管理"页面手动确认。
      */
     private void openRegisterDialog() {
@@ -418,21 +416,12 @@ public class LoginFrame extends Application {
         sexBox.setMaxWidth(Double.MAX_VALUE);
 
         ComboBox<String> roleBox = new ComboBox<>();
-        roleBox.getItems().setAll("学生", "教师", "管理员");
+        roleBox.getItems().setAll("教师", "管理员");
         roleBox.getSelectionModel().selectFirst();
         roleBox.setMaxWidth(Double.MAX_VALUE);
 
-        // 学生角色专属：班级/专业/年级，服务器要用这些新建一条学籍记录，
-        // 教师/管理员没有对应的数据表，选这两个角色时把这块隐藏掉。
-        TextField classField = new TextField();
-        classField.setPromptText("例如：软件2601");
-        TextField majorField = new TextField();
-        majorField.setPromptText("例如：软件工程");
-        TextField gradeField = new TextField();
-        gradeField.setPromptText("入学年份，4位数字，例如2026");
-
         for (TextField field : new TextField[] {uidField, pwdField, confirmField, nameField,
-                ageField, classField, majorField, gradeField}) {
+                ageField}) {
             field.setPrefHeight(38);
             field.setMaxWidth(Double.MAX_VALUE);
             field.setStyle(fieldStyle());
@@ -441,16 +430,6 @@ public class LoginFrame extends Application {
         sexBox.setStyle(fieldStyle());
         roleBox.setPrefHeight(38);
         roleBox.setStyle(fieldStyle());
-
-        VBox studentSection = new VBox(6,
-                fieldLabel("班级"), classField,
-                fieldLabel("专业"), majorField,
-                fieldLabel("年级"), gradeField);
-        studentSection.setFillWidth(true);
-        studentSection.managedProperty().bind(studentSection.visibleProperty());
-        roleBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) ->
-                studentSection.setVisible("学生".equals(newVal)));
-        studentSection.setVisible(true);
 
         Label resultLabel = new Label();
         resultLabel.setWrapText(true);
@@ -471,8 +450,6 @@ public class LoginFrame extends Application {
             String ageText = ageField.getText() == null ? "" : ageField.getText().trim();
             String sex = sexBox.getSelectionModel().getSelectedItem();
             String role = roleBox.getSelectionModel().getSelectedItem();
-            boolean isStudent = "学生".equals(role);
-
             if (uid.isEmpty() || pwd.isEmpty() || name.isEmpty()) {
                 resultLabel.setText("登录ID、密码、姓名都不能为空");
                 return;
@@ -494,20 +471,6 @@ public class LoginFrame extends Application {
                     return;
                 }
             }
-            String className = classField.getText() == null ? "" : classField.getText().trim();
-            String major = majorField.getText() == null ? "" : majorField.getText().trim();
-            String grade = gradeField.getText() == null ? "" : gradeField.getText().trim();
-            if (isStudent) {
-                if (className.isEmpty() || major.isEmpty() || grade.isEmpty()) {
-                    resultLabel.setText("班级、专业、年级都不能为空");
-                    return;
-                }
-                if (!grade.matches("[0-9]{4}")) {
-                    resultLabel.setText("年级必须是4位数字，例如2026");
-                    return;
-                }
-            }
-
             User newUser = new User();
             newUser.setUId(uid);
             newUser.setUPwd(MD5Util.md5(pwd));
@@ -525,19 +488,7 @@ public class LoginFrame extends Application {
                 boolean success;
                 try {
                     Message response;
-                    if (isStudent) {
-                        Student profile = new Student();
-                        // 学号/一卡通号由登录ID派生，保证不跟已有数据冲突，不用学生自己填。
-                        profile.setStudentId(uid);
-                        profile.setCampusCardNo("SC" + uid);
-                        profile.setName(name);
-                        profile.setClassName(className);
-                        profile.setMajor(major);
-                        profile.setGrade(grade);
-                        response = _userClientSrv.registerStudent(newUser, profile);
-                    } else {
-                        response = _userClientSrv.register(newUser);
-                    }
+                    response = _userClientSrv.register(newUser);
                     success = IConstant.STATUS_SUCCESS.equals(response.getStatusCode());
                     message = success
                             ? "提交成功！账号需要管理员审核通过后才能登录，请耐心等待。"
@@ -572,14 +523,14 @@ public class LoginFrame extends Application {
                 fieldLabel("姓名"), nameField,
                 fieldLabel("年龄"), ageField,
                 fieldLabel("性别"), sexBox,
-                studentSection);
+                fieldLabel("说明"), new Label("学生账号由管理员新增学籍时创建，初始密码为 123456。"));
         form.setFillWidth(true);
 
         Label title = new Label("注册新账号");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
         title.setTextFill(Color.web("#1d2b39"));
 
-        Label tip = new Label("提交后需要管理员审核通过才能登录，请如实填写角色和个人信息。");
+        Label tip = new Label("教师和管理员账号提交后需要管理员审核通过；学生账号请联系管理员创建。");
         tip.setWrapText(true);
         tip.setTextFill(Color.web("#8b96a4"));
         tip.setFont(Font.font("System", 12));

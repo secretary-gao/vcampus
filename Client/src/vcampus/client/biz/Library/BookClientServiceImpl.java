@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+
 /**
  * 图书馆模块客户端业务服务实现类
  * 
@@ -25,8 +26,8 @@ import java.util.Map;
  */
 public class BookClientServiceImpl implements IBookClientService {
 
-    private static final String SERVER_HOST = "localhost";
-    private static final int SERVER_PORT = 8888;
+    private static final String SERVER_HOST = IConstant.SERVER_HOST;
+    private static final int SERVER_PORT = IConstant.SERVER_PORT;
 
     @Override
     @SuppressWarnings("unchecked")

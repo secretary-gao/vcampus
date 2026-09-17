@@ -134,4 +134,32 @@ public class UserServerSrv implements IUserServerSrv {
 
         return _userDAO.findByStatus(User.STATUS_PENDING);
     }
+
+    @Override
+    public boolean resetStudentPassword(String operatorUId, String targetUId)
+            throws SQLException, IOException, PermissionDeniedException {
+        requireAdmin(operatorUId);
+        if (targetUId == null || targetUId.trim().isEmpty()) {
+            throw new IllegalArgumentException("目标用户ID不能为空");
+        }
+        User target = _userDAO.findByUId(targetUId.trim());
+        if (target == null) {
+            throw new IllegalArgumentException("目标用户不存在：" + targetUId);
+        }
+        if (!target.isStudent()) {
+            throw new IllegalArgumentException("只能重置学生账号密码");
+        }
+        return _userDAO.resetPassword(targetUId.trim());
+    }
+
+    private void requireAdmin(String operatorUId)
+            throws SQLException, IOException, PermissionDeniedException {
+        if (operatorUId == null || operatorUId.trim().isEmpty()) {
+            throw new IllegalArgumentException("操作者ID不能为空");
+        }
+        User operator = _userDAO.findByUId(operatorUId.trim());
+        if (operator == null || !operator.isAdmin()) {
+            throw new PermissionDeniedException("无权限执行该操作，仅管理员可操作");
+        }
+    }
 }

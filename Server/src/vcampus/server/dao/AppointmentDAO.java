@@ -304,6 +304,59 @@ public int autoUpdateExpiredAppointment() throws SQLException, IOException {
     }
 }
 
+/**
+ * 根据医生ID，查询该医生全部【待就诊】预约记录
+ * @param doctorId 医生登录账号ID(等于tbldoctor的doctorId)
+ * @return 待就诊预约列表
+ */
+public List<Appointment> selectDoctorPendingAppoint(String doctorId) throws SQLException, IOException {
+    List<Appointment> list = new ArrayList<>();
+    String sql = "SELECT appointmentId,userId,doctorId,appointmentTime,status " +
+            "FROM tblappointment WHERE doctorId=? AND status='待就诊' ORDER BY appointmentTime ASC";
+    try (Connection conn = DbHelper.getConnection();
+         PreparedStatement pstmt = conn.prepareStatement(sql)){
+        pstmt.setString(1,doctorId);
+        try(ResultSet rs = pstmt.executeQuery()){
+            while(rs.next()){
+                list.add(mapRow(rs));
+            }
+        }
+    }
+    return list;
+}
+
+/**
+ * 将预约记录修改为【已就诊】
+ * 校验：必须是待就诊状态
+ * @param appointId 预约编号
+ * @param doctorId 操作医生id，做权限校验：这条预约的doctorId必须等于操作者doctorId
+ * @return true 修改成功；false 权限不匹配 / 状态不是待就诊
+ */
+public boolean finishAppointment(String appointId,String doctorId) throws SQLException, IOException {
+    //先查询：这条预约是否属于该医生，并且状态待就诊
+    String checkSql = "SELECT doctorId,status FROM tblappointment WHERE appointmentId=?";
+    try (Connection conn = DbHelper.getConnection();
+         PreparedStatement checkPstmt = conn.prepareStatement(checkSql)){
+        checkPstmt.setString(1,appointId);
+        try(ResultSet rs = checkPstmt.executeQuery()){
+            if(!rs.next()){
+                return false;
+            }
+            String realDocId = rs.getString("doctorId");
+            String status = rs.getString("status");
+            // 权限校验：医生ID匹配 并且状态待就诊
+            if(!doctorId.equals(realDocId) || !"待就诊".equals(status)){
+                return false;
+            }
+        }
+        //校验通过，更新状态为已就诊
+        String updateSql = "UPDATE tblappointment SET status='已就诊' WHERE appointmentId=?";
+        try(PreparedStatement updPstmt = conn.prepareStatement(updateSql)){
+            updPstmt.setString(1,appointId);
+            return updPstmt.executeUpdate()>0;
+        }
+    }
+}
 
 
 }

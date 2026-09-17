@@ -17,6 +17,7 @@ public final class StudentProtocol {
     public static final String ADD = "student.add";
     public static final String UPDATE = "student.update";
     public static final String DELETE = "student.delete";
+    public static final String OVERVIEW = "student.overview";
 
     public static final String STATUS_SUCCESS = IConstant.STATUS_SUCCESS;
     public static final String STATUS_BAD_REQUEST = IConstant.STATUS_BAD_REQUEST;

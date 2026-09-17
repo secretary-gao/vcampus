@@ -55,6 +55,7 @@ public class TeacherCoursesPane extends VBox {
 
     private final ICourseClientSrv _client;
     private final String _teacherName;
+    private final User _currentUser;
     private final IStudentClientSrv _studentClient;
     private final ListView<TeacherCourse> _courseList = new ListView<>();
     private final TableView<TeacherCourseEnrollment> _rosterTable = new TableView<>();
@@ -74,14 +75,20 @@ public class TeacherCoursesPane extends VBox {
 
     /** 创建教师课程名单页面。 */
     public TeacherCoursesPane(ICourseClientSrv client, User currentUser) {
-        this(client, currentUser.getUName(), new StudentClientSrv(currentUser));
+        this(client, currentUser, new StudentClientSrv(currentUser));
     }
 
     /** 注入两个模块的客户端，学籍请求仍由服务器检查当前教师身份。 */
     TeacherCoursesPane(ICourseClientSrv client, String teacherName,
                        IStudentClientSrv studentClient) {
+        this(client, teacherForViewTest(teacherName), studentClient);
+    }
+
+    private TeacherCoursesPane(ICourseClientSrv client, User currentUser,
+                               IStudentClientSrv studentClient) {
         this._client = client;
-        this._teacherName = teacherName;
+        this._currentUser = currentUser;
+        this._teacherName = currentUser.getUName();
         this._studentClient = studentClient;
         getStyleClass().add("course-page");
         buildView();
@@ -201,6 +208,7 @@ public class TeacherCoursesPane extends VBox {
                         row -> CourseViewSupport.dateTime(row.getSelectTime()))
         );
         CourseViewSupport.configureTable(_rosterTable, "暂无学生选修该课程");
+        _rosterTable.setMinHeight(280);
         SortedList<TeacherCourseEnrollment> sortedRoster = new SortedList<>(_filteredRoster);
         sortedRoster.comparatorProperty().bind(_rosterTable.comparatorProperty());
         _rosterTable.setItems(sortedRoster);
@@ -251,10 +259,12 @@ public class TeacherCoursesPane extends VBox {
         searchBar.setAlignment(Pos.CENTER_LEFT);
         VBox right = new VBox(10, rosterHeader, detail, rosterHint, searchBar, _rosterTable);
         right.getStyleClass().add("course-card");
+        right.setMinHeight(420);
         VBox.setVgrow(_rosterTable, Priority.ALWAYS);
 
         SplitPane workspace = new SplitPane(left, right);
         workspace.setDividerPositions(0.30);
+        workspace.setMinHeight(440);
         workspace.setStyle("-fx-background-color: transparent;");
         VBox.setVgrow(workspace, Priority.ALWAYS);
 
@@ -265,7 +275,7 @@ public class TeacherCoursesPane extends VBox {
 
     private Snapshot loadSnapshot() throws Exception {
         List<TeacherCourseEnrollment> enrollments =
-                _client.queryTeacherCourseEnrollments(_teacherName);
+                _client.queryTeacherCourseEnrollments(_currentUser);
         Map<String, List<TeacherCourseEnrollment>> byClass = enrollments.stream()
                 .filter(row -> row.getTeachingClassId() != null)
                 .collect(Collectors.groupingBy(TeacherCourseEnrollment::getTeachingClassId,
@@ -346,6 +356,13 @@ public class TeacherCoursesPane extends VBox {
 
     private static boolean containsKeyword(String value, String keyword) {
         return value != null && value.toLowerCase(Locale.ROOT).contains(keyword);
+    }
+
+    private static User teacherForViewTest(String teacherName) {
+        User user = new User();
+        user.setUName(teacherName);
+        user.setURole("教师");
+        return user;
     }
 
     private void exportRoster() {
