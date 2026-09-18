@@ -26,6 +26,7 @@ import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -55,6 +56,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
@@ -291,13 +293,23 @@ public class StoreFrame extends Application {
         BorderPane banner = new BorderPane();
         banner.getStyleClass().add("store-header");
 
-        VBox titleBlock = new VBox(2);
+        VBox titleBlock = new VBox(1);
         Label title = new Label("东南大学 · 虚拟商店");
         title.getStyleClass().add("store-title");
+        Label english = new Label("SEU Virtual Campus Store");
+        english.getStyleClass().add("store-english");
         Label crumb = new Label("数字校园 / 虚拟商店");
         crumb.getStyleClass().add("store-subtitle");
-        titleBlock.getChildren().addAll(title, crumb);
-        banner.setLeft(titleBlock);
+        titleBlock.getChildren().addAll(title, english, crumb);
+
+        HBox titleRow = new HBox(14);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+        Node logo = buildSeuEmblem();
+        if (logo != null) {
+            titleRow.getChildren().add(logo);
+        }
+        titleRow.getChildren().add(titleBlock);
+        banner.setLeft(titleRow);
 
         _balanceLabel.getStyleClass().add("balance-badge");
         _promoCountLabel.getStyleClass().add("promo-badge");
@@ -306,15 +318,78 @@ public class StoreFrame extends Application {
         rechargeButton.getStyleClass().add("accent");
         rechargeButton.setOnAction(e -> onRecharge());
 
-        Label userInfo = new Label("用户：" + safe(_currentUser == null ? "" : _currentUser.getUId())
-                + "（" + safe(_currentUser == null ? "" : _currentUser.getURole()) + "）");
-        userInfo.getStyleClass().add("store-subtitle");
+        // 用户信息：账号 + 角色徽章（学生/教师/管理员分色，和选课模块的徽章风格一致）
+        String userId = safe(_currentUser == null ? "" : _currentUser.getUId());
+        String role = safe(_currentUser == null ? "" : _currentUser.getURole());
+        Label userLabel = new Label(userId);
+        userLabel.getStyleClass().add("store-subtitle");
+        Label roleBadge = new Label(role.isBlank() ? "未知" : role);
+        roleBadge.getStyleClass().addAll("role-badge", roleStyleClass(role));
 
-        HBox right = new HBox(14, _balanceLabel, _promoCountLabel, rechargeButton, userInfo);
+        HBox right = new HBox(12, _balanceLabel, _promoCountLabel, rechargeButton, userLabel, roleBadge);
         right.setAlignment(Pos.CENTER_RIGHT);
         banner.setRight(right);
         BorderPane.setAlignment(right, Pos.CENTER_RIGHT);
         return banner;
+    }
+
+    /**
+     * 生成圆形校徽徽章。
+     *
+     * <p>{@code seu_logo.jpeg} 是"校徽 + 校名"的横版合图（白底），整张放上去会和标题里的
+     * "东南大学"重复，所以这里用 {@link ImageView#setViewport} 只截取左侧的圆形校徽，
+     * 再用圆形裁剪做成徽章贴到青绿横幅上。资源是 classpath 资源（build.bat 会拷到 bin），
+     * 取不到时返回 {@code null}，横幅会退化成纯文字标题。</p>
+     *
+     * @return 校徽徽章节点；加载失败返回 {@code null}
+     */
+    private Node buildSeuEmblem() {
+        java.net.URL logoUrl = getClass().getResource("/vcampus/client/view/seu_logo.jpeg");
+        if (logoUrl == null) {
+            return null;
+        }
+        Image logo = new Image(logoUrl.toExternalForm());
+        if (logo.isError()) {
+            return null;
+        }
+        double diameter = 52;
+        ImageView view = new ImageView(logo);
+        // 原图 2768x2000：左侧圆形校徽的非白像素外接矩形约为 x=150..912、y=608..1390，
+        // 取正方形并留 2% 余量后得到下面的裁切区域（这几个数字是扫描原图算出来的，不是目测）。
+        view.setViewport(new Rectangle2D(125, 593, 813, 813));
+        view.setFitWidth(diameter);
+        view.setFitHeight(diameter);
+        view.setPreserveRatio(true);
+        view.setSmooth(true);
+
+        StackPane chip = new StackPane(view);
+        chip.setMinSize(diameter, diameter);
+        chip.setMaxSize(diameter, diameter);
+        chip.setClip(new Circle(diameter / 2, diameter / 2, diameter / 2));
+        chip.getStyleClass().add("logo-chip");
+        return chip;
+    }
+
+    /**
+     * 按角色返回徽章的颜色样式类（与选课模块一致）。
+     *
+     * @param role 角色名
+     * @return 样式类名
+     */
+    private String roleStyleClass(String role) {
+        if (role == null) {
+            return "role-unknown";
+        }
+        switch (role) {
+            case "学生":
+                return "role-student";
+            case "教师":
+                return "role-teacher";
+            case "管理员":
+                return "role-admin";
+            default:
+                return "role-unknown";
+        }
     }
 
     /**

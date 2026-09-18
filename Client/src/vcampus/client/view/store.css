@@ -28,6 +28,32 @@
 }
 .store-title { -fx-text-fill: white; -fx-font-size: 22px; -fx-font-weight: bold; }
 .store-subtitle { -fx-text-fill: #d3f2ec; -fx-font-size: 12px; }
+/* 英文副标题（虚拟商店的英文名） */
+.store-english {
+    -fx-text-fill: #a9e3d8;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+/* 圆形校徽徽章：白底圆形 + 淡淡阴影，贴在青绿横幅上 */
+.logo-chip {
+    -fx-background-color: white;
+    -fx-background-radius: 26;
+    -fx-effect: dropshadow(gaussian, rgba(6, 60, 55, 0.35), 8, 0.20, 0, 2);
+}
+
+/* 角色徽章（与选课模块一套配色） */
+.role-badge {
+    -fx-padding: 5 12 5 12;
+    -fx-background-radius: 14;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-text-fill: white;
+}
+.role-student { -fx-background-color: #2f9a62; }
+.role-teacher { -fx-background-color: #2f72d6; }
+.role-admin { -fx-background-color: #c88a18; }
+.role-unknown { -fx-background-color: #78869a; }
 
 /* 余额药丸 */
 .balance-badge {
