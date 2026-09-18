@@ -20,3 +20,4 @@ Thumbs.db
 
 # 本地 Claude Code 配置（个人环境相关，不需要共享）
 .claude/
+dist/

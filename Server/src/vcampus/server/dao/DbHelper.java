@@ -9,6 +9,7 @@
  */
 package vcampus.server.dao;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,8 +33,13 @@ import java.util.Properties;
  */
 public final class DbHelper {
 
-    /** db.properties 相对项目根目录的路径。 */
-    private static final String CONFIG_PATH = "Server/db.properties";
+    /**
+     * db.properties 候选路径，按顺序尝试：先找运行目录下的 {@code db.properties}
+     * （打包后的部署形态——jar 和配置文件平铺在同一个目录下），找不到再退回开发
+     * 环境里的 {@code Server/db.properties}（IDE 里从项目根目录运行时用的路径）。
+     * 这样同一份代码不用区分"开发/打包"两种启动方式。
+     */
+    private static final String[] CONFIG_PATHS = {"db.properties", "Server/db.properties"};
 
     /** 缓存已加载的数据库连接配置，避免重复读取文件。 */
     private static Properties properties;
@@ -45,21 +51,31 @@ public final class DbHelper {
     }
 
     /**
-     * 加载 {@code Server/db.properties} 配置文件（只在首次调用时读取）。
+     * 加载数据库配置文件（只在首次调用时读取），依次尝试 {@link #CONFIG_PATHS}
+     * 里的每个候选路径，用第一个存在的文件。
      *
      * @return 数据库连接配置
-     * @throws IOException 当配置文件不存在或读取失败时抛出
+     * @throws IOException 当所有候选路径都找不到配置文件时抛出
      */
     private static synchronized Properties loadProperties() throws IOException {
         if (properties == null) {
-            Properties p = new Properties();
-            try (InputStream in = new FileInputStream(CONFIG_PATH)) {
-                p.load(in);
-            } catch (IOException e) {
-                throw new IOException("未找到数据库配置文件：" + CONFIG_PATH
-                        + "，请复制 Server/db.properties.example 为 Server/db.properties 并填写本地 MySQL 密码。", e);
+            for (String path : CONFIG_PATHS) {
+                File file = new File(path);
+                if (file.isFile()) {
+                    Properties p = new Properties();
+                    try (InputStream in = new FileInputStream(file)) {
+                        p.load(in);
+                    }
+                    properties = p;
+                    break;
+                }
             }
-            properties = p;
+            if (properties == null) {
+                throw new IOException("未找到数据库配置文件（依次尝试过："
+                        + String.join("、", CONFIG_PATHS)
+                        + "），请复制 db.properties.example 为 db.properties 并填写本地 MySQL 密码，"
+                        + "放在服务器程序运行时的当前目录下。");
+            }
         }
         return properties;
     }

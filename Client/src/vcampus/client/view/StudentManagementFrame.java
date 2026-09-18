@@ -582,7 +582,7 @@ public class StudentManagementFrame extends Application {
     }
 
     private HBox createStatusBar() {
-        Label connectionLabel = new Label("服务器：127.0.0.1:8888");
+        Label connectionLabel = new Label("服务器：" + IConstant.SERVER_HOST + ":" + IConstant.SERVER_PORT);
         connectionLabel.getStyleClass().add("connection-label");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
