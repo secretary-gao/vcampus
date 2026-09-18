@@ -31,6 +31,15 @@ public class StudentCsvExporterTest {
             StudentCsvExporter.write(teacherFile, List.of(student), false);
             String admin = read(adminFile);
             String teacher = read(teacherFile);
+            require(StudentCsvExporter.fields(true).size() == 9
+                            && "userId".equals(StudentCsvExporter.fields(true).get(2).getCsvHeader())
+                            && "用户账号".equals(StudentCsvExporter.fields(true).get(2).getDisplayName()),
+                    "管理员预览字段与完整导出字段一致");
+            require(StudentCsvExporter.fields(false).size() == 7
+                            && StudentCsvExporter.fields(false).stream()
+                            .noneMatch(field -> "userId".equals(field.getCsvHeader())
+                                    || "enrollmentDate".equals(field.getCsvHeader())),
+                    "教师预览和导出均隐藏私有字段");
             require(admin.startsWith("\uFEFFstudentId,campusCardNo,userId"), "管理员表头完整");
             require(admin.contains("\"CARD,001\"") && admin.contains("2024-09-01"),
                     "管理员字段正确转义");

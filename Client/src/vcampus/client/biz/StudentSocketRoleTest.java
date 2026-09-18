@@ -11,6 +11,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -60,9 +61,9 @@ public class StudentSocketRoleTest {
                     "教师列表包含了不属于自己课程的学生");
             List<Student> teacherRows = teacherClient.findByName("权限测试学生");
             require(!teacherRows.isEmpty(), "教师未查询到学生");
-            require(teacherRows.get(0).getCampusCardNo() == null
-                    && teacherRows.get(0).getUserId() == null,
-                    "教师响应包含非公开字段");
+            require(teacherRows.get(0).getCampusCardNo() != null
+                            && teacherRows.get(0).getUserId() == null,
+                    "教师响应未包含学号/一卡通号，或暴露了账号字段");
             require(teacherClient.findByStudentId(unrelatedStudentId) == null,
                     "教师按学号查询到了无关学生");
             require(teacherClient.findByName("未分配学生").isEmpty(),
@@ -122,6 +123,7 @@ public class StudentSocketRoleTest {
         student.setClassName("计算机一班");
         student.setMajor("计算机科学与技术");
         student.setGrade("2024");
+        student.setEnrollmentDate(LocalDate.of(2024, 9, 1));
         student.setStatus(StudentStatus.ENROLLED);
         return student;
     }

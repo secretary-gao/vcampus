@@ -5,6 +5,7 @@ import vcampus.common.vo.Message;
 import vcampus.common.vo.MessageType;
 import vcampus.common.vo.Student;
 import vcampus.common.vo.StudentCampusOverview;
+import vcampus.common.vo.StudentFocus;
 import vcampus.common.vo.StudentUpdateRequest;
 import vcampus.common.vo.User;
 
@@ -103,6 +104,29 @@ public class StudentClientSrv implements IStudentClientSrv {
     public StudentCampusOverview loadOverview(String studentId)
             throws IOException, ClassNotFoundException, StudentClientException {
         return (StudentCampusOverview) request(StudentProtocol.OVERVIEW, studentId).getData();
+    }
+
+    @Override
+    public List<StudentFocus> listFocusedStudents()
+            throws IOException, ClassNotFoundException, StudentClientException {
+        Object data = request(StudentProtocol.FOCUS_LIST, null).getData();
+        if (!(data instanceof List<?>)) {
+            throw new StudentClientException(StudentProtocol.STATUS_ERROR, "服务器返回的关注名单格式不正确");
+        }
+        @SuppressWarnings("unchecked") List<StudentFocus> focuses = (List<StudentFocus>) data;
+        return focuses;
+    }
+
+    @Override
+    public void addStudentFocus(String studentId, String tags, String note)
+            throws IOException, ClassNotFoundException, StudentClientException {
+        request(StudentProtocol.FOCUS_ADD, new String[]{studentId, tags, note});
+    }
+
+    @Override
+    public void removeStudentFocus(String studentId)
+            throws IOException, ClassNotFoundException, StudentClientException {
+        request(StudentProtocol.FOCUS_REMOVE, studentId);
     }
 
     private Message request(String name, Object data)

@@ -3,6 +3,7 @@ package vcampus.server.srv;
 import vcampus.common.constant.StudentProtocol;
 import vcampus.common.vo.Student;
 import vcampus.common.vo.StudentCampusOverview;
+import vcampus.common.vo.StudentFocus;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -52,5 +53,20 @@ public interface IStudentServerSrv {
     default StudentCampusOverview loadOverview(String studentId)
             throws SQLException, IOException, StudentServiceException {
         throw new StudentServiceException(StudentProtocol.STATUS_ERROR, "跨模块摘要暂不可用");
+    }
+
+    default List<StudentFocus> listStudentFocus(String teacherUserId)
+            throws SQLException, IOException, StudentServiceException {
+        throw new StudentServiceException(StudentProtocol.STATUS_ERROR, "关注名单暂不可用");
+    }
+
+    default void addStudentFocus(String teacherUserId, String studentId, String tags, String note)
+            throws SQLException, IOException, StudentServiceException {
+        throw new StudentServiceException(StudentProtocol.STATUS_ERROR, "关注名单暂不可用");
+    }
+
+    default void removeStudentFocus(String teacherUserId, String studentId)
+            throws SQLException, IOException, StudentServiceException {
+        throw new StudentServiceException(StudentProtocol.STATUS_ERROR, "关注名单暂不可用");
     }
 }
