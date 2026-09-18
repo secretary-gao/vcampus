@@ -109,21 +109,75 @@
 }
 
 /* ==================== 输入控件 ==================== */
-.store-root .text-field,
+.store-root .text-field {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #cad7e6;
+    -fx-padding: 7 10 7 10;
+    -fx-min-height: 32;
+}
+
+/* 组合框：注意不要把 padding 加在 combo-box 本身——那样会挤压内部布局、把文字裁掉，
+   正确做法是给内部的 list-cell 设内边距，并给组合框一个统一的最小高度。 */
 .store-root .combo-box {
     -fx-background-color: white;
     -fx-background-radius: 8;
     -fx-border-radius: 8;
     -fx-border-color: #cad7e6;
-    -fx-padding: 6 10 6 10;
+    -fx-padding: 0;
+    -fx-min-height: 32;
+    -fx-pref-height: 32;
+}
+.store-root .combo-box > .list-cell {
+    -fx-padding: 0 6 0 10;
+    -fx-text-fill: #27384e;
+    -fx-background-color: transparent;
+}
+.store-root .combo-box > .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 8 0 4;
+}
+.store-root .combo-box > .arrow-button > .arrow {
+    -fx-background-color: #5b7796;
+    -fx-padding: 3 5 3 5;
 }
 .store-root .text-field:focused,
 .store-root .combo-box:focused {
     -fx-border-color: #1f8f80;
     -fx-effect: dropshadow(gaussian, rgba(31, 143, 128, 0.20), 6, 0, 0, 0);
 }
-.store-root .combo-box > .arrow-button { -fx-background-color: transparent; }
-.store-root .combo-box .list-cell { -fx-text-fill: #27384e; }
+
+/* 下拉列表（弹出层不在商店子树里，用全局样式保证一致） */
+.combo-box-popup > .list-view {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #dbe5f0;
+    -fx-effect: dropshadow(gaussian, rgba(24, 51, 92, 0.12), 12, 0.1, 0, 4);
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell {
+    -fx-padding: 7 12 7 12;
+    -fx-text-fill: #27384e;
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:hover {
+    -fx-background-color: #e9f5f3;
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:selected {
+    -fx-background-color: #1f8f80;
+    -fx-text-fill: white;
+}
+
+/* ==================== 右侧信息面板（管理员页签的"库存概览/活动分布"） ==================== */
+.side-card {
+    -fx-background-color: #f7fafd;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: #dbe5f0;
+    -fx-padding: 14 16 14 16;
+}
+.stat-label { -fx-text-fill: #6b7a8d; -fx-font-size: 12px; }
+.stat-value { -fx-text-fill: #12564e; -fx-font-size: 13px; -fx-font-weight: bold; }
 
 /* ==================== 商品卡片 ==================== */
 .goods-card {
@@ -203,6 +257,72 @@
     -fx-font-size: 11px;
     -fx-font-weight: bold;
 }
+
+/* ==================== 弹窗（充值 / 下单 / 确认 / 提示，统一风格） ==================== */
+/* 说明：JavaFX 默认的 Dialog 是灰底 + 蓝色问号图标 + 默认灰按钮，跟商店配色不搭，
+   这里把商店所有弹窗换成"顶部青绿渐变标题栏 + 白底内容 + 药丸按钮"的自绘风格。 */
+.store-dialog {
+    -fx-background-color: white;
+    -fx-padding: 0;
+    -fx-border-color: #dbe5f0;
+    -fx-border-width: 1;
+    -fx-font-size: 13px;
+    -fx-font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
+}
+
+/* 顶部渐变标题栏（DialogPane 自带的 header-panel 去掉底色和边距，让自绘标题条贴满） */
+.store-dialog > .header-panel {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-border-color: transparent;
+}
+.dialog-header {
+    -fx-background-color: linear-gradient(to right, #0f7a72, #2fb3a0);
+    -fx-padding: 16 22 14 22;
+}
+.dialog-title { -fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold; }
+.dialog-headline { -fx-text-fill: #d8f5ee; -fx-font-size: 12px; }
+
+/* 内容区 */
+.store-dialog > .content {
+    -fx-padding: 18 22 8 22;
+    -fx-background-color: white;
+}
+.dialog-prompt { -fx-text-fill: #33475f; -fx-font-weight: bold; }
+.dialog-hint { -fx-text-fill: #8794a6; -fx-font-size: 12px; }
+
+/* 输入框在弹窗里放大一点，便于看清数字 */
+.store-dialog .text-field {
+    -fx-font-size: 14px;
+    -fx-padding: 8 12 8 12;
+}
+
+/* 底部按钮区 */
+.store-dialog > .button-bar > .container {
+    -fx-padding: 10 22 18 22;
+    -fx-background-color: white;
+}
+.store-dialog .button {
+    -fx-padding: 9 22 9 22;
+    -fx-font-size: 13px;
+}
+/* 弹窗里的"确定"用主色实心，"取消"用浅灰 */
+.store-dialog .button.primary { -fx-background-color: #1f8f80; -fx-text-fill: white; }
+.store-dialog .button.primary:hover { -fx-background-color: #18786c; }
+.store-dialog .button.danger { -fx-background-color: #e2553f; -fx-text-fill: white; }
+.store-dialog .button.danger:hover { -fx-background-color: #cf4733; }
+
+/* 快捷金额/数量的小药丸按钮 */
+.button.dialog-chip {
+    -fx-background-color: #e9f5f3;
+    -fx-text-fill: #1f7f72;
+    -fx-background-radius: 14;
+    -fx-padding: 6 14 6 14;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+.button.dialog-chip:hover { -fx-background-color: #d3ebe6; }
 
 /* ==================== 表格 ==================== */
 .store-table {

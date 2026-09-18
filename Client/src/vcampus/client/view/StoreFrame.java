@@ -31,7 +31,11 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
@@ -44,6 +48,7 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -59,6 +64,7 @@ import javafx.util.StringConverter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -95,6 +101,12 @@ public class StoreFrame extends Application {
 
     // ---- 校园卡余额 ----
     private final Label _balanceLabel = new Label("余额：--");
+
+    /** 最近一次查询到的余额数值（弹窗里展示用）。 */
+    private BigDecimal _balanceValue;
+
+    /** 商店界面的根节点（弹窗用它取所属窗口，保证弹窗居中显示）。 */
+    private Node _ownerNode;
 
     // ---- 今日特价 ----
     /** 横幅上的"今日特价 N 件"提示。 */
@@ -140,6 +152,12 @@ public class StoreFrame extends Application {
     private final ComboBox<String> _promoWeekdayBox = new ComboBox<>();
     private final TextField _promoRemarkField = new TextField();
 
+    /** 活动管理右侧的统计面板（活动分布 + 今日特价 + 规则说明）。 */
+    private VBox _promoStatsBox;
+
+    /** 商品管理右侧的库存概览面板。 */
+    private VBox _goodsStatsBox;
+
     /**
      * 无参构造方法（供 {@code launch()} 使用），默认使用一个演示学生用户。
      */
@@ -175,6 +193,7 @@ public class StoreFrame extends Application {
         BorderPane root = new BorderPane(buildContent());
         root.setPrefSize(1080, 720);
         applyStylesheet(root);
+        _ownerNode = root;
 
         Button exitButton = new Button("退出");
         exitButton.getStyleClass().add("secondary");
@@ -241,6 +260,7 @@ public class StoreFrame extends Application {
         BorderPane content = buildContent();
         content.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         applyStylesheet(content);
+        _ownerNode = content;
         loadGoods();
         loadBalance();
         return content;
@@ -380,28 +400,37 @@ public class StoreFrame extends Application {
     private VBox buildManageTab() {
         _goodsIdField.setPromptText("商品编号");
         _goodsNameField.setPromptText("名称");
-        _categoryField.setPromptText("类别");
-        _priceField.setPromptText("单价");
-        _stockField.setPromptText("库存");
-        _imageUrlField.setPromptText("图片路径（可留空，留空则用类别图标）");
-        _imageUrlField.setPrefWidth(360);
+        _categoryField.setPromptText("类别，如 饮料");
+        _priceField.setPromptText("单价，如 2.00");
+        _stockField.setPromptText("库存数量");
+        _imageUrlField.setPromptText("可留空，留空则用类别图标占位");
 
+        // 表单改成两列，字段自适应宽度铺满卡片，避免右侧大片留白
         GridPane form = new GridPane();
-        form.setHgap(10);
+        form.setHgap(12);
         form.setVgap(10);
-        form.getStyleClass().add("tool-bar-card");
         form.add(formLabel("编号"), 0, 0);
         form.add(_goodsIdField, 1, 0);
-        form.add(formLabel("名称"), 0, 1);
-        form.add(_goodsNameField, 1, 1);
-        form.add(formLabel("类别"), 0, 2);
-        form.add(_categoryField, 1, 2);
-        form.add(formLabel("单价"), 0, 3);
-        form.add(_priceField, 1, 3);
-        form.add(formLabel("库存"), 0, 4);
-        form.add(_stockField, 1, 4);
-        form.add(formLabel("图片路径"), 0, 5);
-        form.add(_imageUrlField, 1, 5);
+        form.add(formLabel("名称"), 2, 0);
+        form.add(_goodsNameField, 3, 0);
+        form.add(formLabel("类别"), 0, 1);
+        form.add(_categoryField, 1, 1);
+        form.add(formLabel("单价"), 2, 1);
+        form.add(_priceField, 3, 1);
+        form.add(formLabel("库存"), 0, 2);
+        form.add(_stockField, 1, 2);
+        form.add(formLabel("图片路径"), 2, 2);
+        form.add(_imageUrlField, 3, 2);
+        for (Node field : new Node[]{_goodsIdField, _goodsNameField, _categoryField,
+                _priceField, _stockField, _imageUrlField}) {
+            GridPane.setHgrow(field, Priority.ALWAYS);
+            if (field instanceof javafx.scene.layout.Region region) {
+                region.setMaxWidth(Double.MAX_VALUE);
+            }
+        }
+        form.getColumnConstraints().addAll(
+                growColumn(false, 56), growColumn(true, 0),
+                growColumn(false, 72), growColumn(true, 0));
 
         Button addButton = new Button("新增");
         addButton.getStyleClass().add("primary");
@@ -418,6 +447,24 @@ public class StoreFrame extends Application {
         HBox buttons = new HBox(10, addButton, updateButton, deleteButton, clearButton);
         buttons.setAlignment(Pos.CENTER_LEFT);
 
+        Label tip = new Label("选中「商品列表」里的一行会自动回填表单；商品编号是主键、修改时不可改；"
+                + "已有购买记录的商品不能删除");
+        tip.getStyleClass().add("cart-hint");
+        tip.setWrapText(true);
+
+        VBox formCard = new VBox(12, form, buttons, tip);
+        formCard.getStyleClass().add("tool-bar-card");
+        HBox.setHgrow(formCard, Priority.ALWAYS);
+
+        // 右侧：库存概览（顺手把空白区域利用起来，也给管理员一些有用信息）
+        _goodsStatsBox = new VBox(8);
+        _goodsStatsBox.getStyleClass().add("side-card");
+        _goodsStatsBox.setPrefWidth(270);
+        _goodsStatsBox.setMinWidth(250);
+
+        HBox upper = new HBox(14, formCard, _goodsStatsBox);
+        upper.setAlignment(Pos.TOP_LEFT);
+
         _manageTable.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
             if (sel != null) {
                 fillForm(sel);
@@ -425,11 +472,148 @@ public class StoreFrame extends Application {
         });
         setUpGoodsColumns(_manageTable);
         VBox.setVgrow(_manageTable, Priority.ALWAYS);
+        _manageTable.setMinHeight(150);
 
-        VBox box = new VBox(10, sectionTitle("录入商品（管理员）"), form, buttons,
+        VBox box = new VBox(10, sectionTitle("录入商品（管理员）"), upper,
                 sectionTitle("商品列表"), _manageTable);
         box.getStyleClass().add("store-page");
         return box;
+    }
+
+    /**
+     * 生成一个列约束（标签列固定最小宽度，字段列自适应拉伸）。
+     *
+     * @param grow     是否拉伸
+     * @param minWidth 最小宽度
+     * @return 列约束
+     */
+    private ColumnConstraints growColumn(boolean grow, double minWidth) {
+        ColumnConstraints column = new ColumnConstraints();
+        column.setMinWidth(minWidth);
+        if (grow) {
+            column.setHgrow(Priority.ALWAYS);
+            column.setFillWidth(true);
+        }
+        return column;
+    }
+
+    /**
+     * 生成一行"标签 + 数值"的统计行。
+     *
+     * @param label 标签
+     * @param value 数值
+     * @return 统计行
+     */
+    private HBox statRow(String label, String value) {
+        Label name = new Label(label);
+        name.getStyleClass().add("stat-label");
+        name.setMinWidth(76);
+        Label val = new Label(value);
+        val.getStyleClass().add("stat-value");
+        val.setWrapText(true);
+        val.setMaxWidth(Double.MAX_VALUE); // 让它自动换行而不是被省略号截断
+        HBox.setHgrow(val, Priority.ALWAYS);
+        HBox row = new HBox(8, name, val);
+        row.setAlignment(Pos.TOP_LEFT);
+        return row;
+    }
+
+    /**
+     * 刷新"商品管理"右侧的库存概览（商品总数、缺图、库存合计、今日特价、库存预警）。
+     */
+    private void refreshGoodsStats() {
+        if (_goodsStatsBox == null) {
+            return;
+        }
+        List<Goods> goods = _manageTable.getItems();
+        int noImage = 0;
+        int promotion = 0;
+        int stockSum = 0;
+        StringBuilder lowStock = new StringBuilder();
+        for (Goods g : goods) {
+            if (g.getImageUrl() == null || g.getImageUrl().isBlank()) {
+                noImage++;
+            }
+            if (g.hasDiscount()) {
+                promotion++;
+            }
+            stockSum += g.getStock();
+            if (g.getStock() < 10) {
+                if (lowStock.length() > 0) {
+                    lowStock.append("、");
+                }
+                lowStock.append(safe(g.getGoodsName())).append("(").append(g.getStock()).append(")");
+            }
+        }
+        _goodsStatsBox.getChildren().setAll(
+                sectionTitle("库存概览"),
+                statRow("商品总数", goods.size() + " 件"),
+                statRow("缺图商品", noImage + " 件"),
+                statRow("库存合计", stockSum + " 件"),
+                statRow("今日特价", promotion + " 件"),
+                statRow("库存预警", lowStock.length() == 0 ? "无（均 ≥ 10 件）" : lowStock.toString()));
+    }
+
+    /**
+     * 刷新"活动管理"右侧的统计面板：各天活动数量 + 今日生效的特价 + 规则说明。
+     */
+    private void refreshPromotionStats() {
+        if (_promoStatsBox == null) {
+            return;
+        }
+        List<Promotion> promotions = _promoTable.getItems();
+        int[] perDay = new int[8];
+        int today = LocalDate.now().getDayOfWeek().getValue();
+        List<String> todayDeals = new ArrayList<>();
+        for (Promotion p : promotions) {
+            int day = p.getWeekday();
+            if (day >= 0 && day <= 7) {
+                perDay[day]++;
+            }
+            if (day == 0 || day == today) {
+                todayDeals.add(safe(p.getGoodsName()) + " " + p.getDiscountLabel());
+            }
+        }
+
+        // 今日特价逐行列出（不挤成一行，避免被截断）
+        Label todayTitle = new Label("今日特价（" + todayDeals.size() + " 件）");
+        todayTitle.getStyleClass().add("stat-label");
+        VBox todayBox = new VBox(3, todayTitle);
+        if (todayDeals.isEmpty()) {
+            Label none = new Label("今天没有特价商品");
+            none.getStyleClass().add("stat-value");
+            todayBox.getChildren().add(none);
+        } else {
+            int shown = 0;
+            for (String deal : todayDeals) {
+                if (shown >= 4) {
+                    Label more = new Label("…共 " + todayDeals.size() + " 件");
+                    more.getStyleClass().add("stat-label");
+                    todayBox.getChildren().add(more);
+                    break;
+                }
+                Label item = new Label("· " + deal);
+                item.getStyleClass().add("stat-value");
+                item.setWrapText(true);
+                todayBox.getChildren().add(item);
+                shown++;
+            }
+        }
+
+        Label rule = new Label("规则：0.80 = 8 折；「每天」= 常年特价");
+        rule.getStyleClass().add("cart-hint");
+        rule.setWrapText(true);
+
+        _promoStatsBox.getChildren().setAll(
+                sectionTitle("活动分布"),
+                statRow("活动总数", promotions.size() + " 条"),
+                statRow("每天特价", perDay[0] + " 条"),
+                statRow("周一 / 周二", perDay[1] + " / " + perDay[2] + " 条"),
+                statRow("周三 / 周四", perDay[3] + " / " + perDay[4] + " 条"),
+                statRow("周五 / 周六", perDay[5] + " / " + perDay[6] + " 条"),
+                statRow("周日", perDay[7] + " 条"),
+                todayBox,
+                rule);
     }
 
     /**
@@ -554,6 +738,7 @@ public class StoreFrame extends Application {
                 refreshPromoGoods(goods); // 活动表单的商品下拉框跟着刷新
                 renderGoodsCards(_loadedGoods);
                 _manageTable.getItems().setAll(goods);
+                refreshGoodsStats(); // 商品管理右侧的库存概览同步刷新
             } else {
                 showAlert(Alert.AlertType.ERROR, "查询失败", String.valueOf(response.getData()));
             }
@@ -770,15 +955,14 @@ public class StoreFrame extends Application {
      * @param g 商品
      */
     private void promptAndBuy(Goods g) {
-        TextInputDialog dialog = new TextInputDialog("1");
-        dialog.setTitle("购买数量");
-        dialog.setHeaderText(safe(g.getGoodsName())
+        String headline = safe(g.getGoodsName())
                 + (g.hasDiscount()
-                        ? "    今日特价 ¥" + plain(g.getDiscountPrice()) + "（" + g.getDiscountLabel()
+                        ? "　今日特价 ¥" + plain(g.getDiscountPrice()) + "（" + g.getDiscountLabel()
                                 + "，原价 ¥" + plain(g.getPrice()) + "）"
-                        : "    单价 ¥" + plain(g.getPrice())));
-        dialog.setContentText("购买数量：");
-        Optional<String> result = dialog.showAndWait();
+                        : "　单价 ¥" + plain(g.getPrice()))
+                + "　|　当前库存 " + g.getStock();
+        Optional<String> result = promptInput("立即下单", headline, "购买数量：", "1",
+                "1", "2", "3", "5", "");
         if (result.isEmpty()) {
             return;
         }
@@ -790,6 +974,11 @@ public class StoreFrame extends Application {
         }
         if (quantity <= 0) {
             showAlert(Alert.AlertType.ERROR, "输入错误", "购买数量必须为正整数");
+            return;
+        }
+        if (quantity > g.getStock()) {
+            showAlert(Alert.AlertType.WARNING, "库存不足",
+                    "「" + safe(g.getGoodsName()) + "」当前库存只有 " + g.getStock() + " 件");
             return;
         }
         doBuy(g, quantity);
@@ -828,17 +1017,22 @@ public class StoreFrame extends Application {
         String userId = _currentUser == null ? null : _currentUser.getUId();
         if (userId == null || userId.isBlank()) {
             _balanceLabel.setText("余额：--");
+            _balanceValue = null;
             return;
         }
         try {
             Message response = _storeClientSrv.queryBalance(userId);
             if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode()) && response.getData() != null) {
                 _balanceLabel.setText("余额：¥" + response.getData());
+                _balanceValue = response.getData() instanceof BigDecimal
+                        ? (BigDecimal) response.getData() : new BigDecimal(String.valueOf(response.getData()));
             } else {
                 _balanceLabel.setText("余额：--");
+                _balanceValue = null;
             }
         } catch (IOException | ClassNotFoundException e) {
             _balanceLabel.setText("余额：--");
+            _balanceValue = null;
         }
     }
 
@@ -851,11 +1045,9 @@ public class StoreFrame extends Application {
             showAlert(Alert.AlertType.WARNING, "提示", "未登录，无法充值");
             return;
         }
-        TextInputDialog dialog = new TextInputDialog("100");
-        dialog.setTitle("校园卡充值");
-        dialog.setHeaderText("为账号 " + userId + " 充值");
-        dialog.setContentText("充值金额（元）：");
-        Optional<String> result = dialog.showAndWait();
+        Optional<String> result = promptInput("校园卡充值",
+                "为账号 " + userId + " 充值　|　当前余额 " + plain(_balanceValue),
+                "充值金额（元）：", "100", "50", "100", "200", "500", "元");
         if (result.isEmpty()) {
             return;
         }
@@ -946,19 +1138,28 @@ public class StoreFrame extends Application {
         _promoRemarkField.setPrefWidth(240);
 
         GridPane form = new GridPane();
-        form.setHgap(10);
+        form.setHgap(12);
         form.setVgap(10);
-        form.getStyleClass().add("tool-bar-card");
         form.add(formLabel("活动编号"), 0, 0);
         form.add(_promoIdField, 1, 0);
-        form.add(formLabel("商品"), 0, 1);
-        form.add(_promoGoodsBox, 1, 1);
-        form.add(formLabel("折扣率"), 0, 2);
-        form.add(_promoRateBox, 1, 2);
-        form.add(formLabel("生效星期"), 0, 3);
-        form.add(_promoWeekdayBox, 1, 3);
-        form.add(formLabel("活动说明"), 0, 4);
-        form.add(_promoRemarkField, 1, 4);
+        form.add(formLabel("商品"), 2, 0);
+        form.add(_promoGoodsBox, 3, 0);
+        form.add(formLabel("折扣率"), 0, 1);
+        form.add(_promoRateBox, 1, 1);
+        form.add(formLabel("生效星期"), 2, 1);
+        form.add(_promoWeekdayBox, 3, 1);
+        form.add(formLabel("活动说明"), 0, 2);
+        form.add(_promoRemarkField, 1, 2, 3, 1); // 说明横跨 3 列，铺满整行
+        for (Node field : new Node[]{_promoIdField, _promoGoodsBox, _promoRateBox,
+                _promoWeekdayBox, _promoRemarkField}) {
+            GridPane.setHgrow(field, Priority.ALWAYS);
+            if (field instanceof javafx.scene.layout.Region region) {
+                region.setMaxWidth(Double.MAX_VALUE);
+            }
+        }
+        form.getColumnConstraints().addAll(
+                growColumn(false, 66), growColumn(true, 110),
+                growColumn(false, 66), growColumn(true, 110));
 
         Button addButton = new Button("新增活动");
         addButton.getStyleClass().add("primary");
@@ -974,19 +1175,35 @@ public class StoreFrame extends Application {
         HBox buttons = new HBox(10, addButton, updateButton, deleteButton, clearButton);
         buttons.setAlignment(Pos.CENTER_LEFT);
 
+        Label tip = new Label("折扣率 0.80 表示 8 折（可手填 0~1 之间的小数）；生效星期选「每天」就是常年特价；"
+                + "同一商品同一天只能有一条活动。\n"
+                + "配置步骤：① 填活动编号（如 P023）→ ② 选商品与折扣率 → ③ 选生效星期、填活动说明 → ④ 点「新增活动」。");
+        tip.getStyleClass().add("cart-hint");
+        tip.setWrapText(true);
+
+        VBox formCard = new VBox(12, form, buttons, tip);
+        formCard.getStyleClass().add("tool-bar-card");
+        HBox.setHgrow(formCard, Priority.ALWAYS);
+
+        // 右侧：活动分布 + 今日特价（把空白区域用起来，也给管理员一眼能看的信息）
+        _promoStatsBox = new VBox(8);
+        _promoStatsBox.getStyleClass().add("side-card");
+        _promoStatsBox.setPrefWidth(270);
+        _promoStatsBox.setMinWidth(250);
+
+        HBox upper = new HBox(14, formCard, _promoStatsBox);
+        upper.setAlignment(Pos.TOP_LEFT);
+
         setUpPromotionColumns(_promoTable);
         VBox.setVgrow(_promoTable, Priority.ALWAYS);
+        _promoTable.setMinHeight(150);
         _promoTable.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
             if (selected != null) {
                 fillPromoForm(selected);
             }
         });
 
-        Label tip = new Label("折扣率 0.80 表示 8 折（可手填 0~1 之间的小数）；"
-                + "生效星期选「每天」就是常年特价；同一商品同一天只能有一条活动");
-        tip.getStyleClass().add("cart-hint");
-
-        VBox box = new VBox(10, sectionTitle("配置每日特价活动（管理员）"), form, buttons, tip,
+        VBox box = new VBox(10, sectionTitle("配置每日特价活动（管理员）"), upper,
                 sectionTitle("全部活动"), _promoTable);
         box.getStyleClass().add("store-page");
         return box;
@@ -1018,6 +1235,7 @@ public class StoreFrame extends Application {
             if (IConstant.STATUS_SUCCESS.equals(response.getStatusCode())) {
                 List<Promotion> promotions = (List<Promotion>) response.getData();
                 _promoTable.getItems().setAll(promotions);
+                refreshPromotionStats(); // 右侧统计面板同步刷新
             } else {
                 showAlert(Alert.AlertType.ERROR, "查询失败", String.valueOf(response.getData()));
             }
@@ -1463,19 +1681,155 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * 弹出二次确认框。
+     * 弹出一个与商店风格一致的二次确认框（青绿渐变标题栏 + 白底内容 + 药丸按钮）。
      *
      * @param title   标题
      * @param message 提示内容
      * @return 用户点击"确定"返回 {@code true}
      */
     private boolean confirm(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        Optional<javafx.scene.control.ButtonType> result = alert.showAndWait();
-        return result.isPresent() && result.get() == javafx.scene.control.ButtonType.OK;
+        ButtonType okType = new ButtonType("确定", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelType = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(title);
+        dialog.setHeaderText(null);
+        DialogPane pane = buildStyledPane(title, "请确认下面的操作", okType, cancelType);
+        Label content = new Label(message);
+        content.getStyleClass().add("dialog-prompt");
+        content.setWrapText(true);
+        content.setMaxWidth(420);
+        pane.setContent(content);
+        styleButton(pane, okType, "primary");
+        styleButton(pane, cancelType, "secondary");
+        dialog.setDialogPane(pane);
+        initOwnerIfPossible(dialog);
+        return dialog.showAndWait().orElse(cancelType) == okType;
+    }
+
+    /**
+     * 构建一个与商店风格一致的输入弹窗（充值金额、下单数量用）。
+     *
+     * @param title       窗口标题
+     * @param headline    副标题（显示商品/账号与价格等上下文）
+     * @param promptText  输入框前面的说明文字
+     * @param defaultValue 输入框默认值
+     * @param quickValues 快捷按钮的取值（可为空）
+     * @param quickSuffix 快捷按钮文字后缀（如"元"，数量场景传空串）
+     * @return 用户输入的内容；点取消返回 {@link Optional#empty()}
+     */
+    private Optional<String> promptInput(String title, String headline, String promptText, String defaultValue,
+                                         String quick1, String quick2, String quick3, String quick4,
+                                         String quickSuffix) {
+        ButtonType okType = new ButtonType("确认", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelType = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle(title);
+        dialog.setHeaderText(null);
+        DialogPane pane = buildStyledPane(title, headline, okType, cancelType);
+
+        Label prompt = new Label(promptText);
+        prompt.getStyleClass().add("dialog-prompt");
+        TextField field = new TextField(defaultValue);
+        field.setPrefWidth(200);
+        HBox inputRow = new HBox(10, prompt, field);
+        inputRow.setAlignment(Pos.CENTER_LEFT);
+
+        VBox content = new VBox(12, inputRow);
+        String[] quicks = {quick1, quick2, quick3, quick4};
+        HBox quickRow = new HBox(8);
+        quickRow.setAlignment(Pos.CENTER_LEFT);
+        Label quickLabel = new Label("快捷：");
+        quickLabel.getStyleClass().add("dialog-hint");
+        quickRow.getChildren().add(quickLabel);
+        for (String value : quicks) {
+            if (value == null || value.isBlank()) {
+                continue;
+            }
+            Button chip = new Button(value + quickSuffix);
+            chip.getStyleClass().add("dialog-chip");
+            chip.setOnAction(e -> {
+                field.setText(value);
+                field.requestFocus();
+            });
+            quickRow.getChildren().add(chip);
+        }
+        if (quickRow.getChildren().size() > 1) {
+            content.getChildren().add(quickRow);
+        }
+        pane.setContent(content);
+        styleButton(pane, okType, "primary");
+        styleButton(pane, cancelType, "secondary");
+
+        dialog.setDialogPane(pane);
+        dialog.setResultConverter(buttonType -> buttonType == okType ? field.getText() : null);
+        initOwnerIfPossible(dialog);
+        Platform.runLater(() -> {
+            field.requestFocus();
+            field.selectAll();
+        });
+        Optional<String> result = dialog.showAndWait();
+        return result == null ? Optional.empty() : result;
+    }
+
+    /**
+     * 构建弹窗面板：顶部青绿渐变标题栏 + 白底内容区，并挂上商店样式表。
+     *
+     * @param title       标题（白色大字）
+     * @param headline    副标题（浅色小字，可为空）
+     * @param buttonTypes 按钮类型
+     * @return 弹窗面板
+     */
+    private DialogPane buildStyledPane(String title, String headline, ButtonType... buttonTypes) {
+        DialogPane pane = new DialogPane();
+        pane.getStyleClass().addAll("store-root", "store-dialog");
+        applyStylesheet(pane);
+        pane.getButtonTypes().setAll(buttonTypes);
+
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("dialog-title");
+        VBox header = new VBox(4);
+        header.getStyleClass().add("dialog-header");
+        header.getChildren().add(titleLabel);
+        if (headline != null && !headline.isBlank()) {
+            Label headlineLabel = new Label(headline);
+            headlineLabel.getStyleClass().add("dialog-headline");
+            headlineLabel.setWrapText(true);
+            headlineLabel.setMaxWidth(420);
+            header.getChildren().add(headlineLabel);
+        }
+        pane.setHeader(header);
+        return pane;
+    }
+
+    /**
+     * 给弹窗里的按钮套上商店的按钮样式。
+     *
+     * @param pane        弹窗面板
+     * @param buttonType  按钮类型
+     * @param styleClass  样式类（primary / danger / secondary）
+     */
+    private void styleButton(DialogPane pane, ButtonType buttonType, String styleClass) {
+        Node node = pane.lookupButton(buttonType);
+        if (node instanceof Button button) {
+            button.getStyleClass().add(styleClass);
+            button.setDefaultButton(ButtonBar.ButtonData.OK_DONE.equals(buttonType.getButtonData()));
+            button.setCancelButton(ButtonBar.ButtonData.CANCEL_CLOSE.equals(buttonType.getButtonData()));
+        }
+    }
+
+    /**
+     * 把弹窗挂到当前窗口上（居中显示、保持模态关系）；拿不到窗口时忽略。
+     *
+     * @param dialog 弹窗
+     */
+    private void initOwnerIfPossible(Dialog<?> dialog) {
+        try {
+            if (_ownerNode != null && _ownerNode.getScene() != null && _ownerNode.getScene().getWindow() != null) {
+                dialog.initOwner(_ownerNode.getScene().getWindow());
+            }
+        } catch (Exception ignored) {
+            // 独立窗口/测试场景下拿不到 owner，忽略即可
+        }
     }
 
     /**
@@ -1646,18 +2000,29 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * 显示提示对话框。
+     * 显示提示对话框（与商店风格一致：青绿渐变标题栏 + 白底内容 + 药丸按钮；
+     * 成功/提示用主色按钮，错误用红色按钮，一眼能看出结果）。
      *
      * @param type    提示类型
      * @param title   标题
      * @param content 内容
      */
     private void showAlert(Alert.AlertType type, String title, String content) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(content);
-        alert.showAndWait();
+        ButtonType okType = new ButtonType("知道了", ButtonBar.ButtonData.OK_DONE);
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(title);
+        dialog.setHeaderText(null);
+        DialogPane pane = buildStyledPane(title, null, okType);
+        Label label = new Label(content);
+        label.getStyleClass().add("dialog-prompt");
+        label.setWrapText(true);
+        label.setMaxWidth(420);
+        pane.setContent(label);
+        boolean error = type == Alert.AlertType.ERROR;
+        styleButton(pane, okType, error ? "danger" : "primary");
+        dialog.setDialogPane(pane);
+        initOwnerIfPossible(dialog);
+        dialog.showAndWait();
     }
 
     /**
