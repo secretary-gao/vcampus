@@ -28,6 +28,77 @@
 }
 .store-title { -fx-text-fill: white; -fx-font-size: 22px; -fx-font-weight: bold; }
 .store-subtitle { -fx-text-fill: #d3f2ec; -fx-font-size: 12px; }
+/* 英文副标题（虚拟商店的英文名） */
+.store-english {
+    -fx-text-fill: #a9e3d8;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+/* 圆形校徽徽章：不加白底（白边很明显），只给一点投影让它从横幅上浮起来 */
+.logo-chip {
+    -fx-background-color: transparent;
+    -fx-effect: dropshadow(gaussian, rgba(6, 60, 55, 0.45), 7, 0.20, 0, 2);
+}
+
+/* 横幅下沿的校色细带（校徽上的金黄 → 校徽三角的绿 → 横幅主色） */
+.header-stripe {
+    -fx-min-height: 4;
+    -fx-pref-height: 4;
+    -fx-background-color: linear-gradient(to right, #f2c231, #4a9a5a 45%, #0f7a72);
+}
+
+/* 页签图标与购物车件数角标 */
+.tab-icon { -fx-font-size: 14px; }
+/* 图标跟着页签状态变色，否则选中时深色图标压在青色药丸上看不清 */
+.store-tabs > .tab-header-area > .headers-region > .tab .tab-icon { -fx-text-fill: #4c5e75; }
+.store-tabs > .tab-header-area > .headers-region > .tab:selected .tab-icon { -fx-text-fill: white; }
+.tab-badge {
+    -fx-background-color: #e2553f;
+    -fx-text-fill: white;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 9;
+    -fx-padding: 1 6 1 6;
+}
+
+/* 输入框右侧的清除按钮（输入为空时自动隐藏） */
+.button.ghost-icon {
+    -fx-background-color: transparent;
+    -fx-text-fill: #8794a6;
+    -fx-font-size: 12px;
+    -fx-padding: 4 8 4 8;
+    -fx-background-radius: 12;
+}
+.button.ghost-icon:hover { -fx-background-color: #eef3f9; -fx-text-fill: #33475f; }
+
+/* 售罄角标 + 售罄卡片整体压暗 */
+.sold-out-badge {
+    -fx-background-color: #9aa5b1;
+    -fx-text-fill: white;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6;
+    -fx-padding: 2 6 2 6;
+}
+.goods-card-sold-out { -fx-opacity: 0.72; }
+
+/* 空状态（购物车为空时的引导区） */
+.empty-state-icon { -fx-font-size: 44px; }
+.empty-state-title { -fx-text-fill: #33475f; -fx-font-size: 16px; -fx-font-weight: bold; }
+
+/* 角色徽章（与选课模块一套配色） */
+.role-badge {
+    -fx-padding: 5 12 5 12;
+    -fx-background-radius: 14;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-text-fill: white;
+}
+.role-student { -fx-background-color: #2f9a62; }
+.role-teacher { -fx-background-color: #2f72d6; }
+.role-admin { -fx-background-color: #c88a18; }
+.role-unknown { -fx-background-color: #78869a; }
 
 /* 余额药丸 */
 .balance-badge {
@@ -77,6 +148,9 @@
     -fx-background-radius: 9;
     -fx-padding: 7 18 7 18;
     -fx-cursor: hand;
+    /* 页签统一宽度：文字长短（2 字 / 4 字）与有没有件数角标都不改变宽度，看着整齐 */
+    -fx-min-width: 132;
+    -fx-pref-width: 132;
 }
 .store-tabs > .tab-header-area > .headers-region > .tab:hover { -fx-background-color: #dff1ee; }
 .store-tabs > .tab-header-area > .headers-region > .tab:selected { -fx-background-color: #1f8f80; }

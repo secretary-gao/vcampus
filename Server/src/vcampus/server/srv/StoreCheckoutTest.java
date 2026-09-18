@@ -228,6 +228,25 @@ public class StoreCheckoutTest {
             check(balanceOf(walletDAO).compareTo(balanceBefore6.subtract(expectTotal)) == 0,
                     "余额应按特价扣减 " + expectTotal.toPlainString() + "，实际剩余 " + balanceOf(walletDAO).toPlainString());
             check(stockOf(goodsDAO, GOODS_A) == stockABefore6 - 2, "特价订单也应正常扣减库存");
+            // 价格快照：明细里应留下"下单当时的原价与折扣率"，用于展示这一单优惠了多少
+            PurchaseRecord promoDetail = promoOrder.getItems().get(0);
+            System.out.println("明细快照：原价 " + promoDetail.getOriginalPrice()
+                    + "，成交单价 " + promoDetail.getUnitPrice().toPlainString()
+                    + "，折扣率 " + promoDetail.getDiscountRate()
+                    + "，优惠 " + promoDetail.getSaving().toPlainString() + " 元");
+            check(promoDetail.getOriginalPrice() != null
+                            && promoDetail.getOriginalPrice().compareTo(new BigDecimal("9.90")) == 0,
+                    "明细应记录下单时的原价快照 9.90");
+            check(promoDetail.getDiscountRate() != null
+                            && promoDetail.getDiscountRate().compareTo(new BigDecimal("0.50")) == 0,
+                    "明细应记录下单时的折扣率 0.50");
+            check(promoDetail.getSaving().compareTo(new BigDecimal("9.90")) == 0,
+                    "两件共应优惠 (9.90-4.95)×2 = 9.90，实际 " + promoDetail.getSaving());
+            check(promoDetail.hasDiscount(), "有优惠的明细 hasDiscount 应为 true");
+            // 无活动的商品不应凭空出现优惠
+            PurchaseRecord plainDetail = order.getItems().get(0);
+            check(!plainDetail.hasDiscount() && plainDetail.getSaving().compareTo(BigDecimal.ZERO) == 0,
+                    "无活动商品不应有优惠金额");
 
             // ============ 7. 清理测试数据 ============
             System.out.println();

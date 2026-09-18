@@ -23,8 +23,12 @@ import java.time.LocalDateTime;
  * {@code _goodsName} 为查询时通过 LEFT JOIN tblGoods 附带得到，便于界面展示，不单独入库。</p>
  *
  * <p>购物车功能上线后，一个订单可以包含多个商品，本类在实际存储中表示订单的<b>一行明细</b>：
- * {@code _totalPrice} 为该行小计（单价×数量），订单总金额存在订单主表
+ * {@code _totalPrice} 为该行小计（成交单价×数量），订单总金额存在订单主表
  * {@link Order#getTotalAmount()} 中；一个订单的多行明细通过同一个 {@code orderId} 关联。</p>
+ *
+ * <p>{@code _originalPrice}/{@code _discountRate} 是<b>下单当时的价格快照</b>：商品单价可能被管理员
+ * 修改、每日特价也每天不同，落快照才能让历史订单准确反映"当时成交了多少、优惠了多少"
+ * （{@link #getSaving()}），不受事后改价或改活动的影响。</p>
  */
 public class PurchaseRecord implements Serializable {
 
@@ -46,8 +50,14 @@ public class PurchaseRecord implements Serializable {
     /** 购买数量（>0）。 */
     private int _quantity;
 
-    /** 本行小计（= 单价 * 数量，>=0）。 */
+    /** 本行小计（= 成交单价 * 数量，>=0）。 */
     private BigDecimal _totalPrice;
+
+    /** 下单时原价快照（单价；历史数据按成交价回填，无快照时等于成交单价）。 */
+    private BigDecimal _originalPrice;
+
+    /** 下单时折扣率快照（0.10~0.95；下单时无活动为 {@code null}）。 */
+    private BigDecimal _discountRate;
 
     /** 下单时间。 */
     private LocalDateTime _orderTime;
@@ -167,6 +177,79 @@ public class PurchaseRecord implements Serializable {
     }
 
     /**
+     * 获取下单时的原价快照。
+     *
+     * @return 原价（单价）；无快照时返回 {@code null}
+     */
+    public BigDecimal getOriginalPrice() {
+        return _originalPrice;
+    }
+
+    /**
+     * 设置下单时的原价快照。
+     *
+     * @param originalPrice 原价（单价）
+     */
+    public void setOriginalPrice(BigDecimal originalPrice) {
+        this._originalPrice = originalPrice;
+    }
+
+    /**
+     * 获取下单时的折扣率快照。
+     *
+     * @return 折扣率；下单时无活动返回 {@code null}
+     */
+    public BigDecimal getDiscountRate() {
+        return _discountRate;
+    }
+
+    /**
+     * 设置下单时的折扣率快照。
+     *
+     * @param discountRate 折扣率
+     */
+    public void setDiscountRate(BigDecimal discountRate) {
+        this._discountRate = discountRate;
+    }
+
+    /**
+     * 计算这一行的成交单价（小计 ÷ 数量，保留两位小数）。
+     *
+     * @return 成交单价
+     */
+    public BigDecimal getUnitPrice() {
+        if (_totalPrice == null || _quantity <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return _totalPrice.divide(BigDecimal.valueOf(_quantity), 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    /**
+     * 计算这一行优惠了多少钱（（原价 - 成交单价）× 数量）。
+     *
+     * @return 优惠金额；没有原价快照或没有优惠时返回 {@link BigDecimal#ZERO}
+     */
+    public BigDecimal getSaving() {
+        if (_originalPrice == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal diff = _originalPrice.subtract(getUnitPrice());
+        if (diff.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return diff.multiply(BigDecimal.valueOf(_quantity)).setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
+    /**
+     * 判断这一行下单时是否享有了折扣。
+     *
+     * @return {@code true} 表示有优惠
+     */
+    public boolean hasDiscount() {
+        return getSaving().compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    /**
      * 获取下单时间。
      *
      * @return 下单时间
@@ -198,6 +281,8 @@ public class PurchaseRecord implements Serializable {
                 ", goodsName='" + _goodsName + '\'' +
                 ", quantity=" + _quantity +
                 ", totalPrice=" + _totalPrice +
+                ", originalPrice=" + _originalPrice +
+                ", discountRate=" + _discountRate +
                 ", orderTime=" + _orderTime +
                 '}';
     }
