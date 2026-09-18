@@ -14,7 +14,7 @@ import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 
-import java.io.File;
+import java.net.URL;
 
 /**
  * 给整个客户端进程里所有窗口（登录窗、主界面、各模块弹出的独立窗口、
@@ -30,7 +30,7 @@ import java.io.File;
 public final class AppIcons {
 
     /** 校徽图片相对项目根目录的路径，跟 {@link SeuEmblem} 用的是同一张图。 */
-    private static final String ICON_PATH = "Client/src/vcampus/client/view/assets/seu-emblem.png";
+    private static final String ICON_PATH = "/vcampus/client/view/assets/seu-emblem.png";
 
     /** 缓存加载好的图标，避免重复读取文件。 */
     private static Image icon;
@@ -92,12 +92,12 @@ public final class AppIcons {
      * @return 加载成功返回图片；文件不存在或加载失败返回 {@code null}
      */
     private static Image loadIcon() {
-        File file = new File(ICON_PATH);
-        if (!file.isFile()) {
+        URL url = AppIcons.class.getResource(ICON_PATH);
+        if (url == null) {
             return null;
         }
         try {
-            Image image = new Image(file.toURI().toString());
+            Image image = new Image(url.toExternalForm());
             return image.isError() ? null : image;
         } catch (Exception e) {
             return null;

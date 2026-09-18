@@ -21,7 +21,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.util.Duration;
 
-import java.io.File;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,12 +35,12 @@ import java.util.List;
  */
 public final class CampusBackground {
 
-    /** 轮播图片相对项目根目录的路径。 */
+    /** 轮播图片的 classpath 资源路径（打包进 jar 后也按这个路径读取，不依赖源码目录）。 */
     private static final String[] IMAGE_PATHS = {
-            "Client/src/vcampus/client/view/assets/campus/campus1.jpg",
-            "Client/src/vcampus/client/view/assets/campus/campus2.jpg",
-            "Client/src/vcampus/client/view/assets/campus/campus3.jpg",
-            "Client/src/vcampus/client/view/assets/campus/campus4.jpg",
+            "/vcampus/client/view/assets/campus/campus1.jpg",
+            "/vcampus/client/view/assets/campus/campus2.jpg",
+            "/vcampus/client/view/assets/campus/campus3.jpg",
+            "/vcampus/client/view/assets/campus/campus4.jpg",
     };
 
     /** 每张照片停留的时长。 */
@@ -152,15 +152,14 @@ public final class CampusBackground {
     private static List<Image> loadImages() {
         List<Image> images = new ArrayList<>();
         for (String path : IMAGE_PATHS) {
-            File file = new File(path);
-            if (!file.isFile()) {
+            URL url = CampusBackground.class.getResource(path);
+            if (url == null) {
                 continue;
             }
             try {
-                // 本地文件，同步加载几乎是瞬时的；用 backgroundLoading=false
-                // 保证构造完成时 getWidth()/getHeight() 就能拿到真实尺寸，
-                // 不然裁剪填满的缩放计算会因为尺寸暂时是 0 而算出 NaN。
-                Image image = new Image(file.toURI().toString(), 0, 0, true, true, false);
+                // 同步加载（backgroundLoading=false），保证构造完成时 getWidth()/getHeight()
+                // 就能拿到真实尺寸，不然裁剪填满的缩放计算会因为尺寸暂时是 0 而算出 NaN。
+                Image image = new Image(url.toExternalForm(), 0, 0, true, true, false);
                 if (!image.isError()) {
                     images.add(image);
                 }

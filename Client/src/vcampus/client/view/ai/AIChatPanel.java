@@ -38,8 +38,8 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
-import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,10 +65,10 @@ public class AIChatPanel extends StackPane {
     private static final String AI_COLOR_SOFT = "#fbeee6";
 
     /** 背景图相对项目根目录的路径：李文正图书馆照片。 */
-    private static final String BACKGROUND_IMAGE_PATH = "Client/src/vcampus/client/view/assets/lwz.jpg";
+    private static final String BACKGROUND_IMAGE_PATH = "/vcampus/client/view/assets/lwz.jpg";
 
     /** 图标图片相对项目根目录的路径。 */
-    private static final String ICON_IMAGE_PATH = "Client/src/vcampus/client/view/assets/icon.png";
+    private static final String ICON_IMAGE_PATH = "/vcampus/client/view/assets/icon.png";
 
     /** 面板整体圆角，和 {@code MainFrame} 里卡片的圆角保持一致。 */
     private static final double PANEL_ARC = 18;
@@ -176,12 +176,12 @@ public class AIChatPanel extends StackPane {
      * @return 加载成功的图片；文件不存在或加载失败时返回 {@code null}
      */
     private Image loadBackgroundImage() {
-        File file = new File(BACKGROUND_IMAGE_PATH);
-        if (!file.isFile()) {
+        URL url = AIChatPanel.class.getResource(BACKGROUND_IMAGE_PATH);
+        if (url == null) {
             return null;
         }
         try {
-            Image image = new Image(file.toURI().toString(), 0, 0, true, true, false);
+            Image image = new Image(url.toExternalForm(), 0, 0, true, true, false);
             return image.isError() ? null : image;
         } catch (Exception e) {
             return null;
@@ -357,12 +357,12 @@ public class AIChatPanel extends StackPane {
      * @return 加载成功时返回可用的 {@link ImageView}；文件不存在或加载失败时返回 {@code null}
      */
     private ImageView tryLoadIconImage(double size) {
-        File file = new File(ICON_IMAGE_PATH);
-        if (!file.isFile()) {
+        URL url = AIChatPanel.class.getResource(ICON_IMAGE_PATH);
+        if (url == null) {
             return null;
         }
         try {
-            Image image = new Image(file.toURI().toString(), size, size, false, true, true);
+            Image image = new Image(url.toExternalForm(), size, size, false, true, true);
             if (image.isError()) {
                 return null;
             }

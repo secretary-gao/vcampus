@@ -22,7 +22,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
-import java.io.File;
+import java.net.URL;
 import java.util.List;
 
 /**
@@ -34,8 +34,8 @@ import java.util.List;
  */
 public final class SeuEmblem {
 
-    /** 校徽图片相对项目根目录的路径；各启动方式（.bat 脚本、IDE launch.json）都以项目根目录为工作目录，可直接用相对路径定位。 */
-    private static final String IMAGE_PATH = "Client/src/vcampus/client/view/assets/seu-emblem.png";
+    /** 校徽图片的 classpath 资源路径（打包进 jar 后也按这个路径读取，不依赖源码目录）。 */
+    private static final String IMAGE_PATH = "/vcampus/client/view/assets/seu-emblem.png";
 
     private SeuEmblem() {
     }
@@ -69,12 +69,12 @@ public final class SeuEmblem {
      * @return 加载成功时返回可用的 {@link ImageView}；文件不存在或加载失败时返回 {@code null}
      */
     private static ImageView tryLoadImage(double diameter) {
-        File file = new File(IMAGE_PATH);
-        if (!file.isFile()) {
+        URL url = SeuEmblem.class.getResource(IMAGE_PATH);
+        if (url == null) {
             return null;
         }
         try {
-            Image image = new Image(file.toURI().toString(), diameter, diameter, false, true, true);
+            Image image = new Image(url.toExternalForm(), diameter, diameter, false, true, true);
             if (image.isError()) {
                 return null;
             }

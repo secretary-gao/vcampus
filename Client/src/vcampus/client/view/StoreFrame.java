@@ -1045,10 +1045,20 @@ public class StoreFrame extends Application {
         final StackPane imgHolder = img;
         String url = g.getImageUrl();
         if (url != null && !url.isBlank()) {
-            // 网络地址直接加载；相对路径（相对于项目根目录）转成 file: URI，与 CampusBackground 一致
-            final String imageUri = (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file:"))
-                    ? url
-                    : new java.io.File(url).toURI().toString();
+            final String imageUri;
+            if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file:")) {
+                // 网络地址或已经是 file: URI，直接加载
+                imageUri = url;
+            } else {
+                // 相对路径：先按 classpath 资源加载（打包进 jar 后资源在 jar 里），
+                // 找不到再退回开发环境下相对项目根目录的 file: 路径。
+                String classpathPath = url.startsWith("Client/src/")
+                        ? url.substring("Client/src".length()) : "/" + url;
+                java.net.URL resource = StoreFrame.class.getResource(classpathPath);
+                imageUri = (resource != null)
+                        ? resource.toExternalForm()
+                        : new java.io.File(url).toURI().toString();
+            }
             new Thread(() -> {
                 Image im = null;
                 try {
