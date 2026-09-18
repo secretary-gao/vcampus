@@ -50,6 +50,13 @@ if errorlevel 1 (
   echo Store stylesheet copy FAILED.
   exit /b 1
 )
+rem 图片资源目录（校徽、登录背景轮播、医院药品图、商店商品图、AI 图标与背景图）
+rem 这些现在都通过 classpath getResource 读取，必须随源码一起拷进 bin，才能打包进 jar。
+xcopy /e /i /y "Client\src\vcampus\client\view\assets" "bin\vcampus\client\view\assets" >nul
+if errorlevel 1 (
+  echo Assets copy FAILED.
+  exit /b 1
+)
 
 echo Build succeeded.
 exit /b 0
