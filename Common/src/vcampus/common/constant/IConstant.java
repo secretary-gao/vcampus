@@ -19,10 +19,27 @@ package vcampus.common.constant;
  * </p>
  */
 public interface IConstant {
-    /** 服务器地址（本机测试时用回环地址）。 */
-    String SERVER_HOST = "127.0.0.1";
+    /**
+     * 服务器地址。默认回环地址 {@code 127.0.0.1}（本机自测，客户端和服务器
+     * 跑在同一台机器上）；跨机器联调时用 JVM 参数
+     * {@code -Dvcampus.server.host=服务器IP} 覆盖，打包后的客户端只需改启动
+     * 参数即可连到另一台机器上的服务器，不用重新改代码、重新编译。
+     */
+    String SERVER_HOST = resolveServerHost();
     /** 服务器监听端口。 */
     int SERVER_PORT = 8888;
+
+    /**
+     * 解析服务器地址：优先取系统属性 {@code vcampus.server.host}，没传就退回
+     * 默认回环地址。所有客户端 {@code biz} 层仍然引用 {@link #SERVER_HOST}
+     * 这一个字段，不需要逐个改。
+     *
+     * @return 实际使用的服务器地址
+     */
+    static String resolveServerHost() {
+        String host = System.getProperty("vcampus.server.host");
+        return (host == null || host.trim().isEmpty()) ? "127.0.0.1" : host.trim();
+    }
 
     /** 状态码：操作成功。 */
     String STATUS_SUCCESS = "200";
