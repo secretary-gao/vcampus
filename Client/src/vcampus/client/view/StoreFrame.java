@@ -21,6 +21,7 @@ import vcampus.common.vo.PurchaseRecord;
 import vcampus.common.vo.User;
 
 import javafx.animation.PauseTransition;
+import javafx.animation.ScaleTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -54,6 +55,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
@@ -110,6 +112,17 @@ public class StoreFrame extends Application {
     /** 商店界面的根节点（弹窗用它取所属窗口，保证弹窗居中显示）。 */
     private Node _ownerNode;
 
+    /** 页签容器（"去逛逛"这类引导按钮需要切换页签）。 */
+    private TabPane _tabPane;
+
+    private final Label _cartBadge = new Label();
+
+    /** 购物车为空时的引导区（大图标 + 文案 + 去逛逛按钮）。 */
+    private final VBox _cartEmptyBox = new VBox(10);
+
+    /** "我的订单"页签顶部的汇总行（共几单、累计金额、最近下单时间）。 */
+    private final Label _ordersSummary = new Label("暂无订单");
+
     // ---- 今日特价 ----
     /** 横幅上的"今日特价 N 件"提示。 */
     private final Label _promoCountLabel = new Label("今日特价：--");
@@ -129,7 +142,6 @@ public class StoreFrame extends Application {
     private final List<CartItem> _cart = new ArrayList<>();
     private final VBox _cartRows = new VBox(8);
     private final Label _cartSummaryLabel = new Label("合计：¥0.00");
-    private final Label _cartEmptyLabel = new Label("购物车是空的，去「商品商城」挑几件吧");
     private Tab _cartTab;
     private final Label _hintLabel = new Label();
 
@@ -215,6 +227,68 @@ public class StoreFrame extends Application {
     }
 
     /**
+     * 生成一个矢量绘制的购物车图标（浅青圆底 + 跟主色一致的线条）。
+     *
+     * <p>不用 emoji：某些环境下 emoji 会渲染成空字形（本次实测在 44px 时完全不可见），
+     * 用 {@link javafx.scene.shape.SVGPath} 画出来的图标不受字体影响，缩放也清晰。</p>
+     *
+     * @param size 图标外框边长
+     * @return 图标节点
+     */
+    private Node buildCartIcon(double size) {
+        Circle bg = new Circle(size / 2);
+        bg.setFill(javafx.scene.paint.Color.web("#e9f5f3"));
+        // 24x24 坐标系里的购物车：车筐 + 把手 + 两个轮子
+        javafx.scene.shape.SVGPath cart = new javafx.scene.shape.SVGPath();
+        cart.setContent("M2.5 3.5h2.3l2.4 10.2h10.3l2.2-7.2H5.4"
+                + " M8.6 18.4a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0 -3.4 0"
+                + " M15.2 18.4a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0 -3.4 0");
+        cart.setFill(null);
+        cart.setStroke(javafx.scene.paint.Color.web("#1f8f80"));
+        cart.setStrokeWidth(1.7);
+        cart.setScaleX(size / 32.0);
+        cart.setScaleY(size / 32.0);
+        StackPane icon = new StackPane(bg, cart);
+        icon.setMinSize(size, size);
+        icon.setMaxSize(size, size);
+        return icon;
+    }
+
+    /**
+     * 生成带图标的页签。
+     *
+     * @param icon  图标（emoji）
+     * @param title 页签标题
+     * @param content 页签内容
+     * @return 页签
+     */
+    private Tab tab(String icon, String title, Node content) {
+        Tab t = new Tab(title);
+        t.setClosable(false);
+        t.setGraphic(tabIcon(icon, null));
+        t.setContent(content);
+        return t;
+    }
+
+    /**
+     * 生成页签图标节点，可选在图标右侧挂一个角标（用于显示购物车件数）。
+     *
+     * @param icon  图标（emoji）
+     * @param badge 角标标签，可为 {@code null}
+     * @return 图标节点
+     */
+    private Node tabIcon(String icon, Label badge) {
+        Label iconLabel = new Label(icon);
+        iconLabel.getStyleClass().add("tab-icon");
+        HBox box = new HBox(5, iconLabel);
+        box.setAlignment(Pos.CENTER_LEFT);
+        if (badge != null) {
+            box.getChildren().add(badge);
+        }
+        return box;
+    }
+
+    /**
      * 构建商店模块的可嵌入内容（顶部横幅 + 商品/订单/管理页签），
      * 供独立窗口与主界面嵌入共用。
      *
@@ -232,14 +306,21 @@ public class StoreFrame extends Application {
         TabPane tabPane = new TabPane();
         tabPane.getStyleClass().add("store-tabs");
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-        tabPane.getTabs().add(new Tab("商品商城", buildBuyTab()));
-        _cartTab = new Tab("购物车", buildCartTab());
+        _tabPane = tabPane;
+
+        // 页签加图标（购物车页签额外挂一个件数角标）
+        tabPane.getTabs().add(tab("🏬", "商品商城", buildBuyTab()));
+        _cartTab = new Tab("购物车");
         _cartTab.setClosable(false);
+        _cartTab.setGraphic(tabIcon("🛒", _cartBadge));
+        _cartBadge.getStyleClass().add("tab-badge");
+        _cartBadge.setVisible(false);
+        _cartTab.setContent(buildCartTab());
         tabPane.getTabs().add(_cartTab);
-        tabPane.getTabs().add(new Tab("我的订单", buildOrdersTab()));
+        tabPane.getTabs().add(tab("📋", "我的订单", buildOrdersTab()));
         if (isAdmin()) {
-            tabPane.getTabs().add(new Tab("商品管理", buildManageTab()));
-            tabPane.getTabs().add(new Tab("活动管理", buildPromotionTab()));
+            tabPane.getTabs().add(tab("📦", "商品管理", buildManageTab()));
+            tabPane.getTabs().add(tab("🏷", "活动管理", buildPromotionTab()));
         }
         // 切到"我的订单"时才查询：进入模块不必多发一次请求，且每次查看都是最新记录
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
@@ -294,11 +375,13 @@ public class StoreFrame extends Application {
         banner.getStyleClass().add("store-header");
 
         VBox titleBlock = new VBox(1);
-        Label title = new Label("东南大学 · 虚拟商店");
+        Label title = new Label("虚拟商店");
         title.getStyleClass().add("store-title");
-        Label english = new Label("SEU Virtual Campus Store");
+        Label english = new Label("SEU Virtual Store");
         english.getStyleClass().add("store-english");
-        Label crumb = new Label("数字校园 / 虚拟商店");
+        // 与前缀的校徽呼应，副标题用三个词组说明模块功能（句式与选课模块的
+        // "课程检索、学习安排与教务管理"保持一致）
+        Label crumb = new Label("商品浏览、购物车结算与订单管理");
         crumb.getStyleClass().add("store-subtitle");
         titleBlock.getChildren().addAll(title, english, crumb);
 
@@ -330,16 +413,22 @@ public class StoreFrame extends Application {
         right.setAlignment(Pos.CENTER_RIGHT);
         banner.setRight(right);
         BorderPane.setAlignment(right, Pos.CENTER_RIGHT);
+
+        // 横幅下沿的校色细带（取校徽上的金黄与校徽三角的绿，向右过渡到横幅主色）
+        Region stripe = new Region();
+        stripe.getStyleClass().add("header-stripe");
+        banner.setBottom(stripe);
         return banner;
     }
 
     /**
-     * 生成圆形校徽徽章。
+     * 生成圆形校徽徽章（不带白底）。
      *
-     * <p>{@code seu_logo.jpeg} 是"校徽 + 校名"的横版合图（白底），整张放上去会和标题里的
-     * "东南大学"重复，所以这里用 {@link ImageView#setViewport} 只截取左侧的圆形校徽，
-     * 再用圆形裁剪做成徽章贴到青绿横幅上。资源是 classpath 资源（build.bat 会拷到 bin），
-     * 取不到时返回 {@code null}，横幅会退化成纯文字标题。</p>
+     * <p>{@code seu_logo.jpeg} 是"校徽 + 校名"的横版合图（2768x2000，白底），整张放上去会和标题重复，
+     * 因此只截取左侧的圆形校徽：先用 {@link ImageView#setViewport} 裁出校徽的外接正方形，
+     * 再用同直径的圆形裁剪把方形四角的白底裁掉，这样徽章边缘就是校徽自己的圆环，不会留白边。
+     * 裁切范围是扫描原图非白像素算出来的（校徽外接矩形 x=150..912、y=608..1390，取较窄边 762 内切）。
+     * 资源取不到时返回 {@code null}，横幅退化为纯文字标题。</p>
      *
      * @return 校徽徽章节点；加载失败返回 {@code null}
      */
@@ -352,20 +441,23 @@ public class StoreFrame extends Application {
         if (logo.isError()) {
             return null;
         }
-        double diameter = 52;
+        double diameter = 54;
         ImageView view = new ImageView(logo);
-        // 原图 2768x2000：左侧圆形校徽的非白像素外接矩形约为 x=150..912、y=608..1390，
-        // 取正方形并留 2% 余量后得到下面的裁切区域（这几个数字是扫描原图算出来的，不是目测）。
-        view.setViewport(new Rectangle2D(125, 593, 813, 813));
+        view.setViewport(new Rectangle2D(150, 618, 762, 762));
         view.setFitWidth(diameter);
         view.setFitHeight(diameter);
         view.setPreserveRatio(true);
         view.setSmooth(true);
 
-        StackPane chip = new StackPane(view);
-        chip.setMinSize(diameter, diameter);
-        chip.setMaxSize(diameter, diameter);
-        chip.setClip(new Circle(diameter / 2, diameter / 2, diameter / 2));
+        // 圆形裁剪：把外接正方形四角的白底裁掉。
+        // 半径收进 1.5%，让裁剪边界落在校徽外圈的深色圆环上（JavaFX 的 clip 不做抗锯齿，
+        // 落在深色环上比落在白底上不易看出锯齿）。
+        StackPane circular = new StackPane(view);
+        circular.setMinSize(diameter, diameter);
+        circular.setMaxSize(diameter, diameter);
+        circular.setClip(new Circle(diameter / 2, diameter / 2, diameter / 2 * 0.985));
+        // 外层不加裁剪，这样投影不会被裁掉
+        StackPane chip = new StackPane(circular);
         chip.getStyleClass().add("logo-chip");
         return chip;
     }
@@ -398,8 +490,10 @@ public class StoreFrame extends Application {
      * @return 页签内容
      */
     private VBox buildBuyTab() {
-        _searchField.setPromptText("标题、描述或分类关键字");
+        _searchField.setPromptText("输入商品名称或类别，回车即可查询");
         _searchField.setPrefWidth(300);
+        // 回车即查询
+        _searchField.setOnAction(e -> loadGoods());
 
         Button queryButton = new Button("查询");
         queryButton.getStyleClass().add("primary");
@@ -407,6 +501,16 @@ public class StoreFrame extends Application {
         Button refreshButton = new Button("刷新");
         refreshButton.getStyleClass().add("secondary");
         refreshButton.setOnAction(e -> loadGoods());
+        // 清除按钮：输入框为空时自动隐藏
+        Button clearButton = new Button("✕");
+        clearButton.getStyleClass().add("ghost-icon");
+        clearButton.setOnAction(e -> {
+            _searchField.clear();
+            loadGoods();
+            _searchField.requestFocus();
+        });
+        clearButton.visibleProperty().bind(_searchField.textProperty().isNotEmpty());
+        clearButton.managedProperty().bind(clearButton.visibleProperty());
 
         // "只看特价"：纯客户端筛选，不打服务器
         _onlyPromoFilter.getStyleClass().add("filter-toggle");
@@ -418,8 +522,8 @@ public class StoreFrame extends Application {
         _hintLabel.setAlignment(Pos.CENTER_RIGHT);
         HBox.setHgrow(_hintLabel, Priority.ALWAYS);
 
-        HBox searchBar = new HBox(10, _categoryBox, _searchField, queryButton, refreshButton,
-                _onlyPromoFilter, _hintLabel);
+        HBox searchBar = new HBox(10, _categoryBox, _searchField, clearButton, queryButton,
+                refreshButton, _onlyPromoFilter, _hintLabel);
         searchBar.setAlignment(Pos.CENTER_LEFT);
         searchBar.getStyleClass().add("tool-bar-card");
 
@@ -431,6 +535,28 @@ public class StoreFrame extends Application {
         VBox box = new VBox(10, searchBar, scroll);
         box.getStyleClass().add("store-page");
         return box;
+    }
+
+    /**
+     * 更新"我的订单"页签顶部的汇总行。
+     *
+     * @param orders 当前展示的订单
+     */
+    private void updateOrdersSummary(List<Order> orders) {
+        if (orders == null || orders.isEmpty()) {
+            _ordersSummary.setText("暂无订单");
+            return;
+        }
+        BigDecimal total = BigDecimal.ZERO;
+        int items = 0;
+        for (Order o : orders) {
+            total = total.add(o.getTotalAmount() == null ? BigDecimal.ZERO : o.getTotalAmount());
+            items += o.getTotalQuantity();
+        }
+        String latest = orders.get(0).getOrderTime() == null
+                ? "" : orders.get(0).getOrderTime().format(TIME_FMT);
+        _ordersSummary.setText("共 " + orders.size() + " 单 · " + items + " 件 · 累计 ¥"
+                + total.toPlainString() + (latest.isBlank() ? "" : " · 最近 " + latest));
     }
 
     /**
@@ -454,9 +580,15 @@ public class StoreFrame extends Application {
         refreshButton.setOnAction(e -> loadOrders());
         Label tip = new Label(isAdmin() ? "显示全部用户的订单，选中一行查看明细" : "显示本人订单，选中一行查看明细");
         tip.getStyleClass().add("cart-hint");
-        HBox bar = new HBox(12, refreshButton, tip);
+        HBox.setHgrow(tip, Priority.NEVER);
+        // 汇总行：共几单、累计金额、最近下单时间（订单是钱包即时扣款，没有"待付款"状态）
+        _ordersSummary.getStyleClass().add("stat-value");
+        HBox bar = new HBox(12, refreshButton, tip, _ordersSummary);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.getStyleClass().add("tool-bar-card");
+        HBox.setHgrow(_ordersSummary, Priority.ALWAYS);
+        _ordersSummary.setAlignment(Pos.CENTER_RIGHT);
+        _ordersSummary.setMaxWidth(Double.MAX_VALUE);
 
         Label itemsTitle = sectionTitle("订单明细");
         _orderItemsTable.setPrefHeight(200);
@@ -870,9 +1002,13 @@ public class StoreFrame extends Application {
      * @return 卡片
      */
     private VBox buildGoodsCard(Goods g) {
+        boolean soldOut = g.getStock() <= 0;
         VBox card = new VBox(8);
         card.setPrefWidth(210);
         card.getStyleClass().add("goods-card");
+        if (soldOut) {
+            card.getStyleClass().add("goods-card-sold-out");
+        }
 
         // 占位"图"：类别色块 + 类别 emoji；有图片地址则后台加载真实图片
         StackPane img = buildPlaceholderImage(g);
@@ -907,9 +1043,14 @@ public class StoreFrame extends Application {
         name.setWrapText(true);
         name.getStyleClass().add("goods-name");
 
-        // 价格区：今日特价时显示"折扣角标 + 特价 + 划线原价"
+        // 价格区：今日特价时显示"折扣角标 + 特价 + 划线原价"；售罄时前面加一个灰角标
         HBox priceRow = new HBox(6);
         priceRow.setAlignment(Pos.CENTER_LEFT);
+        if (soldOut) {
+            Label soldOutBadge = new Label("已售罄");
+            soldOutBadge.getStyleClass().add("sold-out-badge");
+            priceRow.getChildren().add(soldOutBadge);
+        }
         if (g.hasDiscount()) {
             Label badge = new Label(g.getDiscountLabel());
             badge.getStyleClass().add("discount-badge");
@@ -925,27 +1066,51 @@ public class StoreFrame extends Application {
         }
 
         String stockText = "库存 " + g.getStock();
-        if (g.hasDiscount() && g.getPromotionRemark() != null && !g.getPromotionRemark().isBlank()) {
+        if (soldOut) {
+            stockText = "库存 0（已售罄）";
+        } else if (g.hasDiscount() && g.getPromotionRemark() != null && !g.getPromotionRemark().isBlank()) {
             stockText += " · " + g.getPromotionRemark();
         }
         Label stock = new Label(stockText);
         stock.getStyleClass().add("goods-stock");
 
-        Button buy = new Button("立即下单");
+        Button buy = new Button(soldOut ? "已售罄" : "立即下单");
         buy.setMaxWidth(Double.MAX_VALUE);
         buy.getStyleClass().addAll("primary", "card-action");
-        buy.setOnAction(e -> promptAndBuy(g));
+        buy.setDisable(soldOut);
+        if (!soldOut) {
+            buy.setOnAction(e -> promptAndBuy(g));
+        }
 
         Button addToCart = new Button("加入购物车");
         addToCart.setMaxWidth(Double.MAX_VALUE);
         addToCart.getStyleClass().addAll("secondary", "card-action");
-        addToCart.setOnAction(e -> addToCart(g, 1));
+        addToCart.setDisable(soldOut);
+        if (!soldOut) {
+            addToCart.setOnAction(e -> addToCart(g, 1));
+        }
 
         HBox actions = new HBox(8, buy, addToCart);
         HBox.setHgrow(buy, Priority.ALWAYS);
         HBox.setHgrow(addToCart, Priority.ALWAYS);
 
         card.getChildren().addAll(img, name, priceRow, stock, actions);
+
+        // 鼠标悬停时的轻微上浮 + 放大动效（纯视觉效果，不影响网格布局）
+        ScaleTransition grow = new ScaleTransition(Duration.millis(120), card);
+        grow.setToX(1.02);
+        grow.setToY(1.02);
+        ScaleTransition shrink = new ScaleTransition(Duration.millis(120), card);
+        shrink.setToX(1.0);
+        shrink.setToY(1.0);
+        card.setOnMouseEntered(e -> {
+            card.setTranslateY(-3);
+            grow.playFromStart();
+        });
+        card.setOnMouseExited(e -> {
+            card.setTranslateY(0);
+            shrink.playFromStart();
+        });
         return card;
     }
 
@@ -1163,6 +1328,7 @@ public class StoreFrame extends Application {
                 List<Order> orders = (List<Order>) response.getData();
                 _ordersTable.getItems().setAll(orders);
                 _orderItemsTable.getItems().clear();
+                updateOrdersSummary(orders);
             } else {
                 showAlert(Alert.AlertType.ERROR, "查询失败", String.valueOf(response.getData()));
             }
@@ -1492,8 +1658,25 @@ public class StoreFrame extends Application {
      * @return 页签内容
      */
     private VBox buildCartTab() {
-        _cartEmptyLabel.getStyleClass().add("empty-state-label");
         _cartSummaryLabel.getStyleClass().add("cart-total");
+
+        // 空购物车时的引导区：矢量图标 + 文案 + "去逛逛"按钮（点了直接切到商品商城页签）
+        Node emptyIcon = buildCartIcon(64);
+        Label emptyTitle = new Label("购物车还是空的");
+        emptyTitle.getStyleClass().add("empty-state-title");
+        Label emptyHint = new Label("去「商品商城」挑几件，结算时会被当成一个订单一起提交");
+        emptyHint.getStyleClass().add("empty-state-label");
+        emptyHint.setWrapText(true);
+        Button goShopping = new Button("去逛逛");
+        goShopping.getStyleClass().add("primary");
+        goShopping.setOnAction(e -> {
+            if (_tabPane != null) {
+                _tabPane.getSelectionModel().select(0);
+            }
+        });
+        _cartEmptyBox.getChildren().setAll(emptyIcon, emptyTitle, emptyHint, goShopping);
+        _cartEmptyBox.setAlignment(Pos.CENTER);
+        _cartEmptyBox.setPadding(new Insets(50, 0, 0, 0));
 
         ScrollPane scroll = new ScrollPane(_cartRows);
         scroll.setFitToWidth(true);
@@ -1594,12 +1777,12 @@ public class StoreFrame extends Application {
     }
 
     /**
-     * 重新渲染购物车：条目行、合计金额与页签标题（含件数）。
+     * 重新渲染购物车：条目行、合计金额与页签上的件数角标。
      */
     private void renderCart() {
         _cartRows.getChildren().clear();
         if (_cart.isEmpty()) {
-            _cartRows.getChildren().add(_cartEmptyLabel);
+            _cartRows.getChildren().add(_cartEmptyBox);
         } else {
             for (CartItem item : _cart) {
                 _cartRows.getChildren().add(buildCartRow(item));
@@ -1607,9 +1790,8 @@ public class StoreFrame extends Application {
         }
         _cartSummaryLabel.setText("合计 " + _cart.size() + " 种 / " + cartQuantity()
                 + " 件，共 ¥" + plain(cartTotal()));
-        if (_cartTab != null) {
-            _cartTab.setText(_cart.isEmpty() ? "购物车" : "购物车 (" + cartQuantity() + ")");
-        }
+        _cartBadge.setText(String.valueOf(cartQuantity()));
+        _cartBadge.setVisible(!_cart.isEmpty());
     }
 
     /**
