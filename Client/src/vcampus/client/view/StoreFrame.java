@@ -315,6 +315,8 @@ public class StoreFrame extends Application {
         _cartTab.setGraphic(tabIcon("🛒", _cartBadge));
         _cartBadge.getStyleClass().add("tab-badge");
         _cartBadge.setVisible(false);
+        // 角标隐藏时不能继续占布局空间，否则购物车页签会比别的页签宽一截
+        _cartBadge.managedProperty().bind(_cartBadge.visibleProperty());
         _cartTab.setContent(buildCartTab());
         tabPane.getTabs().add(_cartTab);
         tabPane.getTabs().add(tab("📋", "我的订单", buildOrdersTab()));

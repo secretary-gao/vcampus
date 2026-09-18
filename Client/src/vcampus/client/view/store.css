@@ -148,6 +148,9 @@
     -fx-background-radius: 9;
     -fx-padding: 7 18 7 18;
     -fx-cursor: hand;
+    /* 页签统一宽度：文字长短（2 字 / 4 字）与有没有件数角标都不改变宽度，看着整齐 */
+    -fx-min-width: 132;
+    -fx-pref-width: 132;
 }
 .store-tabs > .tab-header-area > .headers-region > .tab:hover { -fx-background-color: #dff1ee; }
 .store-tabs > .tab-header-area > .headers-region > .tab:selected { -fx-background-color: #1f8f80; }
