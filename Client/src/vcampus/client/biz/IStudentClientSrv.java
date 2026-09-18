@@ -2,6 +2,7 @@ package vcampus.client.biz;
 
 import vcampus.common.vo.Student;
 import vcampus.common.vo.StudentCampusOverview;
+import vcampus.common.vo.StudentFocus;
 
 import java.io.IOException;
 import java.util.List;
@@ -40,5 +41,19 @@ public interface IStudentClientSrv {
             throws IOException, ClassNotFoundException, StudentClientException;
 
     StudentCampusOverview loadOverview(String studentId)
+            throws IOException, ClassNotFoundException, StudentClientException;
+
+    List<StudentFocus> listFocusedStudents()
+            throws IOException, ClassNotFoundException, StudentClientException;
+
+    default void addStudentFocus(String studentId, String note)
+            throws IOException, ClassNotFoundException, StudentClientException {
+        addStudentFocus(studentId, null, note);
+    }
+
+    void addStudentFocus(String studentId, String tags, String note)
+            throws IOException, ClassNotFoundException, StudentClientException;
+
+    void removeStudentFocus(String studentId)
             throws IOException, ClassNotFoundException, StudentClientException;
 }

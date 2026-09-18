@@ -4,11 +4,13 @@ import vcampus.common.constant.StudentProtocol;
 import vcampus.common.vo.Student;
 import vcampus.common.vo.StudentCampusOverview;
 import vcampus.common.vo.StudentStatus;
+import vcampus.common.vo.StudentFocus;
 import vcampus.common.util.MD5Util;
 import vcampus.common.vo.User;
 import vcampus.server.dao.UserDAO;
 import vcampus.server.dao.StudentDAO;
 import vcampus.server.dao.StudentCampusOverviewDAO;
+import vcampus.server.dao.StudentFocusDAO;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -21,24 +23,31 @@ public class StudentServerSrv implements IStudentServerSrv {
     private final StudentDAO _studentDAO;
     private final UserDAO _userDAO;
     private final StudentCampusOverviewDAO _overviewDAO;
+    private final StudentFocusDAO _focusDAO;
 
     public StudentServerSrv() {
-        this(new StudentDAO(), new UserDAO(), new StudentCampusOverviewDAO());
+        this(new StudentDAO(), new UserDAO(), new StudentCampusOverviewDAO(), new StudentFocusDAO());
     }
 
     StudentServerSrv(StudentDAO studentDAO) {
-        this(studentDAO, new UserDAO(), new StudentCampusOverviewDAO());
+        this(studentDAO, new UserDAO(), new StudentCampusOverviewDAO(), new StudentFocusDAO());
     }
 
     StudentServerSrv(StudentDAO studentDAO, UserDAO userDAO) {
-        this(studentDAO, userDAO, new StudentCampusOverviewDAO());
+        this(studentDAO, userDAO, new StudentCampusOverviewDAO(), new StudentFocusDAO());
     }
 
     StudentServerSrv(StudentDAO studentDAO, UserDAO userDAO,
                      StudentCampusOverviewDAO overviewDAO) {
+        this(studentDAO, userDAO, overviewDAO, new StudentFocusDAO());
+    }
+
+    StudentServerSrv(StudentDAO studentDAO, UserDAO userDAO,
+                     StudentCampusOverviewDAO overviewDAO, StudentFocusDAO focusDAO) {
         this._studentDAO = studentDAO;
         this._userDAO = userDAO;
         this._overviewDAO = overviewDAO;
+        this._focusDAO = focusDAO;
     }
 
     @Override
@@ -221,6 +230,30 @@ public class StudentServerSrv implements IStudentServerSrv {
         return _overviewDAO.load(student);
     }
 
+    @Override
+    public List<StudentFocus> listStudentFocus(String teacherUserId)
+            throws SQLException, IOException, StudentServiceException {
+        return _focusDAO.findByTeacher(requireText(teacherUserId, "教师账号"));
+    }
+
+    @Override
+    public void addStudentFocus(String teacherUserId, String studentId, String tags, String note)
+            throws SQLException, IOException, StudentServiceException {
+        String teacher = requireText(teacherUserId, "教师账号");
+        String student = requireText(studentId, "学号");
+        if (_studentDAO.findStudentTaughtBy(teacher, student) == null) {
+            throw new StudentServiceException(StudentProtocol.STATUS_FORBIDDEN,
+                    "只能关注自己所授课程中的学生");
+        }
+        _focusDAO.add(teacher, student, tags, note);
+    }
+
+    @Override
+    public void removeStudentFocus(String teacherUserId, String studentId)
+            throws SQLException, IOException, StudentServiceException {
+        _focusDAO.remove(requireText(teacherUserId, "教师账号"), requireText(studentId, "学号"));
+    }
+
     /**
      * 确保学籍绑定的是学生账号。管理员新增学籍时，如果账号尚不存在，
      * 自动创建正常状态的学生账号，初始密码为 123456。
@@ -278,8 +311,11 @@ public class StudentServerSrv implements IStudentServerSrv {
         if (!student.getGrade().matches("[0-9]{4}")) {
             throw badRequest("年级必须是4位数字，例如2024");
         }
+        if (student.getEnrollmentDate() == null) {
+            throw badRequest("入学日期不能为空");
+        }
         if (student.getStatus() == null) {
-            student.setStatus(StudentStatus.ENROLLED);
+            throw badRequest("学籍状态不能为空");
         }
         if (student.getEnrollmentDate() != null
                 && student.getEnrollmentDate().isAfter(LocalDate.now())) {
