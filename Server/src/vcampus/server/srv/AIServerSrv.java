@@ -9,6 +9,7 @@
  */
 package vcampus.server.srv;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,8 +34,12 @@ import java.util.Properties;
  */
 public class AIServerSrv implements IAIServerSrv {
 
-    /** ai.properties 相对项目根目录的路径。 */
-    private static final String CONFIG_PATH = "Server/ai.properties";
+    /**
+     * ai.properties 候选路径，按顺序尝试：先找运行目录下的 {@code ai.properties}
+     * （打包后的部署形态——jar 和配置文件平铺在同一个目录下），找不到再退回开发
+     * 环境里的 {@code Server/ai.properties}（IDE 里从项目根目录运行时用的路径）。
+     */
+    private static final String[] CONFIG_PATHS = {"ai.properties", "Server/ai.properties"};
 
     /**
      * 系统提示词：告诉模型它是谁、嵌在什么系统里，并要求用纯文本回答
@@ -74,11 +79,11 @@ public class AIServerSrv implements IAIServerSrv {
         String model = config.getProperty("dashscope.model", "qwen3-coder-plus");
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
-            throw new IOException("未配置通义千问 API Key，请在 " + CONFIG_PATH
-                    + " 里填写 dashscope.api-key（参考 Server/ai.properties.example 里的申请说明）");
+            throw new IOException("未配置通义千问 API Key，请在 ai.properties"
+                    + " 里填写 dashscope.api-key（参考 ai.properties.example 里的申请说明）");
         }
         if (apiHost == null || apiHost.trim().isEmpty()) {
-            throw new IOException("未配置 dashscope.api-host，请在 " + CONFIG_PATH + " 里填写服务地址");
+            throw new IOException("未配置 dashscope.api-host，请在 ai.properties 里填写服务地址");
         }
         // 去掉末尾斜杠，拼上通义千问原生文本生成接口路径（不是 OpenAI 兼容格式，
         // 实测过：兼容模式的 /chat/completions 在这个网关上是 404，走原生格式才通）。
@@ -131,14 +136,23 @@ public class AIServerSrv implements IAIServerSrv {
      */
     private static synchronized Properties loadProperties() throws IOException {
         if (properties == null) {
-            Properties p = new Properties();
-            try (InputStream in = new FileInputStream(CONFIG_PATH)) {
-                p.load(in);
-            } catch (IOException e) {
-                throw new IOException("未找到 AI 配置文件：" + CONFIG_PATH
-                        + "，请复制 Server/ai.properties.example 为 Server/ai.properties 并填写你申请的 API Key。", e);
+            for (String path : CONFIG_PATHS) {
+                File file = new File(path);
+                if (file.isFile()) {
+                    Properties p = new Properties();
+                    try (InputStream in = new FileInputStream(file)) {
+                        p.load(in);
+                    }
+                    properties = p;
+                    break;
+                }
             }
-            properties = p;
+            if (properties == null) {
+                throw new IOException("未找到 AI 配置文件（依次尝试过："
+                        + String.join("、", CONFIG_PATHS)
+                        + "），请复制 ai.properties.example 为 ai.properties 并填写你申请的 API Key，"
+                        + "放在服务器程序运行时的当前目录下。");
+            }
         }
         return properties;
     }
