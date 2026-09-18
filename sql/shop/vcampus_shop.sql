@@ -79,6 +79,8 @@ CREATE TABLE IF NOT EXISTS tblOrder (
 --   UNIQUE(orderId, goodsId)：保证"一个订单里同一商品只有一行"（结算时按商品编号合并数量），
 --   同时让种子脚本里的 INSERT IGNORE 保持幂等（改造前靠 orderId 主键去重，换成自增主键后
 --   若不加这个唯一键，重复执行 sql/seed_demo_data.sql 会重复插入购买记录）。
+--   originalPrice / discountRate：下单当时的价格快照，用于在订单明细里展示"优惠了多少"；
+--   商品单价可能被管理员改、每日特价每天也不同，落快照才能保证历史订单不受事后变动影响。
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tblPurchase (
     itemId     BIGINT        NOT NULL AUTO_INCREMENT COMMENT '明细行号（PK）',
@@ -86,7 +88,9 @@ CREATE TABLE IF NOT EXISTS tblPurchase (
     userId     VARCHAR(10)   NOT NULL COMMENT '购买人ID，外键->tblUser.uId',
     goodsId    VARCHAR(20)   NOT NULL COMMENT '商品编号，外键->tblGoods.goodsId',
     quantity   INT           NOT NULL DEFAULT 1 COMMENT '购买数量（>0）',
-    totalPrice DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '本行小计（单价×数量，>=0）',
+    totalPrice DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '本行小计（成交单价×数量，>=0）',
+    originalPrice DECIMAL(10,2) NULL COMMENT '下单时原价快照（单价；历史数据按成交价回填）',
+    discountRate  DECIMAL(3,2)  NULL COMMENT '下单时折扣率快照（0.10~0.95，无活动为 NULL）',
     orderTime  DATETIME      NOT NULL COMMENT '下单时间',
     PRIMARY KEY (itemId),
     KEY idx_tblPurchase_order (orderId),

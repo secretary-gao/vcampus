@@ -32,11 +32,12 @@ public class PurchaseDAO {
 
     /** 查询购买记录时附带商品名称的公共 SELECT 片段。 */
     private static final String SELECT_FIELDS =
-            "SELECT p.orderId, p.userId, p.goodsId, g.goodsName, p.quantity, p.totalPrice, p.orderTime "
+            "SELECT p.orderId, p.userId, p.goodsId, g.goodsName, p.quantity, p.totalPrice, "
+                    + "p.originalPrice, p.discountRate, p.orderTime "
                     + "FROM tblPurchase p LEFT JOIN tblGoods g ON p.goodsId = g.goodsId ";
 
     /**
-     * 新增购买记录（事务内）。
+     * 新增购买记录（事务内）。同时写入下单当时的价格快照（原价与折扣率）。
      *
      * @param conn   当前事务使用的连接
      * @param record 待插入的购买记录对象
@@ -44,15 +45,18 @@ public class PurchaseDAO {
      * @throws SQLException 数据库操作异常
      */
     public boolean insert(Connection conn, PurchaseRecord record) throws SQLException {
-        String sql = "INSERT INTO tblPurchase (orderId, userId, goodsId, quantity, totalPrice, orderTime) "
-                + "VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO tblPurchase "
+                + "(orderId, userId, goodsId, quantity, totalPrice, originalPrice, discountRate, orderTime) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, record.getOrderId());
             pstmt.setString(2, record.getUserId());
             pstmt.setString(3, record.getGoodsId());
             pstmt.setInt(4, record.getQuantity());
             pstmt.setBigDecimal(5, record.getTotalPrice());
-            pstmt.setTimestamp(6, Timestamp.valueOf(record.getOrderTime()));
+            pstmt.setBigDecimal(6, record.getOriginalPrice());
+            pstmt.setBigDecimal(7, record.getDiscountRate());
+            pstmt.setTimestamp(8, Timestamp.valueOf(record.getOrderTime()));
             return pstmt.executeUpdate() > 0;
         }
     }
@@ -128,6 +132,8 @@ public class PurchaseDAO {
             r.setGoodsName(rs.getString("goodsName"));
             r.setQuantity(rs.getInt("quantity"));
             r.setTotalPrice(rs.getBigDecimal("totalPrice"));
+            r.setOriginalPrice(rs.getBigDecimal("originalPrice"));
+            r.setDiscountRate(rs.getBigDecimal("discountRate"));
             Timestamp ts = rs.getTimestamp("orderTime");
             if (ts != null) {
                 r.setOrderTime(ts.toLocalDateTime());

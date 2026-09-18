@@ -548,15 +548,19 @@ public class StoreFrame extends Application {
             return;
         }
         BigDecimal total = BigDecimal.ZERO;
+        BigDecimal saving = BigDecimal.ZERO;
         int items = 0;
         for (Order o : orders) {
             total = total.add(o.getTotalAmount() == null ? BigDecimal.ZERO : o.getTotalAmount());
             items += o.getTotalQuantity();
+            saving = saving.add(orderSaving(o));
         }
         String latest = orders.get(0).getOrderTime() == null
                 ? "" : orders.get(0).getOrderTime().format(TIME_FMT);
         _ordersSummary.setText("共 " + orders.size() + " 单 · " + items + " 件 · 累计 ¥"
-                + total.toPlainString() + (latest.isBlank() ? "" : " · 最近 " + latest));
+                + total.toPlainString()
+                + (saving.compareTo(BigDecimal.ZERO) > 0 ? " · 已优惠 ¥" + saving.toPlainString() : "")
+                + (latest.isBlank() ? "" : " · 最近 " + latest));
     }
 
     /**
@@ -878,11 +882,29 @@ public class StoreFrame extends Application {
         table.getColumns().add(column("商品种类", o -> o.getItemCount() + " 种", 90));
         table.getColumns().add(column("总件数", o -> String.valueOf(o.getTotalQuantity()), 80));
         table.getColumns().add(column("订单金额",
-                o -> o.getTotalAmount() == null ? "" : "¥" + o.getTotalAmount().toPlainString(), 100));
+                o -> o.getTotalAmount() == null ? "" : "¥" + o.getTotalAmount().toPlainString(), 90));
+        table.getColumns().add(column("已优惠", o -> {
+            BigDecimal saving = orderSaving(o);
+            return saving.compareTo(BigDecimal.ZERO) > 0 ? "-¥" + saving.toPlainString() : "—";
+        }, 90));
     }
 
     /**
-     * 设置订单明细表格的列（一行一个商品）。
+     * 统计一个订单里各明细的优惠金额之和（明细自带下单时的原价快照）。
+     *
+     * @param order 订单
+     * @return 优惠合计
+     */
+    private BigDecimal orderSaving(Order order) {
+        BigDecimal saving = BigDecimal.ZERO;
+        for (PurchaseRecord item : order.getItems()) {
+            saving = saving.add(item.getSaving());
+        }
+        return saving;
+    }
+
+    /**
+     * 设置订单明细表格的列（一行一个商品，含下单时的原价与优惠金额）。
      *
      * @param table 表格
      */
@@ -890,10 +912,16 @@ public class StoreFrame extends Application {
         table.getStyleClass().add("store-table");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.getColumns().add(column("商品名称", r -> safe(r.getGoodsName()), 200));
-        table.getColumns().add(column("单价", r -> unitPriceOf(r).toPlainString(), 100));
-        table.getColumns().add(column("数量", r -> String.valueOf(r.getQuantity()), 80));
+        table.getColumns().add(column("原价", r -> r.getOriginalPrice() == null
+                ? "" : r.getOriginalPrice().toPlainString(), 80));
+        table.getColumns().add(column("成交单价", r -> unitPriceOf(r).toPlainString(), 90));
+        table.getColumns().add(column("数量", r -> String.valueOf(r.getQuantity()), 70));
         table.getColumns().add(column("小计",
-                r -> r.getTotalPrice() == null ? "" : r.getTotalPrice().toPlainString(), 100));
+                r -> r.getTotalPrice() == null ? "" : r.getTotalPrice().toPlainString(), 90));
+        table.getColumns().add(column("优惠", r -> {
+            BigDecimal saving = r.getSaving();
+            return saving.compareTo(BigDecimal.ZERO) > 0 ? "-¥" + saving.toPlainString() : "—";
+        }, 90));
     }
 
     /**

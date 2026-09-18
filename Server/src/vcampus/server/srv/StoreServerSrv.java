@@ -226,6 +226,10 @@ public class StoreServerSrv implements IStoreServerSrv {
                 detail.setGoodsName(goods.getGoodsName());
                 detail.setQuantity(quantity);
                 detail.setTotalPrice(subtotal);
+                // 价格快照：把下单当时的原价与折扣率一起落库，用于订单明细展示"优惠了多少"，
+                // 也让历史订单不受事后改价、改活动的影响
+                detail.setOriginalPrice(goods.getPrice());
+                detail.setDiscountRate(promotion == null ? null : promotion.getDiscountRate());
                 details.add(detail);
             }
 
