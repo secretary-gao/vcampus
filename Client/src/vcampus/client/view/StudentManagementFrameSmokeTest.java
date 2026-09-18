@@ -10,6 +10,7 @@ import javafx.scene.layout.BorderPane;
 import vcampus.common.vo.Student;
 import vcampus.common.vo.StudentCampusOverview;
 import vcampus.common.vo.StudentStatus;
+import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.User;
 
 import java.lang.reflect.Field;
@@ -62,9 +63,9 @@ public class StudentManagementFrameSmokeTest {
 
         StudentManagementFrame teacherFrame = new StudentManagementFrame(teacher);
         BorderPane teacherRoot = teacherFrame.createView();
-        ComboBox<?> teacherClass = fieldValue(teacherFrame, "_classFilterBox");
-        require("选择班级".equals(teacherClass.getPromptText()),
-                "教师界面缺少班级下拉框");
+        ComboBox<?> teacherCourse = fieldValue(teacherFrame, "_classFilterBox");
+        require("选择课程名称".equals(teacherCourse.getPromptText()),
+                "教师界面缺少课程名称下拉框");
         @SuppressWarnings("unchecked")
         java.util.Map<String, Button> teacherYearButtons =
                 (java.util.Map<String, Button>) fieldValue(teacherFrame, "_yearButtons");
@@ -92,10 +93,14 @@ public class StudentManagementFrameSmokeTest {
                 "年级对比没有保留四个固定年级选项");
         require(cohortGroups.get("2025").isEmpty(), "无学生年级没有显示为 0 人");
 
-        setField(teacherFrame, "_selectedClass", "测试班A");
+        setField(teacherFrame, "_teacherCourseEnrollments", List.of(
+                enrollment("测试课程A", rows.get(0)),
+                enrollment("测试课程A", rows.get(1)),
+                enrollment("测试课程B", rows.get(2))));
+        setField(teacherFrame, "_selectedClass", "测试课程A");
         List<Student> classRows = invokeScopeFilter(teacherFrame, rows, "姓名", "重名", "在读");
         require(classRows.size() == 1 && "测试班A".equals(classRows.get(0).getClassName()),
-                "教师班级、姓名和状态筛选失败");
+                "教师课程、姓名和状态筛选失败");
 
         Method tagsMethod = StudentManagementFrame.class.getDeclaredMethod(
                 "buildAutoTags", Student.class, StudentCampusOverview.class);
@@ -151,6 +156,13 @@ public class StudentManagementFrameSmokeTest {
         student.setEnrollmentDate(LocalDate.of(Integer.parseInt(grade), 9, 1));
         student.setStatus(status);
         return student;
+    }
+
+    private static TeacherCourseEnrollment enrollment(String courseName, Student student) {
+        TeacherCourseEnrollment enrollment = new TeacherCourseEnrollment();
+        enrollment.setCourseName(courseName);
+        enrollment.setStudentId(student.getStudentId());
+        return enrollment;
     }
 
     private static User user(String id, String role) {

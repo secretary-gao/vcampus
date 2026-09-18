@@ -57,6 +57,7 @@ import javafx.stage.Screen;
 import javafx.stage.FileChooser;
 import vcampus.client.biz.StudentClientException;
 import vcampus.client.biz.StudentClientSrv;
+import vcampus.client.biz.CourseClientSrv;
 import vcampus.client.biz.IUserClientSrv;
 import vcampus.client.biz.UserClientSrv;
 import vcampus.common.constant.IConstant;
@@ -65,6 +66,7 @@ import vcampus.common.vo.Student;
 import vcampus.common.vo.StudentCampusOverview;
 import vcampus.common.vo.StudentFocus;
 import vcampus.common.vo.StudentStatus;
+import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.User;
 
 import java.net.URL;
@@ -96,6 +98,7 @@ public class StudentManagementFrame extends Application {
 
     private final User _currentUser;
     private final StudentClientSrv _studentClientSrv;
+    private final CourseClientSrv _courseClientSrv = new CourseClientSrv();
     private final IUserClientSrv _userClientSrv = new UserClientSrv();
     private final ObservableList<Student> _students = FXCollections.observableArrayList();
     private final TableView<Student> _table = new TableView<>(_students);
@@ -111,11 +114,13 @@ public class StudentManagementFrame extends Application {
     private final ComboBox<StudentStatus> _statusBox = new ComboBox<>();
     private final ComboBox<String> _queryTypeBox = new ComboBox<>();
     private final ComboBox<String> _statusFilterBox = new ComboBox<>();
+    /** 教师端筛选控件；下拉值为课程名称，字段名沿用历史兼容命名。 */
     private final ComboBox<String> _classFilterBox = new ComboBox<>();
     private final ComboBox<String> _majorFilterBox = new ComboBox<>();
     private final TextField _queryField = new TextField();
     private final Map<String, String[]> _savedFilterViews = new LinkedHashMap<>();
     private final Map<String, LocalDateTime> _knownStudentUpdates = new HashMap<>();
+    private List<TeacherCourseEnrollment> _teacherCourseEnrollments = List.of();
 
     private final Label _countLabel = new Label("共 0 条");
     private final Label _totalStatLabel = new Label("0");
@@ -283,7 +288,8 @@ public class StudentManagementFrame extends Application {
         titleRow.setAlignment(Pos.CENTER_LEFT);
         titleRow.getStyleClass().add("title-row");
 
-        Label subtitle = new Label(isStudent() ? "查看本人学籍信息与在校状态" : "学籍查询、档案维护与班级管理");
+        Label subtitle = new Label(isStudent() ? "查看本人学籍信息与在校状态"
+                : isTeacher() ? "学籍查询、按授课课程查看选课学生" : "学籍查询、档案维护与班级管理");
         subtitle.getStyleClass().add("page-subtitle");
 
         VBox header = new VBox(4, titleRow, subtitle);
@@ -337,8 +343,8 @@ public class StudentManagementFrame extends Application {
                     });
         }
         if (isTeacher()) {
-            _classFilterBox.setPromptText("选择班级");
-            _classFilterBox.setAccessibleHelp("选择自己所带的班级");
+            _classFilterBox.setPromptText("选择课程名称");
+            _classFilterBox.setAccessibleHelp("选择自己教授的课程");
             _classFilterBox.setPrefWidth(180);
             _classFilterBox.getStyleClass().add("query-type");
             _classFilterBox.setDisable(true);
@@ -524,7 +530,7 @@ public class StudentManagementFrame extends Application {
         sectionTitle.getStyleClass().add("section-title");
         Label sectionHint = new Label(isAdmin()
                 ? "点击列标题排序；列表展示关键信息，选中学生后可在右侧查看并修改完整档案"
-                : "选择班级后查看自己所带班级的学生及其公开学籍字段");
+                : "选择授课课程后查看该课程选课学生及其公开学籍字段");
         sectionHint.getStyleClass().add("section-hint");
         VBox heading = new VBox(2, sectionTitle, sectionHint);
         heading.getStyleClass().add("section-heading");
@@ -554,7 +560,7 @@ public class StudentManagementFrame extends Application {
             heading.getChildren().add(rosterFilters);
         }
         if (isTeacher()) {
-            Label classLabel = new Label("选择班级");
+            Label classLabel = new Label("选择课程名称");
             classLabel.getStyleClass().add("year-selector-label");
             HBox classSelector = new HBox(10, classLabel, _classFilterBox);
             classSelector.setAlignment(Pos.CENTER_LEFT);
@@ -1362,11 +1368,12 @@ public class StudentManagementFrame extends Application {
             String type = _queryTypeBox.getValue();
             String keyword = _queryField.getText();
             String status = _statusFilterBox.getValue();
-            runOperation("正在刷新班级与学生...", "班级与学生列表已刷新",
-                    _studentClientSrv::findAll, (List<Student> students) -> {
-                updateClassOptions(students);
+            runOperation("正在刷新授课课程与学生...", "授课课程与学生列表已刷新",
+                    this::loadTeacherScope, (TeacherScope scope) -> {
+                _teacherCourseEnrollments = scope.courses();
+                updateCourseOptions(scope.courses());
                 List<Student> visible = filterStudentsForCurrentScope(
-                        students, type, keyword, status);
+                        scope.students(), type, keyword, status);
                 List<Student> changed = findChangedStudents(visible);
                 _students.setAll(visible);
                 loadTeacherFocuses();
@@ -1422,6 +1429,13 @@ public class StudentManagementFrame extends Application {
         }
     }
 
+    private TeacherScope loadTeacherScope() throws Exception {
+        List<Student> students = _studentClientSrv.findAll();
+        List<TeacherCourseEnrollment> courses =
+                _courseClientSrv.queryTeacherCourseEnrollments(_currentUser);
+        return new TeacherScope(students, courses);
+    }
+
     private String textDetail(String key) {
         Label label = _detailValues.get(key);
         if (label == null || "未填写".equals(label.getText())
@@ -1443,8 +1457,17 @@ public class StudentManagementFrame extends Application {
         }
         String status = _statusFilterBox.getValue();
         runOperation("正在查询...", "查询完成", () -> {
-            return filterStudentsForCurrentScope(_studentClientSrv.findAll(), type, value, status);
-        }, (List<Student> students) -> {
+            if (isTeacher()) {
+                return loadTeacherScope();
+            }
+            return new TeacherScope(_studentClientSrv.findAll(), List.of());
+        }, (TeacherScope scope) -> {
+            if (isTeacher()) {
+                _teacherCourseEnrollments = scope.courses();
+                updateCourseOptions(scope.courses());
+            }
+            List<Student> students = filterStudentsForCurrentScope(
+                    scope.students(), type, value, status);
             List<Student> changed = findChangedStudents(students);
             _students.setAll(students);
             loadTeacherFocuses();
@@ -2382,6 +2405,10 @@ public class StudentManagementFrame extends Application {
     private record ImportSummary(List<Student> successes, List<String> failures) {
     }
 
+    private record TeacherScope(List<Student> students,
+                                List<TeacherCourseEnrollment> courses) {
+    }
+
     /** 在服务端已授权的列表上做包含匹配和状态筛选。 */
     private static List<Student> filterStudents(List<Student> students, String type,
                                                 String value, String status) {
@@ -2404,9 +2431,13 @@ public class StudentManagementFrame extends Application {
         }
         List<Student> scoped = isTeacher() ? students : studentsForSelectedYear(students);
         if (isTeacher()) {
+            Set<String> selectedStudentIds = _teacherCourseEnrollments.stream()
+                    .filter(row -> _selectedClass.equals(valueOrEmpty(row.getCourseName()).trim()))
+                    .map(TeacherCourseEnrollment::getStudentId)
+                    .filter(StudentManagementFrame::hasText)
+                    .collect(java.util.stream.Collectors.toSet());
             scoped = scoped.stream()
-                    .filter(student -> _selectedClass.equals(
-                            valueOrEmpty(student.getClassName()).trim()))
+                    .filter(student -> selectedStudentIds.contains(student.getStudentId()))
                     .toList();
         } else if (_selectedMajor != null && !"全部专业".equals(_selectedMajor)) {
             scoped = scoped.stream()
@@ -2427,25 +2458,25 @@ public class StudentManagementFrame extends Application {
                 .toList();
     }
 
-    private void updateClassOptions(List<Student> students) {
+    private void updateCourseOptions(List<TeacherCourseEnrollment> courses) {
         if (!isTeacher()) {
             return;
         }
-        List<String> classes = students.stream()
-                .map(student -> valueOrEmpty(student.getClassName()).trim())
+        List<String> courseNames = courses.stream()
+                .map(course -> valueOrEmpty(course.getCourseName()).trim())
                 .filter(value -> !value.isEmpty())
                 .distinct()
                 .sorted()
                 .toList();
-        String preferredClass = _pendingClass != null ? _pendingClass : _selectedClass;
-        String classToSelect = preferredClass != null && classes.contains(preferredClass)
-                ? preferredClass : null;
+        String preferredCourse = _pendingClass != null ? _pendingClass : _selectedClass;
+        String courseToSelect = preferredCourse != null && courseNames.contains(preferredCourse)
+                ? preferredCourse : null;
         _pendingClass = null;
         _suppressClassRefresh = true;
         try {
-            _classFilterBox.getItems().setAll(classes);
-            _classFilterBox.setValue(classToSelect);
-            _selectedClass = classToSelect;
+            _classFilterBox.getItems().setAll(courseNames);
+            _classFilterBox.setValue(courseToSelect);
+            _selectedClass = courseToSelect;
         } finally {
             _suppressClassRefresh = false;
         }
@@ -2545,15 +2576,15 @@ public class StudentManagementFrame extends Application {
         if (isTeacher()) {
             if (_selectedClass == null) {
                 if (_classFilterBox.getItems().isEmpty()) {
-                    _emptyStateTitle.setText("正在读取班级");
-                    _emptyStateHint.setText("加载完成后可在上方下拉框中选择班级");
+                    _emptyStateTitle.setText("正在读取授课课程");
+                    _emptyStateHint.setText("加载完成后可在上方下拉框中选择课程");
                 } else {
-                    _emptyStateTitle.setText("请选择班级");
-                    _emptyStateHint.setText("在上方班级下拉框中选择要查看的班级");
+                    _emptyStateTitle.setText("请选择课程");
+                    _emptyStateHint.setText("在上方课程下拉框中选择要查看的课程");
                 }
             } else {
-                _emptyStateTitle.setText("未找到“" + _selectedClass + "”班级学生");
-                _emptyStateHint.setText("可修改查询条件或切换班级后重试");
+                _emptyStateTitle.setText("未找到“" + _selectedClass + "”课程的选课学生");
+                _emptyStateHint.setText("可修改查询条件或切换课程后重试");
             }
         } else if (_selectedYear == null) {
             _emptyStateTitle.setText("请选择年份");

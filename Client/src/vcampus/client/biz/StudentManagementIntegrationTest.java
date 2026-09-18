@@ -8,6 +8,7 @@ import vcampus.common.vo.Student;
 import vcampus.common.vo.StudentCampusOverview;
 import vcampus.common.vo.StudentFocus;
 import vcampus.common.vo.StudentStatus;
+import vcampus.common.vo.TeacherCourseEnrollment;
 import vcampus.common.vo.User;
 import vcampus.server.dao.DbHelper;
 import vcampus.server.dao.StudentDAO;
@@ -37,6 +38,7 @@ public class StudentManagementIntegrationTest {
             StudentManagementIntegrationTest test = new StudentManagementIntegrationTest(data);
             test.testAdminQueriesAndCohorts();
             test.testTeacherScopeAndFocus();
+            test.testTeacherCourseNames();
             test.testStudentScopeAndOverview();
             test.testAdminMutationsAndAccountLinkage();
             test.testPasswordReset();
@@ -123,6 +125,22 @@ public class StudentManagementIntegrationTest {
         require(_teacherClient.listFocusedStudents().stream().noneMatch(focus ->
                         _data.rows.get(0).getStudentId().equals(focus.getStudentId())),
                 "教师取消关注后记录仍存在");
+    }
+
+    private void testTeacherCourseNames() throws Exception {
+        List<TeacherCourseEnrollment> rows =
+                new CourseClientSrv().queryTeacherCourseEnrollments(_teacher);
+        require(rows.stream().anyMatch(row -> "测试课程A".equals(row.getCourseName())),
+                "教师课程下拉缺少测试课程A");
+        require(rows.stream().anyMatch(row -> "测试课程B".equals(row.getCourseName())),
+                "教师课程下拉缺少测试课程B");
+        Set<String> courseAStudentIds = rows.stream()
+                .filter(row -> "测试课程A".equals(row.getCourseName()))
+                .map(TeacherCourseEnrollment::getStudentId)
+                .filter(value -> value != null && !value.isBlank())
+                .collect(java.util.stream.Collectors.toSet());
+        require(courseAStudentIds.size() == 2,
+                "选择课程名称后应只关联该课程的选课学生");
     }
 
     private void testStudentScopeAndOverview() throws Exception {
