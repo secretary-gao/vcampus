@@ -21,24 +21,77 @@ package vcampus.common.constant;
 public interface IConstant {
     /**
      * 服务器地址。默认回环地址 {@code 127.0.0.1}（本机自测，客户端和服务器
-     * 跑在同一台机器上）；跨机器联调时用 JVM 参数
-     * {@code -Dvcampus.server.host=服务器IP} 覆盖，打包后的客户端只需改启动
-     * 参数即可连到另一台机器上的服务器，不用重新改代码、重新编译。
+     * 跑在同一台机器上）。跨机器答辩部署时，优先级从高到低：
+     * <ol>
+     *   <li>JVM 参数 {@code -Dvcampus.server.host=服务器IP}</li>
+     *   <li>当前工作目录下的 {@code client.properties} 文件里的
+     *       {@code server.host=服务器IP}（打包后的客户端专用，改这个文件
+     *       就能换服务器地址，不用重新编译，也不用敲命令行参数）</li>
+     *   <li>都没有就退回 {@code 127.0.0.1}</li>
+     * </ol>
+     * 所有客户端 {@code biz} 层仍然引用 {@link #SERVER_HOST} 这一个字段，
+     * 不需要逐个改。
      */
     String SERVER_HOST = resolveServerHost();
-    /** 服务器监听端口。 */
-    int SERVER_PORT = 8888;
+    /**
+     * 服务器监听端口。解析优先级同 {@link #SERVER_HOST}：JVM 参数
+     * {@code -Dvcampus.server.port=}，其次 {@code client.properties} 里的
+     * {@code server.port=}，都没有则默认 8888。
+     */
+    int SERVER_PORT = resolveServerPort();
 
     /**
-     * 解析服务器地址：优先取系统属性 {@code vcampus.server.host}，没传就退回
-     * 默认回环地址。所有客户端 {@code biz} 层仍然引用 {@link #SERVER_HOST}
-     * 这一个字段，不需要逐个改。
+     * 加载当前工作目录下的 {@code client.properties}（找不到或读取失败时返回
+     * 空 {@link java.util.Properties}，不会抛异常影响启动——这个文件本来就是
+     * 可选的部署期配置，不存在时应当静默退回默认值）。
+     *
+     * @return 解析到的配置，找不到文件时为空
+     */
+    static java.util.Properties loadClientProperties() {
+        java.util.Properties p = new java.util.Properties();
+        java.io.File f = new java.io.File("client.properties");
+        if (f.isFile()) {
+            try (java.io.InputStream in = new java.io.FileInputStream(f)) {
+                p.load(in);
+            } catch (java.io.IOException ignored) {
+                // 读取失败就当没有这个文件，退回默认值，不影响客户端启动
+            }
+        }
+        return p;
+    }
+
+    /**
+     * 解析服务器地址，见 {@link #SERVER_HOST} 上的优先级说明。
      *
      * @return 实际使用的服务器地址
      */
     static String resolveServerHost() {
-        String host = System.getProperty("vcampus.server.host");
-        return (host == null || host.trim().isEmpty()) ? "127.0.0.1" : host.trim();
+        String sys = System.getProperty("vcampus.server.host");
+        if (sys != null && !sys.trim().isEmpty()) {
+            return sys.trim();
+        }
+        String fromFile = loadClientProperties().getProperty("server.host");
+        return (fromFile == null || fromFile.trim().isEmpty()) ? "127.0.0.1" : fromFile.trim();
+    }
+
+    /**
+     * 解析服务器端口，见 {@link #SERVER_PORT} 上的优先级说明。数值不合法
+     * （非数字）时同样静默退回默认端口 8888，不影响客户端启动。
+     *
+     * @return 实际使用的服务器端口
+     */
+    static int resolveServerPort() {
+        String sys = System.getProperty("vcampus.server.port");
+        String raw = (sys != null && !sys.trim().isEmpty())
+                ? sys.trim() : loadClientProperties().getProperty("server.port");
+        if (raw != null && !raw.trim().isEmpty()) {
+            try {
+                return Integer.parseInt(raw.trim());
+            } catch (NumberFormatException ignored) {
+                // 配置写错了就退回默认端口，不影响客户端启动
+            }
+        }
+        return 8888;
     }
 
     /** 状态码：操作成功。 */
