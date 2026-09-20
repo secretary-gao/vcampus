@@ -3,6 +3,11 @@
 东南大学《专业技能实训》课程项目，基于 C/S 架构，MVC 分层 + Socket 多线程设计模式，
 客户端界面用 JavaFX。6 人团队，6 个业务模块，见下方"团队分工"。
 
+## 项目文档
+
+- [从 Commit 历史读懂 VCampus](docs/PROJECT_COMMIT_WALKTHROUGH.md)：按真实提交顺序讲解项目从三模块骨架、六模块集成到教务真实模型、自动排课和成绩审批的完整演进，并配有架构、领域模型与业务流程图。
+- [Course Reality Track 最终交付说明](docs/course/README.md)：教务模块的数据模型、Socket API、SQL 初始化、测试和演示指南。
+
 ## 目录结构
 
 ```
