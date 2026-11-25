@@ -1,0 +1,407 @@
+\documentclass[UTF8,11pt,a4paper]{ctexart}
+
+\usepackage[a4paper,top=2.0cm,bottom=2.0cm,left=2.1cm,right=2.1cm,headheight=22pt]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,shadows.blur}
+\usepackage[most]{tcolorbox}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{lastpage}
+\usepackage{setspace}
+\usepackage{microtype}
+\usepackage{amssymb}
+
+\graphicspath{{assets/}}
+\definecolor{VCGreen}{HTML}{368B4B}
+\definecolor{VCLight}{HTML}{EEF6EA}
+\definecolor{VCMid}{HTML}{DCEAD5}
+\definecolor{VCDark}{HTML}{123D2B}
+\definecolor{VCGold}{HTML}{D59B18}
+\definecolor{VCGray}{HTML}{5F6F66}
+\definecolor{VCSoft}{HTML}{F7FAF5}
+\definecolor{VCRed}{HTML}{CF4A4A}
+
+\hypersetup{colorlinks=true,linkcolor=VCGreen,urlcolor=VCGreen,pdfauthor={刘酝潇},pdftitle={VCampus 教务板块个人项目小结报告}}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.35em}
+\linespread{1.22}
+\setlist[itemize]{leftmargin=2em,itemsep=0.35em,topsep=0.35em}
+\setlist[enumerate]{leftmargin=2.2em,itemsep=0.35em,topsep=0.35em}
+\captionsetup{font=small,labelfont={bf,color=VCGreen},labelsep=quad}
+
+\titleformat{\section}{\Large\bfseries\color{VCDark}}{\thesection}{0.7em}{}[\vspace{-0.3em}\color{VCMid}\titlerule]
+\titleformat{\subsection}{\large\bfseries\color{VCGreen}}{\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{VCDark}}{}{0em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{VCGray}VCampus 教务板块 · 个人项目小结}
+\fancyhead[R]{\small\color{VCGray}刘酝潇 · 09024211}
+\fancyfoot[C]{\small\color{VCGray}第 \thepage\ 页 / 共 \pageref{LastPage} 页}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{VCMid}\leaders\hrule height \headrulewidth\hfill}}
+
+\newtcolorbox{summarybox}[1][]{enhanced,breakable,colback=VCSoft,colframe=VCMid,boxrule=0.8pt,
+  arc=3mm,left=4mm,right=4mm,top=3mm,bottom=3mm,#1}
+\newtcolorbox{keybox}[1][]{enhanced,breakable,colback=VCLight,colframe=VCGreen,boxrule=1pt,
+  arc=3mm,left=4mm,right=4mm,top=3mm,bottom=3mm,drop fuzzy shadow,#1}
+\newcommand{\tagpill}[1]{\tikz[baseline=(X.base)]\node[fill=VCMid,rounded corners=2mm,inner xsep=2.2mm,inner ysep=0.7mm,text=VCDark,font=\small\bfseries] (X) {#1};}
+\newcommand{\codeword}[1]{\texttt{\color{VCGreen}#1}}
+\newcommand{\shot}[3]{%
+  \begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.985\textwidth,height=0.78\textheight,keepaspectratio]{#1}
+    \caption{#2}\label{#3}
+  \end{figure}}
+\newcommand{\twoshots}[6]{%
+  \begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.97\textwidth,height=0.385\textheight,keepaspectratio]{#1}
+    \caption*{\textbf{图：}#2}
+    \vspace{0.8em}
+    \includegraphics[width=0.97\textwidth,height=0.385\textheight,keepaspectratio]{#3}
+    \caption{#4}\label{#5}
+    #6
+  \end{figure}}
+
+\begin{document}
+
+% ---------- Cover ----------
+\begin{titlepage}
+  \thispagestyle{empty}
+  \begin{tikzpicture}[remember picture,overlay]
+    \fill[VCGreen] (current page.north west) rectangle ([yshift=-4.8cm]current page.north east);
+    \fill[VCGold] ([yshift=-4.8cm]current page.north west) rectangle ([yshift=-4.65cm]current page.north east);
+    \fill[VCLight] (current page.south west) rectangle ([yshift=1.2cm]current page.south east);
+  \end{tikzpicture}
+
+  \vspace*{0.25cm}
+  \begin{center}
+    \includegraphics[width=2.1cm]{seu_logo.jpeg}\par
+    \vspace{0.35cm}
+    {\Large\bfseries\color{white}东南大学 VCampus 综合服务平台}\par
+    \vspace{0.2cm}
+    {\large\color{white}课程设计 · 个人项目小结报告}\par
+  \end{center}
+
+  \vspace{2.5cm}
+  \begin{center}
+    {\fontsize{28}{34}\selectfont\bfseries\color{VCDark}教务与选课中心}\par
+    \vspace{0.3cm}
+    {\Large\bfseries\color{VCGreen}Course Reality Track}\par
+    \vspace{0.45cm}
+    {\large 面向真实教学班模型的选课、排课与成绩闭环}\par
+  \end{center}
+
+  \vspace{1.2cm}
+  \begin{keybox}[width=0.84\textwidth,center]
+    \renewcommand{\arraystretch}{1.6}
+    \begin{tabularx}{\textwidth}{>{\bfseries\color{VCGray}}p{3.2cm}X}
+      姓名 & 刘酝潇 \\
+      学号 & 09024211 \\
+      负责模块 & 教务板块（Course） \\
+      主要职责 & 领域建模、C/S 分层实现、选课事务、自动排课、成绩工作流、三角色界面与工程交付 \\
+      报告日期 & 2026 年 9 月 18 日 \\
+    \end{tabularx}
+  \end{keybox}
+
+  \vfill
+  \begin{center}
+    \tagpill{Java 21}\quad\tagpill{JavaFX}\quad\tagpill{Socket}\quad\tagpill{MySQL}\quad\tagpill{Backtracking + MRV}
+  \end{center}
+  \vspace{0.8cm}
+  \begin{flushright}
+    \textbf{本人签名：}\rule{4.8cm}{0.5pt}
+  \end{flushright}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+% ---------- Overview ----------
+\section{组内工作（具体分工）}
+
+\begin{keybox}[title={\bfseries 我的模块定位}]
+我负责 VCampus 项目的\textbf{教务板块}。工作范围并非单一页面，而是从产品需求、领域模型、数据库结构、Socket 协议、服务端事务，到学生、教师、管理员三类用户界面和演示数据的完整业务闭环。模块最终形成了“课程定义—教学班开设—排课—学生选课—教师录入成绩—管理员审核—学生查看成绩”的连续链路。
+\end{keybox}
+
+我的具体分工可以概括为以下六个方面：
+
+\begin{enumerate}
+  \item \textbf{需求分析与领域建模。} 将早期“课程即班级”的简单结构重构为 \codeword{Course → TeachingClass → CourseSchedule}，区分课程本体、一次具体开班及多段时间地点安排；以 \codeword{SelectCourse} 表达学生与教学班的选课关系，以 \codeword{CourseScore} 表达成绩生命周期。
+  \item \textbf{完整 C/S 分层实现。} 维护 Common VO 与消息常量，在 Client 侧通过 \codeword{CourseClientSrv} 发起 Socket 请求；Server 侧由 \codeword{ServerThread}、\codeword{CourseHandler}、\codeword{CourseServerSrv} 和 DAO 分层完成协议分发、业务校验、事务处理与数据库访问。
+  \item \textbf{学生端选课体验。} 完成课程检索、教学班展开、容量与冲突状态提示、选择与退课、已选课程统计、响应式周课表，以及审核后成绩查询。
+  \item \textbf{教师端教学管理。} 完成本人教学班、选课名单、学生检索、CSV 导出与 Excel 兼容，以及成绩从“未录入—未提交—待审核—已发布/已拒绝”的状态管理。
+  \item \textbf{管理员端教务能力。} 完成教务 Dashboard、课程/教学班主从式管理、手工排课、Backtracking + MRV 自动排课、方案编辑与冲突检查、成绩批量审核。
+  \item \textbf{工程交付与集成。} 编写兼容迁移和幂等演示数据，补充 DAO、Service、Socket、并发基准与 JavaFX smoke test；持续解决多人分支合并后的接口签名、UI 布局和 Windows 构建兼容问题。
+\end{enumerate}
+
+\subsection{工作成果概览}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabularx}{\textwidth}{>{\bfseries\color{VCDark}}p{3.2cm}X p{3.2cm}}
+\toprule
+成果域 & 交付内容 & 关键质量点 \\
+\midrule
+领域模型 & Course、TeachingClass、多段 Schedule、SelectCourse、CourseScore、课程互斥组 & 兼容 Course 1.0 数据 \\
+学生业务 & 检索、选课、退课、课表、成绩查询 & 冲突、容量、互斥均由服务端兜底 \\
+教师业务 & 教学班名单、学籍查看、CSV、成绩录入 & 仅访问本人教学班；状态清晰 \\
+管理员业务 & Dashboard、课程/排课管理、自动排课、成绩审核 & Preview 与 Apply 分离；批量审核 \\
+数据一致性 & 事务、行锁、唯一约束、回滚 & 防超卖、防重复、计数一致 \\
+工程交付 & 迁移、seed、测试、文档、构建脚本 & 幂等、可演示、可复现 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ---------- Architecture ----------
+\section{教务板块总体架构}
+
+\subsection{端到端分层架构}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{%
+\begin{tikzpicture}[
+  node distance=7mm and 9mm,
+  box/.style={draw=VCGreen,fill=VCLight,rounded corners=2mm,minimum height=10mm,minimum width=27mm,align=center,font=\small\bfseries},
+  layer/.style={draw=VCMid,fill=VCSoft,rounded corners=3mm,inner sep=4mm},
+  arrow/.style={-{Latex[length=2.2mm]},thick,color=VCGreen}
+]
+  \node[box] (student) {学生端\\课程大厅/我的课程/课表/成绩};
+  \node[box,right=of student] (teacher) {教师端\\教学班/名单/成绩录入};
+  \node[box,right=of teacher] (admin) {管理员端\\课程/排课/审核/统计};
+  \node[layer,fit=(student)(teacher)(admin),label={[text=VCGray,font=\bfseries]above:JavaFX 表现层}] (ui) {};
+
+  \node[box,below=13mm of teacher] (client) {ICourseClientSrv\\CourseClientSrv};
+  \node[box,right=of client] (common) {Common VO / DTO\\Message + 常量};
+  \node[layer,fit=(client)(common),label={[text=VCGray,font=\bfseries]above:客户端业务与共享协议层}] (clientlayer) {};
+
+  \node[box,below=13mm of client] (socket) {短连接 Socket\\序列化 Message};
+  \node[box,right=of socket] (thread) {ServerThread\\统一模块路由};
+  \node[box,right=of thread] (handler) {CourseHandler\\鉴权/协议分发};
+
+  \node[box,below=13mm of thread] (service) {CourseServerSrv\\规则 + 事务 + 一致性};
+  \node[box,right=of service] (scheduler) {CourseAutoScheduler\\Backtracking + MRV};
+
+  \node[box,below=13mm of service] (dao) {Course / TeachingClass / Schedule\\SelectCourse / Score 等 DAO};
+  \node[box,right=of dao] (db) {MySQL 8.0\\InnoDB + utf8mb4};
+
+  \draw[arrow] (ui) -- (clientlayer);
+  \draw[arrow] (client) -- (socket);
+  \draw[arrow] (socket) -- (thread);
+  \draw[arrow] (thread) -- (handler);
+  \draw[arrow] (handler) -- (service);
+  \draw[arrow] (service) -- (scheduler);
+  \draw[arrow] (service) -- (dao);
+  \draw[arrow] (dao) -- (db);
+  \draw[arrow,dashed] (common) -- (handler);
+\end{tikzpicture}}
+\caption{VCampus 教务板块端到端架构}
+\end{figure}
+
+这一架构严格保持 JavaFX Client、Socket、Server Service、DAO、Database 的边界。UI 不直接访问数据库；Handler 负责识别消息和组织响应，Service 负责业务规则与事务，DAO 只处理参数化 SQL 和对象映射。网络访问放在 JavaFX 后台 Task 中，避免阻塞 FX Application Thread。
+
+\subsection{核心领域模型}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  entity/.style={draw=VCGreen,fill=white,rounded corners=2mm,minimum width=32mm,minimum height=11mm,align=center,font=\small\bfseries,blur shadow},
+  rel/.style={-{Latex[length=2mm]},thick,color=VCGray},
+  note/.style={font=\scriptsize,color=VCGray,align=center}
+]
+  \node[entity] (course) {Course\\课程本体};
+  \node[entity,right=25mm of course] (class) {TeachingClass\\教学班};
+  \node[entity,right=25mm of class] (schedule) {CourseSchedule\\多段排课};
+  \node[entity,below=19mm of class] (select) {SelectCourse\\选课记录};
+  \node[entity,left=25mm of select] (student) {Student\\学生};
+  \node[entity,right=25mm of select] (score) {CourseScore\\成绩记录};
+  \node[entity,below=18mm of course] (group) {RequirementGroup\\CHOOSE\_ONE};
+
+  \draw[rel] (course) -- node[above,note]{1 : N} (class);
+  \draw[rel] (class) -- node[above,note]{1 : N} (schedule);
+  \draw[rel] (student) -- node[above,note]{1 : N} (select);
+  \draw[rel] (class) -- node[right,note]{1 : N} (select);
+  \draw[rel] (select) -- node[above,note]{0..1 : 1} (score);
+  \draw[rel] (group) -- node[left,note]{课程互斥组} (course);
+\end{tikzpicture}
+\caption{从课程到成绩的核心领域关系}
+\end{figure}
+
+模型重构解决了三个根本问题：一门课程可以开设多个教学班；同一教学班可以有多段上课安排；学生选的是教学班而不是抽象课程。数据库仍保留旧 Course 表中的教师、容量和已选人数作为兼容投影，使旧数据和旧页面可以平滑迁移。
+
+% ---------- Business ----------
+\section{任务完成情况总结}
+
+\subsection{学生端：选课决策与个人学习视图}
+
+学生端围绕“看得懂、选得对、状态一致”展开。课程大厅按课程聚合教学班，并提供课程性质、关键词和状态筛选。展开后可以看到教师、周次、星期、节次、教室、容量和已选人数。系统将“已选、同课已选、已满、时间冲突、培养方案互斥”等原因直接显示在教学班层面，避免学生点击后才得到模糊失败提示。
+
+服务端在真正写入前再次执行完整规则校验：锁定学生和目标教学班，检查同一 Course 重复、课程互斥组、已有课表时间冲突和容量上限，然后写入选课记录并更新人数。任一步骤失败都会回滚，保证选课记录与统计人数不会出现半成功。
+
+选课成功或退课后，课程大厅、我的课程和课表统一刷新。我的课程页汇总已选门数、学分和上课时段；课表以星期和节次二维布局展示多段课程，并适配常见桌面窗口尺寸。成绩页仅展示管理员审核通过的成绩，避免未发布信息提前泄露。
+
+\subsection{教师端：教学班、名单与成绩录入}
+
+教师工作台只查询当前登录教师负责的教学班。页面左侧列出教学班，右侧展示学生名单和人数统计，可按学号或姓名检索，并可查看学生学籍。名单支持导出 UTF-8 BOM CSV，中文 Windows Excel 可直接打开，字段包括学号、姓名、班级、专业和选课时间。
+
+成绩录入采用显式状态机：
+
+\begin{center}
+\begin{tikzpicture}[node distance=6mm and 7mm, every node/.style={font=\small}]
+  \node[draw=VCGray,fill=VCSoft,rounded corners=2mm,inner sep=2.5mm] (u) {未录入};
+  \node[draw=VCGold,fill=yellow!10,rounded corners=2mm,inner sep=2.5mm,right=of u] (d) {本地草稿/未提交};
+  \node[draw=VCGreen,fill=VCLight,rounded corners=2mm,inner sep=2.5mm,right=of d] (p) {等待管理员审核};
+  \node[draw=VCGreen,fill=green!10,rounded corners=2mm,inner sep=2.5mm,right=of p] (a) {已发布};
+  \node[draw=VCRed,fill=red!7,rounded corners=2mm,inner sep=2.5mm,below=of p] (r) {已拒绝，可修改重提};
+  \draw[-{Latex},thick,VCGreen] (u)--(d);
+  \draw[-{Latex},thick,VCGreen] (d)--(p);
+  \draw[-{Latex},thick,VCGreen] (p)--(a);
+  \draw[-{Latex},thick,VCRed] (p)--(r);
+  \draw[-{Latex},thick,VCRed] (r)--(d);
+\end{tikzpicture}
+\end{center}
+
+这一区分解决了“空白成绩、已输入但未提交、已提交待审核”混在一起的问题，也使教师能够明确知道哪些数据仍可编辑、哪些已经进入管理流程。
+
+\subsection{管理员端：可视化管理与业务闭环}
+
+管理员首页提供实时教务快照。当前演示数据可展示 40 门课程、54 个教学班、151 名选课学生、1120 条选课记录，以及平均容量、平均已选、满员班级数、容量利用率、热门教学班和剩余名额排行。指标由数据库聚合得到，而不是客户端硬编码。
+
+课程、教学班和排课管理采用主从布局：左侧表格用于纵向比较完整信息，右侧详情面板直接编辑、保存或删除，新增模式也有明确确认操作。相较早期“每行按钮 + 弹窗”，该设计减少上下文切换，同时保留服务端冲突校验和删除约束。
+
+成绩审核页面列出所有 PENDING 记录，管理员可以逐条通过/拒绝，也可以批量处理。通过后学生立即可见；拒绝后教师可修改并重新提交，由此形成完整的三角色成绩闭环。
+
+\subsection{自动排课：Preview、校验与原子应用}
+
+自动排课把每个尚未排课的 TeachingClass 视为变量，以现有时间模式和有效教室组合构造候选域。求解器采用 Backtracking，并使用 MRV（最少剩余值）优先选择候选最少的教学班，以减少搜索分支。每次尝试都增量检查：
+
+\begin{itemize}
+  \item 同一教师在重叠周次和节次不能承担两个教学班；
+  \item 同一教室在重叠周次和节次不能被重复占用；
+  \item 同一教学班的多段安排不能彼此冲突；
+  \item 教室格式和节次范围必须满足展示与业务约束。
+\end{itemize}
+
+“生成预览”只产生候选方案，不修改数据库；管理员可以选中方案项直接修改教室、星期、周次和节次，或从方案移除，然后一键重新检查冲突。“应用方案”会在单个事务中重新校验并批量写入，任何一条失败都回滚全部排课。演示数据加载具有 \codeword{DEMO\_} 前缀和幂等检查，便于答辩现场重复演示而不污染真实数据。
+
+% ---------- Data and engineering ----------
+\section{关键技术与工程质量}
+
+\subsection{选课事务与一致性}
+
+真实选课最容易出现并发超卖和人数漂移。模块将“规则检查—插入记录—递增人数—刷新兼容投影”放入同一事务，并通过行锁和数据库唯一约束建立双重防线。时间冲突定义同时考虑星期、周次区间和节次区间：
+
+\[
+\max(w_s^a,w_s^b) \leq \min(w_e^a,w_e^b)
+\quad\land\quad
+\max(p_s^a,p_s^b) \leq \min(p_e^a,p_e^b)
+\]
+
+只有两个条件都成立且星期相同，才判定为冲突。这样可以正确区分相邻但不重叠的节次，以及节次相同但教学周不重叠的课程。
+
+并发基准使用 100 名隔离测试学生竞争容量为 10 的教学班，结果为成功 10、拒绝 90、剩余容量 0、超卖 0、\codeword{selectedCount=10}、测试残留 0，验证了事务和锁策略。
+
+\subsection{数据库与兼容迁移}
+
+数据库采用 MySQL 8.0、InnoDB 和 utf8mb4。Course 相关 SQL 分为基础 schema、TeachingClass 迁移、课程互斥组迁移、成绩迁移、Reality seed、成绩 seed 和答辩 Demo seed。迁移和种子数据尽量保持幂等；真实演示数据统一使用清晰前缀，方便识别和清理。
+
+成绩表记录学生、课程、教学班、教师、分数、状态、提交时间和审核时间。学生查询默认只返回 APPROVED；教师写入后统一进入 PENDING；管理员审核通过或拒绝时记录审核时间，从数据库层面支撑发布控制。
+
+\subsection{测试、集成与交付}
+
+模块测试覆盖 DAO、Service、事务、时间冲突、课程互斥组、自动排课、Dashboard、CSV、Socket E2E、并发基准和 JavaFX programmatic smoke。最终版本还处理了多人协作带来的接口变化：教师名单查询从教师姓名参数升级为完整 User 凭据后，教师工作台和成绩录入页同步适配，避免合并后出现类型错误或权限退化。
+
+工程交付方面，我维护了 Course 架构文档、SQL 执行顺序和演示路径，并配合主线集成完成绿色主题、主从管理界面、Windows 批处理 CRLF 规范和跨模块构建验证，使答辩环境可以通过统一脚本启动。
+
+\begin{summarybox}[title={\bfseries 可复现验证结果}]
+\begin{tabularx}{\textwidth}{>{\bfseries}p{4.0cm}X}
+Clean build & Common、Server、Client 在 JDK 21 / JavaFX 21 下统一编译通过 \\
+Socket 链路 & Course 消息经 ServerThread 路由到 CourseHandler，查询与写操作可用 \\
+选课一致性 & 容量、重复、互斥、时间冲突均由服务端校验，失败完整回滚 \\
+自动排课 & Preview 不落库；可编辑、移除和重检；Apply 原子写入 \\
+成绩闭环 & 教师提交、管理员审核、学生查看三端状态一致 \\
+数据导出 & 教师名单和管理员统计均可导出中文 Excel 兼容 CSV \\
+\end{tabularx}
+\end{summarybox}
+
+% ---------- Screenshots ----------
+\clearpage
+\section{功能成果截图}
+本节采用最终演示数据展示三角色端到端能力。截图中的数值来自实际数据库和运行界面。
+
+\twoshots{01_student_course_hall_expanded.png}{学生课程大厅展开教学班，可直接查看时间、容量和冲突原因}{02_student_course_hall.png}{课程大厅折叠视图，支持检索、性质与状态筛选}{fig:student-hall}{}
+
+\twoshots{03_student_selected_courses.png}{“我的课程”汇总已选门数、学分和上课时段，并支持退课}{04_student_timetable.png}{响应式周课表按星期和节次展示多段课程}{fig:student-personal}{}
+
+\twoshots{05_teacher_workspace.png}{教师工作台按本人教学班展示统计与选课学生名单}{06_teacher_csv_export.png}{导出当前教学班名册后生成 CSV 文件}{fig:teacher-roster}{}
+
+\twoshots{07_roster_excel.png}{UTF-8 BOM CSV 在 Excel 中正确显示中文名单}{08_teacher_score_entry.png}{成绩录入清晰区分未录入、待审核和已发布状态}{fig:teacher-score}{}
+
+\twoshots{09_admin_dashboard.png}{管理员教务概览实时展示课程、教学班、选课规模和容量指标}{10_admin_course_management.png}{课程管理采用左侧列表与右侧详情编辑的主从布局}{fig:admin-overview}{}
+
+\twoshots{11_admin_schedule_management.png}{排课管理支持直接编辑、保存与删除，并由服务端统一校验冲突}{12_admin_auto_schedule.png}{自动排课 Preview 支持编辑、移除、冲突检查和事务应用}{fig:admin-schedule}{}
+
+\shot{13_admin_score_review.png}{管理员成绩审核支持逐条通过/拒绝和批量操作}{fig:admin-score}
+
+% ---------- Reflection ----------
+\clearpage
+\section{工作小结与体会}
+
+\subsection{从“页面功能”到“领域模型”}
+
+本次课程设计最大的收获，是认识到软件复杂度往往不在按钮和表格，而在概念边界。早期 Course 同时承担课程、班级、教师、容量和排课信息，功能一多就产生歧义。引入 TeachingClass 后，课程内容与具体开班分离；引入多段 Schedule 后，一个教学班可以准确表达分周、分教室安排；SelectCourse 指向教学班后，容量、教师名单、课表和成绩才有稳定的归属。领域模型正确，后续功能才不会反复打补丁。
+
+\subsection{服务端必须是规则的最终裁判}
+
+前端可以提前展示冲突和满员状态，但这些提示只能改善体验，不能保证一致性。两个学生可能同时看到最后一个名额，因此容量判断、重复检查和人数更新必须在服务端事务中重新执行。通过并发基准，我对“数据库约束、行锁、事务回滚”之间的配合有了更具体的理解：UI 状态会过期，服务端规则和数据库约束才是最终事实。
+
+\subsection{AI Coding 时代的主开发者能力}
+
+项目大量借助 AI Coding Agent 提高实现速度，但主开发者仍必须掌握需求拆解、架构边界、数据流、验收标准和 Git 演化。AI 可以快速生成代码，却无法替代对业务不变量的判断。例如自动排课不是“随机生成几行数据”，而是一个约束满足问题；成绩不是“表格里加一列分数”，而是跨教师、管理员、学生的状态流转；界面美化也不能破坏保存、删除和冲突校验。我的工作重点逐渐从逐行编写语法，转向定义模型、约束输出、审查差异和设计可验证的闭环。
+
+\subsection{协作与集成经验}
+
+多人协作中，“功能在自己的分支可用”不等于“进入主线后仍可用”。Course 分支先后经历旧 main 合入、跨模块接口变化、集成分支冲突处理和 PR merge。教师名单接口签名变化、构建脚本行尾、资源复制等问题都说明，集成验证必须覆盖 clean build、server/client 启动和真实 GUI smoke，而不能只看 commit message。后续开发应从最新 main 创建短生命周期分支，及时同步并减少长期 feature 分支漂移。
+
+\subsection{仍可继续改进的方向}
+
+当前系统已经完成课程设计所需的业务闭环，但仍有进一步演进空间：建立可信的服务端会话与 token；将教师账号通过外键关联 TeachingClass；独立建模学期、单双周和离散教学周；建立教室资源表与容量约束；为 MySQL 死锁增加有限重试；将自动排课从单方案扩展为带偏好评分的多候选方案。这些边界让我认识到，架构设计不是追求一次性“做完”，而是为下一阶段演化保留清晰接口。
+
+\clearpage
+\begin{keybox}[title={\bfseries 个人总结}]
+我完成的教务板块已经从基础 CRUD 演化为一个具有真实领域模型、三角色协同、事务一致性、自动排课和成绩审批的完整子系统。通过本项目，我建立了从产品需求到领域对象、从 JavaFX 到数据库、从单功能实现到系统集成与工程交付的整体视角，也更加理解技术负责人需要同时关注正确性、可用性、可演示性和可维护性。
+\end{keybox}
+
+\vspace{1.2cm}
+\begin{flushright}
+  \textbf{学生签名：}\rule{5.0cm}{0.5pt}\qquad
+  \textbf{日期：}\rule{3.2cm}{0.5pt}
+\end{flushright}
+
+\vfill
+\section*{教师点评}
+\addcontentsline{toc}{section}{教师点评}
+\begin{summarybox}
+\vspace{0.4cm}
+\textbf{评语：}\par
+\vspace{3.0cm}
+\hrule
+\vspace{0.7cm}
+\textbf{等级：}\quad $\square$ 优\qquad $\square$ 良\qquad $\square$ 中\qquad $\square$ 及格\qquad $\square$ 不及格
+\vspace{0.7cm}
+
+\hfill \textbf{教师签名：}\rule{4.2cm}{0.5pt}\qquad
+\textbf{日期：}\rule{3.0cm}{0.5pt}
+\end{summarybox}
+
+\end{document}

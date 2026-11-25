@@ -38,7 +38,7 @@ public class PaperFormDialog {
         root.setStyle("-fx-background-color: white;");
 
         Label titleLabel = new Label("📤 上传文献");
-        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1a237e;");
+        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #203629;");
 
         GridPane form = new GridPane();
         form.setHgap(15);
@@ -74,7 +74,7 @@ public class PaperFormDialog {
         Button confirmBtn = new Button("确认上传");
         confirmBtn.setPrefWidth(100);
         confirmBtn.setStyle(
-            "-fx-background-color: #1a73e8; -fx-text-fill: white; -fx-font-weight: bold; " +
+            "-fx-background-color: #3f8f46; -fx-text-fill: white; -fx-font-weight: bold; " +
             "-fx-background-radius: 6; -fx-cursor: hand;"
         );
 
@@ -94,6 +94,7 @@ public class PaperFormDialog {
         cancelBtn.setOnAction(e -> stage.close());
 
         Scene scene = new Scene(root, 420, 350);
+        vcampus.client.view.CampusTheme.apply(scene);
         stage.setScene(scene);
     }
 
@@ -123,6 +124,7 @@ public class PaperFormDialog {
         alert.setTitle("输入错误");
         alert.setHeaderText(null);
         alert.setContentText(msg);
+        vcampus.client.view.CampusTheme.apply(alert);
         alert.showAndWait();
     }
 

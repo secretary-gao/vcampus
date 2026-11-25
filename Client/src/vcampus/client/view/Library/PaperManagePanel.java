@@ -46,9 +46,9 @@ public class PaperManagePanel extends VBox {
         setStyle("-fx-background-color: white;");
 
         // 操作按钮区
-        uploadBtn = createActionButton("📤 上传文献", "#4CAF50");
-        deleteBtn = createActionButton("🗑️ 删除文献", "#f44336");
-        refreshBtn = createActionButton("🔄 刷新", "#607D8B");
+        uploadBtn = createActionButton("📤 上传文献", "#3f8f46");
+        deleteBtn = createActionButton("🗑️ 删除文献", "#c43c3c");
+        refreshBtn = createActionButton("🔄 刷新", "#477a61");
         deleteBtn.setDisable(true);
 
         HBox actionBox = new HBox(10, uploadBtn, deleteBtn, refreshBtn);
@@ -95,6 +95,7 @@ public class PaperManagePanel extends VBox {
      */
     private void handleUpload() {
         PaperFormDialog dialog = new PaperFormDialog();
+        vcampus.client.view.CampusTheme.apply(dialog);
         dialog.showAndWait().ifPresent(paper -> {
             // 选择本地 PDF 文件
             FileChooser fileChooser = new FileChooser();
@@ -143,6 +144,7 @@ public class PaperManagePanel extends VBox {
         confirm.setTitle("确认删除");
         confirm.setHeaderText("确认删除《" + selected.getTitle() + "》？");
         confirm.setContentText("此操作不可恢复！");
+        vcampus.client.view.CampusTheme.apply(confirm);
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 new Thread(() -> {
@@ -213,6 +215,7 @@ public class PaperManagePanel extends VBox {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(content);
+        vcampus.client.view.CampusTheme.apply(alert);
         alert.showAndWait();
     }
 }

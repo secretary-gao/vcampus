@@ -51,5 +51,8 @@ if errorlevel 1 (
   exit /b 1
 )
 
+copy /y "Client\src\vcampus\client\view\campus-theme.css" "bin\vcampus\client\view\campus-theme.css" >nul
+if errorlevel 1 exit /b 1
+
 echo Build succeeded.
 exit /b 0

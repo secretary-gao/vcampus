@@ -64,6 +64,7 @@ public class LibraryPanel extends VBox {
 
     public LibraryPanel(User user) {
         currentUser = user;
+        vcampus.client.view.CampusTheme.apply(this);
         initUI();
         initEvents();
         // 默认加载所有图书
@@ -77,14 +78,15 @@ public class LibraryPanel extends VBox {
         // ========== 1. 顶部标题区 ==========
         Label titleLabel = new Label("📚 虚拟图书馆");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
-        titleLabel.setStyle("-fx-text-fill: #1a237e;");
+        titleLabel.setStyle("-fx-text-fill: white;");
 
         Label subtitleLabel = new Label("检索馆藏并管理当前账号的借阅记录，借阅后即可在线阅读电子书");
-        subtitleLabel.setStyle("-fx-text-fill: #666666; -fx-font-size: 13px;");
+        subtitleLabel.getStyleClass().add("campus-subtitle");
+        subtitleLabel.setWrapText(true);
 
         VBox headerBox = new VBox(4, titleLabel, subtitleLabel);
         headerBox.setPadding(new Insets(20, 30, 15, 30));
-        headerBox.setStyle("-fx-background-color: #f5f7fa;");
+        headerBox.getStyleClass().add("campus-header");
 
         // ========== 2. 导航标签 ==========
         libraryTab = createTabButton("📖 图书馆", true);
@@ -92,15 +94,15 @@ public class LibraryPanel extends VBox {
         manageTab = createTabButton("⚙️ 图书管理", false);
         paperManageTab = createTabButton("📁 文献管理", false);
         paperTab = createTabButton("📄 文献库", false);
-        HBox tabBox = new HBox(0, libraryTab, borrowTab);
+        HBox tabBox = new HBox(6, libraryTab, borrowTab);
        
         tabBox.getChildren().add(paperTab);
         if (isAdmin()) {
             tabBox.getChildren().add(manageTab);
             tabBox.getChildren().add(paperManageTab);
         }
-        tabBox.setPadding(new Insets(0, 30, 0, 30));
-        tabBox.setStyle("-fx-background-color: white;");
+        tabBox.setPadding(new Insets(10, 22, 10, 22));
+        tabBox.setStyle("-fx-background-color: #f4f8f1;");
 
         // ========== 3. 搜索区 ==========
         searchField = new TextField();
@@ -112,7 +114,7 @@ public class LibraryPanel extends VBox {
         searchBtn.setPrefHeight(40);
         searchBtn.setPrefWidth(100);
         searchBtn.setStyle(
-            "-fx-background-color: #1a73e8; " +
+            "-fx-background-color: #3f8f46; " +
             "-fx-text-fill: white; " +
             "-fx-font-weight: bold; " +
             "-fx-background-radius: 8; " +
@@ -153,7 +155,7 @@ public class LibraryPanel extends VBox {
         borrowBtn.setPrefHeight(40);
         borrowBtn.setPrefWidth(150);
         borrowBtn.setStyle(
-            "-fx-background-color: #1a73e8; " +
+            "-fx-background-color: #3f8f46; " +
             "-fx-text-fill: white; " +
             "-fx-font-weight: bold; " +
             "-fx-background-radius: 8; " +
@@ -240,6 +242,7 @@ public class LibraryPanel extends VBox {
         confirm.setTitle("确认借书");
         confirm.setHeaderText("确认借阅《" + selected.getBookName() + "》？");
         confirm.setContentText("作者：" + selected.getAuthor() + "\n可借数量：" + selected.getAvailableCount());
+        vcampus.client.view.CampusTheme.apply(confirm);
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 doBorrow(selected);
@@ -316,6 +319,8 @@ public class LibraryPanel extends VBox {
         confirm.setTitle("确认还书");
         confirm.setHeaderText("确认归还《" + record.getBookId() + "》？"); // 这里如果要显示书名，需要额外查询
         confirm.setContentText("记录号：" + record.getRecordId());
+        
+        vcampus.client.view.CampusTheme.apply(confirm);
         
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
@@ -422,10 +427,10 @@ public class LibraryPanel extends VBox {
     }
 
     private String createTabStyle(boolean active) {
-        return "-fx-background-color: transparent; " +
-               "-fx-text-fill: " + (active ? "#1a73e8" : "#666666") + "; " +
-               "-fx-border-color: transparent transparent " + (active ? "#1a73e8" : "transparent") + " transparent; " +
-               "-fx-border-width: 0 0 3 0; " +
+        return "-fx-background-color: " + (active ? "#3f8f46" : "transparent") + "; -fx-background-radius: 9; " +
+               "-fx-text-fill: " + (active ? "white" : "#526457") + "; " +
+               "-fx-border-color: transparent transparent " + (active ? "#3f8f46" : "transparent") + " transparent; " +
+               "-fx-border-width: 0; " +
                "-fx-padding: 10 20 10 20; " +
                "-fx-cursor: hand;";
     }
@@ -556,7 +561,7 @@ public class LibraryPanel extends VBox {
                 } else {
                     setText(item);
                     if ("借阅中".equals(item)) {
-                        setStyle("-fx-text-fill: #1a73e8; -fx-font-weight: bold; -fx-alignment: center;");
+                        setStyle("-fx-text-fill: #3f8f46; -fx-font-weight: bold; -fx-alignment: center;");
                     } else if ("已逾期".equals(item)) {
                         setStyle("-fx-text-fill: #d32f2f; -fx-font-weight: bold; -fx-alignment: center;");
                     } else {
@@ -576,7 +581,7 @@ public class LibraryPanel extends VBox {
             {
                 // 1. 设置按钮样式
                 returnBtn.setStyle(
-                    "-fx-background-color: #4CAF50; " +
+                    "-fx-background-color: #3f8f46; " +
                     "-fx-text-fill: white; " +
                     "-fx-font-weight: bold; " +
                     "-fx-background-radius: 4; " +
@@ -627,6 +632,7 @@ public class LibraryPanel extends VBox {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(content);
+        vcampus.client.view.CampusTheme.apply(alert);
         alert.showAndWait();
     }
 

@@ -156,20 +156,20 @@ private TableView<Medicine> tvAdminMedicine;
 
         switch (_loginUserRole) {
             case "管理员":
-                themePrimaryColor = "#94b55a";
-                themeHoverColor = "#7f9f4d";
-                themeActiveColor = "#6b8a40";
+                themePrimaryColor = "#3f8f46";
+                themeHoverColor = "#32783b";
+                themeActiveColor = "#2f7540";
                 break;
             case "教师":
-                themePrimaryColor = "#94b55a";
-                themeHoverColor = "#7f9f4d";
-                themeActiveColor = "#6b8a40";
+                themePrimaryColor = "#3f8f46";
+                themeHoverColor = "#32783b";
+                themeActiveColor = "#2f7540";
                 break;
             case "学生":
             default:
-                themePrimaryColor = "#77b55a";
-                themeHoverColor = "#7f9f4d";
-                themeActiveColor = "#6b8a40";
+                themePrimaryColor = "#3f8f46";
+                themeHoverColor = "#32783b";
+                themeActiveColor = "#2f7540";
                 break;
         }
         setSpacing(0);
@@ -178,18 +178,11 @@ private TableView<Medicine> tvAdminMedicine;
 
     private void buildUi() {
         BorderPane root = new BorderPane();
-        root.setStyle("""
-                .table-view-clean .table-row-cell:hover {
-                    -fx-background-color:#e8f2fc;
-                }
-                .table-view-clean .table-row-cell:selected{
-                    -fx-background-color:#c5e0fa;
-                }
-                """);
+        CampusTheme.apply(this);
         root.setBackground(new Background(new BackgroundFill(
                 new LinearGradient(0, 0, 1, 1, true, CycleMethod.NO_CYCLE,
-                        new Stop(0, Color.web("#f4f8fb")),
-                        new Stop(1, Color.web("#e8f0f7"))),
+                        new Stop(0, Color.web("#f4f8f1")),
+                        new Stop(1, Color.web("#edf4e9"))),
                 CornerRadii.EMPTY, Insets.EMPTY)));
         HBox topBanner = buildTopBanner();
         BorderPane bodyPane = new BorderPane();
@@ -208,11 +201,14 @@ private TableView<Medicine> tvAdminMedicine;
     }
 
     private HBox buildTopBanner() {
-        HBox banner = new HBox();
+        HBox banner = new HBox(12);
         banner.setAlignment(Pos.CENTER_LEFT);
         banner.setPadding(new Insets(8, 20, 8, 20));
-        banner.setStyle("-fx-background-color:#ffffff;-fx-border-color:#cce0ed;-fx-border-width:0 0 1 0;");
+        banner.getStyleClass().add("campus-header");
         ImageView logoView = new ImageView();
+        logoView.setFitWidth(42);
+        logoView.setFitHeight(42);
+        logoView.setPreserveRatio(true);
         java.net.URL logoResource = HospitalFrame.class.getResource("/vcampus/client/view/seu_logo.jpeg");
         if (logoResource != null) {
             Image logoImg = new Image(logoResource.toExternalForm(), 100, 100, true, true, false);
@@ -222,12 +218,12 @@ private TableView<Medicine> tvAdminMedicine;
         }
         Label systemTitle = new Label("🏥 医院挂号管理系统");
         systemTitle.setFont(Font.font("System", FontWeight.BOLD, 20));
-        systemTitle.setTextFill(Color.web(themePrimaryColor));
+        systemTitle.setTextFill(Color.WHITE);
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         Label userTopTip = new Label("使用者：" + _loginUserId + " | " + _loginUserRole);
         userTopTip.setFont(Font.font("System", 13));
-        userTopTip.setTextFill(Color.web("#446078"));
+        userTopTip.setTextFill(Color.WHITE);
         banner.getChildren().addAll(logoView, new Region(), systemTitle, spacer, userTopTip);
         HBox.setMargin(systemTitle, new Insets(0, 0, 0, 30));
         return banner;
@@ -238,7 +234,7 @@ private TableView<Medicine> tvAdminMedicine;
         side.setPrefWidth(190);
         side.setPadding(new Insets(18, 10, 10, 10));
         side.setStyle("-fx-background-color: #ffffff;"
-                + "-fx-border-color:#cce0ed;"
+                + "-fx-border-color:#d7e4d3;"
                 + "-fx-border-width:0 1 0 0;"
                 + "-fx-effect: dropshadow(gaussian, rgba(80,130,170,0.08),8,0.1,1,0);");
         Label title = new Label("功能导航");
@@ -425,13 +421,13 @@ private TableView<Medicine> tvAdminMedicine;
                 badge.setText(status);
                 switch (status){
                     case "待就诊":
-                        badge.setStyle("-fx-background-color:#2196F3;-fx-text-fill:white;-fx-padding:3 8 3 8;-fx-background-radius:4;");
+                        badge.setStyle("-fx-background-color:#477a61;-fx-text-fill:white;-fx-padding:3 8 3 8;-fx-background-radius:4;");
                         break;
                     case "已取消":
                         badge.setStyle("-fx-background-color:#9E9E9E;-fx-text-fill:white;-fx-padding:3 8 3 8;-fx-background-radius:4;");
                         break;
                     case "已就诊":
-                        badge.setStyle("-fx-background-color:#4CAF50;-fx-text-fill:white;-fx-padding:3 8 3 8;-fx-background-radius:4;");
+                        badge.setStyle("-fx-background-color:#3f8f46;-fx-text-fill:white;-fx-padding:3 8 3 8;-fx-background-radius:4;");
                         break;
                     default:
                         badge.setStyle("-fx-background-color:#757575;-fx-text-fill:white;-fx-padding:3 8 3 8;-fx-background-radius:4;");
@@ -557,7 +553,7 @@ private TableView<Medicine> tvAdminMedicine;
         tvAppointDoctor.getSelectionModel().selectedItemProperty().addListener((obs, oldDoc, newDoc) -> {
             if(newDoc != null){
                 lblSelectedDoctorTip.setText("✅已选择医生："+newDoc.getDoctorId()+" | "+newDoc.getName()+" | "+newDoc.getDepartment());
-                lblSelectedDoctorTip.setTextFill(Color.web("#27ae60"));
+                lblSelectedDoctorTip.setTextFill(Color.web("#3f8f46"));
                 String docId = newDoc.getDoctorId();
                 new Thread(()->{
                     try {
@@ -771,6 +767,7 @@ private TableView<Medicine> tvAdminMedicine;
                             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
                             confirm.setTitle("确认删除");
                             confirm.setContentText("确定要永久删除这条记录吗？该操作不可恢复！");
+                            vcampus.client.view.CampusTheme.apply(confirm);
                             Optional<ButtonType> res = confirm.showAndWait();
                             if (res.isPresent() && res.get() == ButtonType.OK) {
                                 String aid = rowData.getAppointmentId();
@@ -992,13 +989,13 @@ colOptFinish.setCellFactory(param -> new TableCell<Appointment, Void>(){
             if("待就诊".equals(apt.getStatus())){
                 HBox box = new HBox(8);
                 Button btnPres = new Button("开药");
-                btnPres.setStyle("-fx-background-color:#2980b9;-fx-text-fill:white;-fx-background-radius:4;");
+                btnPres.setStyle("-fx-background-color:#3f8f46;-fx-text-fill:white;-fx-background-radius:4;");
                 btnPres.setOnAction(e->{
                     openPrescriptionDialog(apt.getAppointmentId(), apt.getUserId(), _loginUserId);
                 });
 
                 Button btnFinish = new Button("完成就诊");
-                btnFinish.setStyle("-fx-background-color:#27ae60;-fx-text-fill:white;-fx-background-radius:4;");
+                btnFinish.setStyle("-fx-background-color:#3f8f46;-fx-text-fill:white;-fx-background-radius:4;");
                 btnFinish.setOnAction(e->{
                     String appointId = apt.getAppointmentId();
                     doFinishAppoint(appointId,_loginUserId);
@@ -1031,11 +1028,12 @@ colOptFinish.setCellFactory(param -> new TableCell<Appointment, Void>(){
         _labUserBalance = new Label("校园卡余额：--");
         _labUserBalance.setFont(Font.font("System", FontWeight.BOLD, 14));
         btnRecharge = new Button("💳充值");
-        btnRecharge.setStyle("-fx-background-color:#2980b9;-fx-text-fill:white;-fx-background-radius:6;");
+        btnRecharge.setStyle("-fx-background-color:#3f8f46;-fx-text-fill:white;-fx-background-radius:6;");
         btnRecharge.setOnAction(e -> {
             TextInputDialog dialog = new TextInputDialog("0.00");
             dialog.setTitle("校园卡充值");
             dialog.setHeaderText("请输入充值金额");
+            vcampus.client.view.CampusTheme.apply(dialog);
             Optional<String> res = dialog.showAndWait();
             if (res.isPresent()) {
                 try {
@@ -1338,7 +1336,7 @@ for(Prescription pres : finalList){
     HBox btnBox = new HBox();
     btnBox.setAlignment(Pos.CENTER);
     Button btnPayTake = new Button("💰支付并取药");
-    btnPayTake.setStyle("-fx-background-color:#27ae60;-fx-text-fill:white;-fx-background-radius:5;");
+    btnPayTake.setStyle("-fx-background-color:#3f8f46;-fx-text-fill:white;-fx-background-radius:5;");
     btnPayTake.setOnAction(e -> doPayAndTakePrescription(pres.getPresId(), sub));
     btnBox.getChildren().add(btnPayTake);
 
@@ -1359,6 +1357,7 @@ for(Prescription pres : finalList){
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("确认支付药费");
         confirm.setContentText("确认支付药费 ¥" + String.format("%.2f", totalMoney) + "，支付成功标记处方为已取药");
+        vcampus.client.view.CampusTheme.apply(confirm);
         Optional<ButtonType> res = confirm.showAndWait();
         if(res.isEmpty() || res.get() != ButtonType.OK){
             return;
@@ -1482,6 +1481,8 @@ private void openPrescriptionDialog(String appointId,String userId,String doctor
     dialog.getDialogPane().setContent(vBoxContent);
     dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK,ButtonType.CANCEL);
 
+    vcampus.client.view.CampusTheme.apply(dialog);
+
     Optional<List<Prescription>> result = dialog.showAndWait();
     if(result.isPresent()){
         List<Prescription> presOutList = new ArrayList<>();
@@ -1536,6 +1537,7 @@ private void doTakeMedicine(String presId,String userId){
     Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
     confirm.setTitle("确认取药");
     confirm.setContentText("确认完成取药？确认后该处方标记为已取药");
+    vcampus.client.view.CampusTheme.apply(confirm);
     Optional<ButtonType> res = confirm.showAndWait();
     if(res.isEmpty() || res.get()!=ButtonType.OK){
         return;
@@ -1566,6 +1568,7 @@ private void doTakeMedicine(String presId,String userId){
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("确认完成就诊");
         confirm.setContentText("确认将该条记录设置为【已就诊】？");
+        vcampus.client.view.CampusTheme.apply(confirm);
         Optional<ButtonType> res = confirm.showAndWait();
         if(res.isEmpty() || res.get()!=ButtonType.OK){
             return;
@@ -1748,6 +1751,7 @@ private void doTakeMedicine(String presId,String userId){
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
         confirmAlert.setTitle("删除确认");
         confirmAlert.setContentText("确定要删除医生【" + doc.getDoctorId() + " " + doc.getName() + "】吗？该操作不可恢复！");
+        vcampus.client.view.CampusTheme.apply(confirmAlert);
         Optional<ButtonType> res = confirmAlert.showAndWait();
         if(res.isEmpty() || res.get() != ButtonType.OK){
             return;
@@ -1929,6 +1933,7 @@ private void doTakeMedicine(String presId,String userId){
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(content);
+        vcampus.client.view.CampusTheme.apply(alert);
         alert.showAndWait();
     }
     /**加载管理员药品库存列表*/

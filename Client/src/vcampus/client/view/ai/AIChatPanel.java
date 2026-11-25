@@ -59,10 +59,10 @@ import java.util.List;
 public class AIChatPanel extends StackPane {
 
     /** AI 强调色：暖橙色，呼应"校园AI"这个场景，比之前生硬的纯蓝更柔和。 */
-    private static final String AI_COLOR = "#d97a4a";
+    private static final String AI_COLOR = "#3f8f46";
 
     /** 强调色的浅色版本，用于选中态背景等。 */
-    private static final String AI_COLOR_SOFT = "#fbeee6";
+    private static final String AI_COLOR_SOFT = "#e8f2e3";
 
     /** 背景图相对项目根目录的路径：李文正图书馆照片。 */
     private static final String BACKGROUND_IMAGE_PATH = "Client/src/vcampus/client/view/assets/lwz.jpg";
@@ -122,11 +122,13 @@ public class AIChatPanel extends StackPane {
      */
     public AIChatPanel(User currentUser) {
         this._currentUser = currentUser;
+        vcampus.client.view.CampusTheme.apply(this);
 
         setMinHeight(560);
         setClip(buildClip());
 
-        Region background = buildBackground();
+        Region background = new Region();
+        background.setStyle("-fx-background-color: #f4f8f1;");
         HBox layout = buildLayout();
 
         getChildren().addAll(background, layout);
@@ -159,7 +161,7 @@ public class AIChatPanel extends StackPane {
         StackPane backgroundStack = new StackPane();
         Image image = loadBackgroundImage();
         if (image == null) {
-            backgroundStack.setStyle("-fx-background-color: linear-gradient(to bottom right, #fbeee6, #f4f6f8);");
+            backgroundStack.setStyle("-fx-background-color: linear-gradient(to bottom right, #e8f2e3, #f4f8f1);");
             return backgroundStack;
         }
         ImageView view = new ImageView(image);
@@ -257,7 +259,7 @@ public class AIChatPanel extends StackPane {
 
         Label historyLabel = new Label("历史对话");
         historyLabel.setFont(Font.font("System", FontWeight.BOLD, 11));
-        historyLabel.setStyle("-fx-text-fill: #9a8f88;");
+        historyLabel.setStyle("-fx-text-fill: #647469;");
         historyLabel.setPadding(new Insets(10, 0, 2, 4));
 
         _sessionListBox.setPadding(new Insets(0, 2, 0, 0));
@@ -278,7 +280,7 @@ public class AIChatPanel extends StackPane {
     private Label brandLabel() {
         Label label = new Label("校园AI");
         label.setFont(Font.font("System", FontWeight.BOLD, 15));
-        label.setStyle("-fx-text-fill: #3a2e28;");
+        label.setStyle("-fx-text-fill: #203629;");
         return label;
     }
 
@@ -293,11 +295,12 @@ public class AIChatPanel extends StackPane {
         HBox.setHgrow(chatArea, Priority.ALWAYS);
 
         Label tip = new Label("嵌入在 Vcampus 系统里的智能助手，有什么问题都可以问问，仅供参考。");
-        tip.setStyle("-fx-text-fill: #7a6f68;");
+        tip.setStyle("-fx-text-fill: #647469;");
         tip.setFont(Font.font("System", 12));
         HBox tipBar = new HBox(tip);
         tipBar.setPadding(new Insets(9, 14, 9, 14));
-        tipBar.setStyle("-fx-background-color: rgba(255,255,255,0.9); -fx-background-radius: 12;");
+        tipBar.getStyleClass().add("campus-header");
+        tip.setStyle("-fx-text-fill: white;");
 
         _scrollPane.setFitToWidth(true);
         // 不铺白色卡片，让最底层的李文正图书馆背景图直接透出来；文字可读性靠每条
@@ -465,7 +468,7 @@ public class AIChatPanel extends StackPane {
         // 追加而不是覆盖 setStyle：appendBubble 已经给它设过背景色/圆角/内边距，
         // 这里在同一个内联样式字符串后面拼上文字颜色（不能单独调 setTextFill，
         // 会被 JavaFX 那个"首次 CSS 计算吃掉纯 Java 设置的 textFill"的坑吞掉）。
-        thinkingBubble.setStyle(thinkingBubble.getStyle() + " -fx-text-fill: #9a8f88;");
+        thinkingBubble.setStyle(thinkingBubble.getStyle() + " -fx-text-fill: #647469;");
 
         new Thread(() -> {
             String answerText;
@@ -483,7 +486,7 @@ public class AIChatPanel extends StackPane {
             final String finalAnswer = answerText;
             Platform.runLater(() -> {
                 thinkingBubble.setText(finalAnswer);
-                thinkingBubble.setStyle(thinkingBubble.getStyle().replace("-fx-text-fill: #9a8f88;", "")
+                thinkingBubble.setStyle(thinkingBubble.getStyle().replace("-fx-text-fill: #647469;", "")
                         + " -fx-text-fill: #1d2b39;");
                 _inputField.setDisable(false);
                 _sendButton.setDisable(false);
@@ -534,7 +537,7 @@ public class AIChatPanel extends StackPane {
 
         Label speakerLabel = new Label(speaker);
         speakerLabel.setFont(Font.font("System", FontWeight.BOLD, 11));
-        speakerLabel.setStyle("-fx-text-fill: #9a8f88;");
+        speakerLabel.setStyle("-fx-text-fill: #647469;");
 
         // 用户消息不再靠右分居两侧——之前那套"右对齐"排版在个别机器上死活
         // 显示不出来，排查了好几轮都没能百分百锁定根因，用户也明确说了不用

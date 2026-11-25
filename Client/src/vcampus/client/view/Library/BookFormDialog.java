@@ -45,7 +45,7 @@ public class BookFormDialog {
 
         // 标题
         Label titleLabel = new Label(book == null ? "📖 新增图书" : "✏️ 修改图书");
-        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1a237e;");
+        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #203629;");
 
         // 表单
         GridPane form = new GridPane();
@@ -146,7 +146,7 @@ public class BookFormDialog {
         Button confirmBtn = new Button(book == null ? "确认新增" : "确认修改");
         confirmBtn.setPrefWidth(100);
         confirmBtn.setStyle(
-            "-fx-background-color: #1a73e8; " +
+            "-fx-background-color: #3f8f46; " +
             "-fx-text-fill: white; " +
             "-fx-font-weight: bold; " +
             "-fx-background-radius: 6; " +
@@ -173,6 +173,7 @@ public class BookFormDialog {
         cancelBtn.setOnAction(e -> stage.close());
 
         Scene scene = new Scene(root, 420, 500);
+        vcampus.client.view.CampusTheme.apply(scene);
         stage.setScene(scene);
     }
 
@@ -238,6 +239,7 @@ public class BookFormDialog {
         alert.setTitle("输入错误");
         alert.setHeaderText(null);
         alert.setContentText(message);
+        vcampus.client.view.CampusTheme.apply(alert);
         alert.showAndWait();
     }
 

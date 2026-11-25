@@ -1,0 +1,22 @@
+\contentsline {section}{\numberline {1}组内工作（具体分工）}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}工作成果概览}{3}{subsection.1.1}%
+\contentsline {section}{\numberline {2}教务板块总体架构}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}端到端分层架构}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}核心领域模型}{4}{subsection.2.2}%
+\contentsline {section}{\numberline {3}任务完成情况总结}{4}{section.3}%
+\contentsline {subsection}{\numberline {3.1}学生端：选课决策与个人学习视图}{4}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}教师端：教学班、名单与成绩录入}{4}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}管理员端：可视化管理与业务闭环}{5}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}自动排课：Preview、校验与原子应用}{5}{subsection.3.4}%
+\contentsline {section}{\numberline {4}关键技术与工程质量}{5}{section.4}%
+\contentsline {subsection}{\numberline {4.1}选课事务与一致性}{5}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}数据库与兼容迁移}{6}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}测试、集成与交付}{6}{subsection.4.3}%
+\contentsline {section}{\numberline {5}功能成果截图}{7}{section.5}%
+\contentsline {section}{\numberline {6}工作小结与体会}{14}{section.6}%
+\contentsline {subsection}{\numberline {6.1}从“页面功能”到“领域模型”}{14}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}服务端必须是规则的最终裁判}{14}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}AI Coding 时代的主开发者能力}{14}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}协作与集成经验}{14}{subsection.6.4}%
+\contentsline {subsection}{\numberline {6.5}仍可继续改进的方向}{14}{subsection.6.5}%
+\contentsline {section}{教师点评}{15}{subsection.6.5}%

@@ -8,13 +8,13 @@
  * Copyright (c) 2026 Vcampus Team
  *
  * 设计说明：与选课模块 course.css 统一设计语言（圆角卡片 / 药丸页签 / 柔和阴影 /
- * 规范表格），主色取商店在主导航中的身份色 #2fa89a（青绿）。
+ * 规范表格），主色取商店在主导航中的身份色 #3f8f46（青绿）。
  * 本样式表挂在商店内容根节点（store-root）上，只作用于商店子树，不影响其他模块。
  */
 
 /* ==================== 全局 ==================== */
 .store-root {
-    -fx-background-color: #f2f6fb;
+    -fx-background-color: #f4f8f1;
     -fx-font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
 }
@@ -22,15 +22,15 @@
 /* ==================== 顶部横幅 ==================== */
 .store-header {
     -fx-padding: 18 26 18 26;
-    -fx-background-color: linear-gradient(to right, #0f7a72, #2fb3a0);
-    -fx-background-radius: 0 0 22 22;
+    -fx-background-color: linear-gradient(to right, #2f7d4b, #78a943);
+    -fx-background-radius: 18 18 0 0;
     -fx-effect: dropshadow(gaussian, rgba(15, 122, 114, 0.22), 16, 0.12, 0, 5);
 }
 .store-title { -fx-text-fill: white; -fx-font-size: 22px; -fx-font-weight: bold; }
-.store-subtitle { -fx-text-fill: #d3f2ec; -fx-font-size: 12px; }
+.store-subtitle { -fx-text-fill: #edf5e7; -fx-font-size: 12px; }
 /* 英文副标题（虚拟商店的英文名） */
 .store-english {
-    -fx-text-fill: #a9e3d8;
+    -fx-text-fill: #dceccf;
     -fx-font-size: 12px;
     -fx-font-weight: bold;
 }
@@ -45,13 +45,13 @@
 .header-stripe {
     -fx-min-height: 4;
     -fx-pref-height: 4;
-    -fx-background-color: linear-gradient(to right, #f2c231, #4a9a5a 45%, #0f7a72);
+    -fx-background-color: linear-gradient(to right, #f2c231, #4a9a5a 45%, #2f7d4b);
 }
 
 /* 页签图标与购物车件数角标 */
 .tab-icon { -fx-font-size: 14px; }
 /* 图标跟着页签状态变色，否则选中时深色图标压在青色药丸上看不清 */
-.store-tabs > .tab-header-area > .headers-region > .tab .tab-icon { -fx-text-fill: #4c5e75; }
+.store-tabs > .tab-header-area > .headers-region > .tab .tab-icon { -fx-text-fill: #526457; }
 .store-tabs > .tab-header-area > .headers-region > .tab:selected .tab-icon { -fx-text-fill: white; }
 .tab-badge {
     -fx-background-color: #e2553f;
@@ -70,7 +70,7 @@
     -fx-padding: 4 8 4 8;
     -fx-background-radius: 12;
 }
-.button.ghost-icon:hover { -fx-background-color: #eef3f9; -fx-text-fill: #33475f; }
+.button.ghost-icon:hover { -fx-background-color: #edf4e9; -fx-text-fill: #38543e; }
 
 /* 售罄角标 + 售罄卡片整体压暗 */
 .sold-out-badge {
@@ -85,7 +85,7 @@
 
 /* 空状态（购物车为空时的引导区） */
 .empty-state-icon { -fx-font-size: 44px; }
-.empty-state-title { -fx-text-fill: #33475f; -fx-font-size: 16px; -fx-font-weight: bold; }
+.empty-state-title { -fx-text-fill: #38543e; -fx-font-size: 16px; -fx-font-weight: bold; }
 
 /* 角色徽章（与选课模块一套配色） */
 .role-badge {
@@ -96,7 +96,7 @@
     -fx-text-fill: white;
 }
 .role-student { -fx-background-color: #2f9a62; }
-.role-teacher { -fx-background-color: #2f72d6; }
+.role-teacher { -fx-background-color: #3f8f46; }
 .role-admin { -fx-background-color: #c88a18; }
 .role-unknown { -fx-background-color: #78869a; }
 
@@ -111,20 +111,20 @@
 
 /* ==================== 按钮 ==================== */
 .button {
-    -fx-background-color: #eef3f9;
-    -fx-text-fill: #33475f;
+    -fx-background-color: #edf4e9;
+    -fx-text-fill: #38543e;
     -fx-background-radius: 8;
     -fx-padding: 8 16 8 16;
     -fx-font-weight: bold;
     -fx-cursor: hand;
 }
-.button:hover { -fx-background-color: #e2eaf4; }
+.button:hover { -fx-background-color: #e9eee7; }
 
-.button.primary { -fx-background-color: #1f8f80; -fx-text-fill: white; }
-.button.primary:hover { -fx-background-color: #18786c; }
+.button.primary { -fx-background-color: #3f8f46; -fx-text-fill: white; }
+.button.primary:hover { -fx-background-color: #2f7540; }
 
-.button.secondary { -fx-background-color: #e9f5f3; -fx-text-fill: #1f7f72; }
-.button.secondary:hover { -fx-background-color: #d8ece8; }
+.button.secondary { -fx-background-color: #f3f8f0; -fx-text-fill: #32783b; }
+.button.secondary:hover { -fx-background-color: #e4f0df; }
 
 .button.danger { -fx-background-color: #fdeeee; -fx-text-fill: #c8402f; }
 .button.danger:hover { -fx-background-color: #f9dcd8; }
@@ -132,7 +132,7 @@
 /* 横幅上的充值按钮（浅金药丸，突出但不抢主色） */
 .button.accent {
     -fx-background-color: #ffe6a3;
-    -fx-text-fill: #0d6b64;
+    -fx-text-fill: #32783b;
     -fx-background-radius: 16;
 }
 .button.accent:hover { -fx-background-color: #fff1c7; }
@@ -152,10 +152,10 @@
     -fx-min-width: 132;
     -fx-pref-width: 132;
 }
-.store-tabs > .tab-header-area > .headers-region > .tab:hover { -fx-background-color: #dff1ee; }
-.store-tabs > .tab-header-area > .headers-region > .tab:selected { -fx-background-color: #1f8f80; }
+.store-tabs > .tab-header-area > .headers-region > .tab:hover { -fx-background-color: #e8f2e3; }
+.store-tabs > .tab-header-area > .headers-region > .tab:selected { -fx-background-color: #3f8f46; }
 .store-tabs > .tab-header-area > .headers-region > .tab .tab-label {
-    -fx-text-fill: #4c5e75;
+    -fx-text-fill: #526457;
     -fx-font-weight: bold;
 }
 .store-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label { -fx-text-fill: white; }
@@ -163,22 +163,22 @@
     -fx-background-color: white;
     -fx-background-radius: 12;
     -fx-border-radius: 12;
-    -fx-border-color: #dbe5f0;
+    -fx-border-color: #d7e4d3;
     -fx-effect: dropshadow(gaussian, rgba(24, 51, 92, 0.10), 18, 0.10, 0, 5);
 }
 
 /* ==================== 页内容 ==================== */
 .store-page { -fx-padding: 14 16 16 16; -fx-spacing: 12; -fx-background-color: transparent; }
-.section-title { -fx-text-fill: #17233a; -fx-font-size: 15px; -fx-font-weight: bold; }
-.form-label { -fx-text-fill: #5b6b80; }
+.section-title { -fx-text-fill: #203629; -fx-font-size: 15px; -fx-font-weight: bold; }
+.form-label { -fx-text-fill: #647469; }
 .empty-state-label { -fx-text-fill: #8794a6; -fx-font-size: 14px; }
 
 /* 搜索/操作条 */
 .tool-bar-card {
-    -fx-background-color: #f7fafd;
+    -fx-background-color: #f6faf3;
     -fx-background-radius: 12;
     -fx-border-radius: 12;
-    -fx-border-color: #dbe5f0;
+    -fx-border-color: #d7e4d3;
     -fx-padding: 11 13 11 13;
 }
 
@@ -187,7 +187,7 @@
     -fx-background-color: white;
     -fx-background-radius: 8;
     -fx-border-radius: 8;
-    -fx-border-color: #cad7e6;
+    -fx-border-color: #cbdcc7;
     -fx-padding: 7 10 7 10;
     -fx-min-height: 32;
 }
@@ -198,14 +198,14 @@
     -fx-background-color: white;
     -fx-background-radius: 8;
     -fx-border-radius: 8;
-    -fx-border-color: #cad7e6;
+    -fx-border-color: #cbdcc7;
     -fx-padding: 0;
     -fx-min-height: 32;
     -fx-pref-height: 32;
 }
 .store-root .combo-box > .list-cell {
     -fx-padding: 0 6 0 10;
-    -fx-text-fill: #27384e;
+    -fx-text-fill: #304137;
     -fx-background-color: transparent;
 }
 .store-root .combo-box > .arrow-button {
@@ -218,7 +218,7 @@
 }
 .store-root .text-field:focused,
 .store-root .combo-box:focused {
-    -fx-border-color: #1f8f80;
+    -fx-border-color: #3f8f46;
     -fx-effect: dropshadow(gaussian, rgba(31, 143, 128, 0.20), 6, 0, 0, 0);
 }
 
@@ -227,38 +227,38 @@
     -fx-background-color: white;
     -fx-background-radius: 8;
     -fx-border-radius: 8;
-    -fx-border-color: #dbe5f0;
+    -fx-border-color: #d7e4d3;
     -fx-effect: dropshadow(gaussian, rgba(24, 51, 92, 0.12), 12, 0.1, 0, 4);
 }
 .combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell {
     -fx-padding: 7 12 7 12;
-    -fx-text-fill: #27384e;
+    -fx-text-fill: #304137;
 }
 .combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:hover {
-    -fx-background-color: #e9f5f3;
+    -fx-background-color: #f3f8f0;
 }
 .combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:selected {
-    -fx-background-color: #1f8f80;
+    -fx-background-color: #3f8f46;
     -fx-text-fill: white;
 }
 
 /* ==================== 右侧信息面板（管理员页签的"库存概览/活动分布"） ==================== */
 .side-card {
-    -fx-background-color: #f7fafd;
+    -fx-background-color: #f6faf3;
     -fx-background-radius: 12;
     -fx-border-radius: 12;
-    -fx-border-color: #dbe5f0;
+    -fx-border-color: #d7e4d3;
     -fx-padding: 14 16 14 16;
 }
 .stat-label { -fx-text-fill: #6b7a8d; -fx-font-size: 12px; }
-.stat-value { -fx-text-fill: #12564e; -fx-font-size: 13px; -fx-font-weight: bold; }
+.stat-value { -fx-text-fill: #2f7540; -fx-font-size: 13px; -fx-font-weight: bold; }
 
 /* ==================== 商品卡片 ==================== */
 .goods-card {
     -fx-background-color: white;
     -fx-background-radius: 14;
     -fx-border-radius: 14;
-    -fx-border-color: #e2eaf3;
+    -fx-border-color: #e9eee7;
     -fx-padding: 12;
     -fx-effect: dropshadow(gaussian, rgba(24, 51, 92, 0.08), 12, 0.10, 0, 4);
 }
@@ -267,7 +267,7 @@
     -fx-effect: dropshadow(gaussian, rgba(31, 143, 128, 0.22), 16, 0.12, 0, 6);
 }
 .goods-thumb { -fx-background-radius: 10; }
-.goods-name { -fx-text-fill: #17233a; -fx-font-size: 15px; -fx-font-weight: bold; }
+.goods-name { -fx-text-fill: #203629; -fx-font-size: 15px; -fx-font-weight: bold; }
 .goods-price { -fx-text-fill: #e2553f; -fx-font-size: 18px; -fx-font-weight: bold; }
 .goods-stock { -fx-text-fill: #8794a6; -fx-font-size: 12px; }
 
@@ -306,20 +306,20 @@
 
 /* "只看特价"开关：药丸型，选中时实心 */
 .toggle-button.filter-toggle {
-    -fx-background-color: #eef3f9;
-    -fx-text-fill: #33475f;
+    -fx-background-color: #edf4e9;
+    -fx-text-fill: #38543e;
     -fx-background-radius: 16;
     -fx-padding: 7 14 7 14;
     -fx-font-size: 12px;
     -fx-font-weight: bold;
     -fx-cursor: hand;
 }
-.toggle-button.filter-toggle:hover { -fx-background-color: #e2eaf4; }
+.toggle-button.filter-toggle:hover { -fx-background-color: #e9eee7; }
 .toggle-button.filter-toggle:selected {
     -fx-background-color: #e2553f;
     -fx-text-fill: white;
 }
-.toggle-button.filter-toggle:focused { -fx-background-color: #e2eaf4; }
+.toggle-button.filter-toggle:focused { -fx-background-color: #e9eee7; }
 .toggle-button.filter-toggle:selected:focused {
     -fx-background-color: #e2553f;
     -fx-text-fill: white;
@@ -338,7 +338,7 @@
 .store-dialog {
     -fx-background-color: white;
     -fx-padding: 0;
-    -fx-border-color: #dbe5f0;
+    -fx-border-color: #d7e4d3;
     -fx-border-width: 1;
     -fx-font-size: 13px;
     -fx-font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
@@ -351,7 +351,7 @@
     -fx-border-color: transparent;
 }
 .dialog-header {
-    -fx-background-color: linear-gradient(to right, #0f7a72, #2fb3a0);
+    -fx-background-color: linear-gradient(to right, #2f7d4b, #78a943);
     -fx-padding: 16 22 14 22;
 }
 .dialog-title { -fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold; }
@@ -362,7 +362,7 @@
     -fx-padding: 18 22 8 22;
     -fx-background-color: white;
 }
-.dialog-prompt { -fx-text-fill: #33475f; -fx-font-weight: bold; }
+.dialog-prompt { -fx-text-fill: #38543e; -fx-font-weight: bold; }
 .dialog-hint { -fx-text-fill: #8794a6; -fx-font-size: 12px; }
 
 /* 输入框在弹窗里放大一点，便于看清数字 */
@@ -381,15 +381,15 @@
     -fx-font-size: 13px;
 }
 /* 弹窗里的"确定"用主色实心，"取消"用浅灰 */
-.store-dialog .button.primary { -fx-background-color: #1f8f80; -fx-text-fill: white; }
-.store-dialog .button.primary:hover { -fx-background-color: #18786c; }
+.store-dialog .button.primary { -fx-background-color: #3f8f46; -fx-text-fill: white; }
+.store-dialog .button.primary:hover { -fx-background-color: #2f7540; }
 .store-dialog .button.danger { -fx-background-color: #e2553f; -fx-text-fill: white; }
 .store-dialog .button.danger:hover { -fx-background-color: #cf4733; }
 
 /* 快捷金额/数量的小药丸按钮 */
 .button.dialog-chip {
-    -fx-background-color: #e9f5f3;
-    -fx-text-fill: #1f7f72;
+    -fx-background-color: #f3f8f0;
+    -fx-text-fill: #32783b;
     -fx-background-radius: 14;
     -fx-padding: 6 14 6 14;
     -fx-font-size: 12px;
@@ -418,11 +418,11 @@
 }
 .store-table .table-row-cell:odd { -fx-background-color: #fcfdff; }
 .store-table .table-row-cell:hover { -fx-background-color: #f2f8fd; }
-.store-table .table-row-cell:selected { -fx-background-color: #e0f1ed; }
-.store-table .table-row-cell:selected .table-cell { -fx-text-fill: #12564e; }
+.store-table .table-row-cell:selected { -fx-background-color: #e8f2e3; }
+.store-table .table-row-cell:selected .table-cell { -fx-text-fill: #2f7540; }
 .store-table .table-cell {
     -fx-border-color: transparent;
-    -fx-text-fill: #27384e;
+    -fx-text-fill: #304137;
     -fx-padding: 0 10 0 10;
 }
 .store-table .placeholder .label { -fx-text-fill: #9aa5b1; }
@@ -440,11 +440,11 @@
 }
 
 /* 按钮获得焦点时保持原有配色（否则 modena 的 .button:focused 会叠加蓝色焦点层） */
-.button:focused { -fx-background-color: #eef3f9; -fx-text-fill: #33475f; }
-.button.primary:focused { -fx-background-color: #1f8f80; -fx-text-fill: white; }
-.button.secondary:focused { -fx-background-color: #e9f5f3; -fx-text-fill: #1f7f72; }
+.button:focused { -fx-background-color: #edf4e9; -fx-text-fill: #38543e; }
+.button.primary:focused { -fx-background-color: #3f8f46; -fx-text-fill: white; }
+.button.secondary:focused { -fx-background-color: #f3f8f0; -fx-text-fill: #32783b; }
 .button.danger:focused { -fx-background-color: #fdeeee; -fx-text-fill: #c8402f; }
-.button.accent:focused { -fx-background-color: #ffe6a3; -fx-text-fill: #0d6b64; }
+.button.accent:focused { -fx-background-color: #ffe6a3; -fx-text-fill: #32783b; }
 
 /* 表格获得焦点时不要蓝色描边 */
 .store-root .store-table:focused {
@@ -457,21 +457,21 @@
     -fx-background-color: white;
     -fx-background-radius: 10;
     -fx-border-radius: 10;
-    -fx-border-color: #e2eaf3;
+    -fx-border-color: #e9eee7;
     -fx-padding: 10 14 10 14;
 }
 .cart-row:hover { -fx-border-color: #9fd8cd; -fx-background-color: #fbfefd; }
-.cart-name { -fx-text-fill: #17233a; -fx-font-size: 14px; -fx-font-weight: bold; }
+.cart-name { -fx-text-fill: #203629; -fx-font-size: 14px; -fx-font-weight: bold; }
 .cart-unit { -fx-text-fill: #8794a6; -fx-font-size: 12px; }
-.cart-qty { -fx-text-fill: #17233a; -fx-font-weight: bold; -fx-alignment: center; }
+.cart-qty { -fx-text-fill: #203629; -fx-font-weight: bold; -fx-alignment: center; }
 .cart-subtotal { -fx-text-fill: #e2553f; -fx-font-size: 15px; -fx-font-weight: bold; }
-.cart-total { -fx-text-fill: #12564e; -fx-font-size: 15px; -fx-font-weight: bold; }
-.cart-hint { -fx-text-fill: #1f8f80; -fx-font-size: 12px; }
+.cart-total { -fx-text-fill: #2f7540; -fx-font-size: 15px; -fx-font-weight: bold; }
+.cart-hint { -fx-text-fill: #3f8f46; -fx-font-size: 12px; }
 
 /* 数量增减的小圆钮 */
 .button.qty-button {
-    -fx-background-color: #e9f5f3;
-    -fx-text-fill: #1f7f72;
+    -fx-background-color: #f3f8f0;
+    -fx-text-fill: #32783b;
     -fx-background-radius: 14;
     -fx-min-width: 28;
     -fx-min-height: 28;
@@ -479,7 +479,7 @@
     -fx-font-size: 14px;
 }
 .button.qty-button:hover { -fx-background-color: #d3ebe6; }
-.button.qty-button:focused { -fx-background-color: #e9f5f3; -fx-text-fill: #1f7f72; }
+.button.qty-button:focused { -fx-background-color: #f3f8f0; -fx-text-fill: #32783b; }
 
 /* ==================== 滚动区 ==================== */
 .store-scroll { -fx-background-color: transparent; -fx-background: transparent; }
@@ -497,7 +497,7 @@
 .store-table .scroll-bar .track { -fx-background-color: transparent; -fx-border-color: transparent; }
 .store-scroll .scroll-bar .thumb,
 .store-table .scroll-bar .thumb {
-    -fx-background-color: #cbd8e6;
+    -fx-background-color: #cbdcc7;
     -fx-background-radius: 5;
     -fx-background-insets: 2;
 }

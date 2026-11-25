@@ -148,6 +148,7 @@ final class CourseViewSupport {
         String message = throwable == null ? null : throwable.getMessage();
         alert.setContentText(message == null || message.isBlank() ? "未知错误" : message);
         styleDialog(alert.getDialogPane());
+        vcampus.client.view.CampusTheme.apply(alert);
         alert.showAndWait();
     }
 
@@ -158,6 +159,7 @@ final class CourseViewSupport {
         alert.setHeaderText(title);
         alert.setContentText(content);
         styleDialog(alert.getDialogPane());
+        vcampus.client.view.CampusTheme.apply(alert);
         Optional<ButtonType> result = alert.showAndWait();
         return result.isPresent() && result.get() == ButtonType.OK;
     }

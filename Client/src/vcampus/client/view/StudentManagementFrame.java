@@ -191,6 +191,7 @@ public class StudentManagementFrame extends Application {
         double initialWidth = Math.min(1220, availableWidth - 48);
         double initialHeight = Math.min(760, availableHeight - 48);
         Scene scene = new Scene(root, initialWidth, initialHeight);
+        vcampus.client.view.CampusTheme.apply(scene);
         attachStyleSheet(scene);
         stage.setMinWidth(Math.min(980, initialWidth));
         stage.setMinHeight(Math.min(650, initialHeight));
@@ -213,6 +214,7 @@ public class StudentManagementFrame extends Application {
         configureTable();
 
         _root = new BorderPane();
+        CampusTheme.apply(_root);
         _root.getStyleClass().add("app-root");
         _root.setTop(createHeader());
         _root.setCenter(createWorkspace());
@@ -643,6 +645,7 @@ public class StudentManagementFrame extends Application {
             styleDialog(_statisticsDialog);
         }
         updateStudentStatistics();
+        vcampus.client.view.CampusTheme.apply(_statisticsDialog);
         _statisticsDialog.showAndWait();
     }
 
@@ -1018,6 +1021,7 @@ public class StudentManagementFrame extends Application {
         tagDialog.setContentText("标签：");
         tagDialog.getEditor().setPromptText("例如：成绩跟进,需要谈话");
         styleDialog(tagDialog);
+        vcampus.client.view.CampusTheme.apply(tagDialog);
         tagDialog.showAndWait().ifPresent(tags -> {
             TextInputDialog noteDialog = new TextInputDialog();
             noteDialog.setTitle("关注学生");
@@ -1025,6 +1029,7 @@ public class StudentManagementFrame extends Application {
             noteDialog.setContentText("备注：");
             noteDialog.getEditor().setPromptText("例如：期中成绩需要跟进");
             styleDialog(noteDialog);
+            vcampus.client.view.CampusTheme.apply(noteDialog);
             noteDialog.showAndWait().ifPresent(note -> runOperation(
                     "正在加入关注名单...", "已加入关注名单", () -> {
                         _studentClientSrv.addStudentFocus(selected.getStudentId(), tags, note);
@@ -1077,6 +1082,7 @@ public class StudentManagementFrame extends Application {
         scroll.getStyleClass().add("student-detail-scroll");
         dialog.getDialogPane().setContent(scroll);
         styleDialog(dialog);
+        vcampus.client.view.CampusTheme.apply(dialog);
         dialog.showAndWait();
     }
 
@@ -1187,6 +1193,7 @@ public class StudentManagementFrame extends Application {
         scrollPane.getStyleClass().add("student-detail-scroll");
         dialog.getDialogPane().setContent(scrollPane);
         styleDialog(dialog);
+        vcampus.client.view.CampusTheme.apply(dialog);
         dialog.showAndWait();
     }
 
@@ -1268,6 +1275,7 @@ public class StudentManagementFrame extends Application {
         scroll.getStyleClass().add("student-detail-scroll");
         dialog.getDialogPane().setContent(scroll);
         styleDialog(dialog);
+        vcampus.client.view.CampusTheme.apply(dialog);
         dialog.showAndWait();
     }
 
@@ -1677,6 +1685,7 @@ public class StudentManagementFrame extends Application {
         dialog.setHeaderText("保存当前查询条件，方便下次快速使用");
         dialog.setContentText("视图名称：");
         styleDialog(dialog);
+        vcampus.client.view.CampusTheme.apply(dialog);
         dialog.showAndWait().map(String::trim).filter(value -> !value.isEmpty()).ifPresent(name -> {
             _savedFilterViews.put(name, new String[]{_queryTypeBox.getValue(), _queryField.getText(),
                     _statusFilterBox.getValue(), _selectedYear, _selectedClass, _selectedMajor});
@@ -1695,6 +1704,7 @@ public class StudentManagementFrame extends Application {
         dialog.setHeaderText("选择要加载的筛选条件");
         dialog.setContentText("视图：");
         styleDialog(dialog);
+        vcampus.client.view.CampusTheme.apply(dialog);
         dialog.showAndWait().ifPresent(name -> {
             String[] values = _savedFilterViews.get(name);
             _suppressFilterRefresh = true;
@@ -1784,6 +1794,7 @@ public class StudentManagementFrame extends Application {
         alert.setTitle("班级画像 · " + className);
         alert.setHeaderText(className);
         styleDialog(alert);
+        vcampus.client.view.CampusTheme.apply(alert);
         alert.showAndWait();
     }
 
@@ -1970,6 +1981,7 @@ public class StudentManagementFrame extends Application {
         dialog.getDialogPane().setPrefHeight(720);
         dialog.getDialogPane().getStyleClass().addAll("statistics-dialog", "cohort-dialog");
         styleDialog(dialog);
+        vcampus.client.view.CampusTheme.apply(dialog);
         dialog.showAndWait();
     }
 
@@ -2191,6 +2203,7 @@ public class StudentManagementFrame extends Application {
                 + summarizeStatuses(selected));
         dialog.setContentText("目标状态：");
         styleDialog(dialog);
+        vcampus.client.view.CampusTheme.apply(dialog);
         dialog.showAndWait().ifPresent(this::batchUpdateStatus);
     }
 
@@ -2271,6 +2284,7 @@ public class StudentManagementFrame extends Application {
         fieldDialog.setHeaderText("已选择 " + selected.size() + " 条学籍");
         fieldDialog.setContentText("选择字段：");
         styleDialog(fieldDialog);
+        vcampus.client.view.CampusTheme.apply(fieldDialog);
         fieldDialog.showAndWait().ifPresent(field -> {
             TextInputDialog valueDialog = new TextInputDialog();
             valueDialog.setTitle("批量修改" + field);
@@ -2278,6 +2292,7 @@ public class StudentManagementFrame extends Application {
             valueDialog.setContentText(field + "：");
             valueDialog.getEditor().setPromptText("请输入新的" + field);
             styleDialog(valueDialog);
+            vcampus.client.view.CampusTheme.apply(valueDialog);
             valueDialog.showAndWait().map(String::trim)
                     .filter(value -> !value.isEmpty())
                     .ifPresent(value -> batchUpdateField(field, value, selected));
@@ -2376,6 +2391,7 @@ public class StudentManagementFrame extends Application {
         alert.setTitle("批量修改结果");
         alert.setHeaderText(null);
         styleDialog(alert);
+        vcampus.client.view.CampusTheme.apply(alert);
         alert.showAndWait();
     }
 
@@ -2399,6 +2415,7 @@ public class StudentManagementFrame extends Application {
         alert.setTitle("批量导入结果");
         alert.setHeaderText(null);
         styleDialog(alert);
+        vcampus.client.view.CampusTheme.apply(alert);
         alert.showAndWait();
     }
 

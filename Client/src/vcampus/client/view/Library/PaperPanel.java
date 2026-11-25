@@ -61,7 +61,7 @@ public class PaperPanel extends VBox {
         searchBtn.setPrefHeight(40);
         searchBtn.setPrefWidth(100);
         searchBtn.setStyle(
-            "-fx-background-color: #1a73e8; -fx-text-fill: white; -fx-font-weight: bold; " +
+            "-fx-background-color: #3f8f46; -fx-text-fill: white; -fx-font-weight: bold; " +
             "-fx-background-radius: 8; -fx-cursor: hand;"
         );
 
@@ -79,7 +79,7 @@ public class PaperPanel extends VBox {
         previewBtn.setPrefHeight(40);
         previewBtn.setPrefWidth(160);
         previewBtn.setStyle(
-            "-fx-background-color: #1a73e8; -fx-text-fill: white; -fx-font-weight: bold; " +
+            "-fx-background-color: #3f8f46; -fx-text-fill: white; -fx-font-weight: bold; " +
             "-fx-background-radius: 8; -fx-cursor: hand;"
         );
         previewBtn.setDisable(true);
@@ -88,7 +88,7 @@ public class PaperPanel extends VBox {
         downloadBtn.setPrefHeight(40);
         downloadBtn.setPrefWidth(160);
         downloadBtn.setStyle(
-            "-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; " +
+            "-fx-background-color: #3f8f46; -fx-text-fill: white; -fx-font-weight: bold; " +
             "-fx-background-radius: 8; -fx-cursor: hand;"
         );
         downloadBtn.setDisable(true);
@@ -239,6 +239,7 @@ public class PaperPanel extends VBox {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(content);
+        vcampus.client.view.CampusTheme.apply(alert);
         alert.showAndWait();
     }
 }

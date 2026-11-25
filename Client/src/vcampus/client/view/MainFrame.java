@@ -107,6 +107,7 @@ public class MainFrame extends Application {
         root.setTop(buildNavBar());
         root.setCenter(buildCenterStack());
         Scene scene = new Scene(root);
+        vcampus.client.view.CampusTheme.apply(scene);
         _stage.setTitle("东南大学 Vcampus 主界面");
         _stage.setMinWidth(1200);
         _stage.setMinHeight(780);
@@ -419,6 +420,7 @@ public class MainFrame extends Application {
             alert.setTitle("错误");
             alert.setHeaderText(null);
             alert.setContentText("打开商店模块失败：" + e.getMessage());
+            vcampus.client.view.CampusTheme.apply(alert);
             alert.showAndWait();
         }
     }
@@ -576,6 +578,7 @@ public class MainFrame extends Application {
                         alert.setTitle("审核失败");
                         alert.setHeaderText(null);
                         alert.setContentText(finalMessage);
+                        vcampus.client.view.CampusTheme.apply(alert);
                         alert.showAndWait();
                     }
                 });
@@ -669,7 +672,9 @@ public class MainFrame extends Application {
         LibraryPanel libraryPanel = new LibraryPanel(_currentUser);
 
         VBox wrapper = new VBox(0, libraryPanel);
-        wrapper.setMaxWidth(900);
+        wrapper.setMaxWidth(1120);
+        wrapper.setMaxHeight(Double.MAX_VALUE);
+        VBox.setVgrow(libraryPanel, javafx.scene.layout.Priority.ALWAYS);
         wrapper.setStyle("-fx-background-color: rgba(255,255,255,0.98);"
                 + "-fx-background-radius: 20;"
                 + "-fx-border-radius: 20;"
@@ -807,6 +812,7 @@ public class MainFrame extends Application {
         alert.setTitle("确认");
         alert.setHeaderText(null);
         alert.setContentText("确定返回登录界面吗？");
+        vcampus.client.view.CampusTheme.apply(alert);
         alert.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
                 try {
@@ -816,6 +822,7 @@ public class MainFrame extends Application {
                         error.setTitle("登出失败");
                         error.setHeaderText(null);
                         error.setContentText(String.valueOf(response.getData()));
+                        vcampus.client.view.CampusTheme.apply(error);
                         error.showAndWait();
                         return;
                     }
@@ -828,18 +835,21 @@ public class MainFrame extends Application {
                     error.setTitle("连接失败");
                     error.setHeaderText(null);
                     error.setContentText("无法发送登出请求：" + e.getMessage());
+                    vcampus.client.view.CampusTheme.apply(error);
                     error.showAndWait();
                 } catch (ClassNotFoundException e) {
                     Alert error = new Alert(Alert.AlertType.ERROR);
                     error.setTitle("错误");
                     error.setHeaderText(null);
                     error.setContentText("服务器返回的数据无法识别：" + e.getMessage());
+                    vcampus.client.view.CampusTheme.apply(error);
                     error.showAndWait();
                 } catch (Exception e) {
                     Alert error = new Alert(Alert.AlertType.ERROR);
                     error.setTitle("错误");
                     error.setHeaderText(null);
                     error.setContentText("返回登录界面失败：" + e.getMessage());
+                    vcampus.client.view.CampusTheme.apply(error);
                     error.showAndWait();
                 }
             }

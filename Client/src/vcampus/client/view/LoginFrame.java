@@ -94,12 +94,13 @@ public class LoginFrame extends Application {
         StackPane root = new StackPane();
         root.setBackground(new Background(new BackgroundFill(
                 new LinearGradient(0, 0, 1, 1, true, CycleMethod.NO_CYCLE,
-                        new Stop(0, Color.web("#eef3f8")),
+                        new Stop(0, Color.web("#f4f8f1")),
                         new Stop(1, Color.web("#dde8f4"))),
                 CornerRadii.EMPTY, Insets.EMPTY)));
         root.getChildren().addAll(CampusBackground.build(), buildLoginCard());
 
         Scene scene = new Scene(root, 1200, 780);
+        vcampus.client.view.CampusTheme.apply(scene);
         stage.setTitle("东南大学 Vcampus 身份认证中心");
         stage.setResizable(true);
         stage.setScene(scene);
@@ -287,7 +288,7 @@ public class LoginFrame extends Application {
 
         Button registerLink = new Button("注册");
         registerLink.setOnAction(e -> onRegister());
-        registerLink.setStyle("-fx-background-color: transparent; -fx-text-fill: #2d6a9f;"
+        registerLink.setStyle("-fx-background-color: transparent; -fx-text-fill: #2f7540;"
                 + " -fx-font-size: 12.5px; -fx-font-weight: bold; -fx-underline: true;"
                 + " -fx-cursor: hand; -fx-padding: 0;");
 
@@ -541,11 +542,12 @@ public class LoginFrame extends Application {
         card.setStyle("-fx-background-color: white; -fx-background-radius: 18;");
 
         StackPane root = new StackPane(card);
-        root.setStyle("-fx-background-color: #eef3f8;");
+        root.setStyle("-fx-background-color: #f4f8f1;");
         javafx.scene.control.ScrollPane scrollPane = new javafx.scene.control.ScrollPane(root);
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle("-fx-background-color: transparent;");
         Scene scene = new Scene(scrollPane, 440, 680);
+        vcampus.client.view.CampusTheme.apply(scene);
         dialogStage.setScene(scene);
         dialogStage.setResizable(false);
         dialogStage.showAndWait();
@@ -620,6 +622,7 @@ public class LoginFrame extends Application {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(content);
+        vcampus.client.view.CampusTheme.apply(alert);
         alert.showAndWait();
     }
 

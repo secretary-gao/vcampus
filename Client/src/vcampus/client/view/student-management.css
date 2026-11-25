@@ -1,18 +1,18 @@
 .app-root {
-    -vc-background: #f4f7f5;
+    -vc-background: #f4f8f1;
     -vc-surface: #ffffff;
-    -vc-surface-subtle: #f6f8f7;
-    -vc-surface-muted: #edf1ef;
-    -vc-border: #d5ddd9;
+    -vc-surface-subtle: #f6faf3;
+    -vc-surface-muted: #edf4e9;
+    -vc-border: #d7e4d3;
     -vc-border-strong: #b8c3be;
-    -vc-text: #202a26;
-    -vc-text-secondary: #55635d;
+    -vc-text: #203629;
+    -vc-text-secondary: #526457;
     -vc-text-muted: #73807a;
-    -vc-primary: #285d4c;
-    -vc-primary-hover: #214e40;
-    -vc-primary-pressed: #1a3f34;
-    -vc-primary-soft: #e5eee9;
-    -vc-focus: #3b6c54;
+    -vc-primary: #3f8f46;
+    -vc-primary-hover: #32783b;
+    -vc-primary-pressed: #2f7540;
+    -vc-primary-soft: #e8f2e3;
+    -vc-focus: #6aa04a;
     -vc-danger: #a34848;
     -vc-danger-hover: #8d3838;
     -vc-danger-soft: #faeeee;
@@ -29,7 +29,7 @@
 
 .app-root .page-header {
     -fx-padding: 16px 22px 14px 22px;
-    -fx-background-color: linear-gradient(to right, #1e4f40, #3f8a68);
+    -fx-background-color: linear-gradient(to right, #2f7d4b, #78a943);
     -fx-background-radius: 18 18 0 0;
 }
 
@@ -1126,7 +1126,7 @@
     -fx-opacity: 1.0;
     -fx-background-color: #ffffff;
     -fx-background-radius: 9px;
-    -fx-border-color: #d5ddd9;
+    -fx-border-color: #d7e4d3;
     -fx-border-width: 1px;
     -fx-border-radius: 9px;
     -fx-effect: dropshadow(three-pass-box, rgba(30, 55, 45, 0.18), 14, 0, 0, 4);
@@ -1140,17 +1140,17 @@
 
 .student-context-menu .menu-item .label {
     -fx-font-size: 13px;
-    -fx-text-fill: #202a26;
+    -fx-text-fill: #203629;
 }
 
 .student-context-menu .menu-item:hover,
 .student-context-menu .menu-item:focused {
-    -fx-background-color: #e5eee9;
+    -fx-background-color: #e8f2e3;
 }
 
 .student-context-menu .menu-item:hover .label,
 .student-context-menu .menu-item:focused .label {
-    -fx-text-fill: #285d4c;
+    -fx-text-fill: #3f8f46;
     -fx-font-weight: 700;
 }
 
@@ -1163,7 +1163,7 @@
 }
 
 .student-context-menu .separator-menu-item .line {
-    -fx-border-color: #d5ddd9 transparent transparent transparent;
+    -fx-border-color: #d7e4d3 transparent transparent transparent;
     -fx-border-width: 1px 0 0 0;
 }
 

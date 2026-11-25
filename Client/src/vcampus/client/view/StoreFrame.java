@@ -218,6 +218,7 @@ public class StoreFrame extends Application {
         root.setBottom(bottom);
 
         Scene scene = new Scene(root);
+        vcampus.client.view.CampusTheme.apply(scene);
         stage.setTitle("虚拟商店 - 当前用户：" + safe(_currentUser == null ? "" : _currentUser.getUName()));
         stage.setScene(scene);
         stage.centerOnScreen();
@@ -361,6 +362,7 @@ public class StoreFrame extends Application {
      * @param root 商店内容根节点
      */
     private void applyStylesheet(Parent root) {
+        CampusTheme.apply(root);
         java.net.URL css = getClass().getResource("store.css");
         if (css != null) {
             root.getStylesheets().add(css.toExternalForm());
@@ -2054,6 +2056,7 @@ public class StoreFrame extends Application {
             field.requestFocus();
             field.selectAll();
         });
+        vcampus.client.view.CampusTheme.apply(dialog);
         Optional<String> result = dialog.showAndWait();
         return result == null ? Optional.empty() : result;
     }
@@ -2192,6 +2195,7 @@ public class StoreFrame extends Application {
         confirm.setTitle("确认删除");
         confirm.setHeaderText(null);
         confirm.setContentText("确定删除商品【" + selected.getGoodsName() + "】吗？");
+        vcampus.client.view.CampusTheme.apply(confirm);
         confirm.showAndWait().ifPresent(buttonType -> {
             if (buttonType == javafx.scene.control.ButtonType.OK) {
                 try {
@@ -2309,6 +2313,7 @@ public class StoreFrame extends Application {
         styleButton(pane, okType, error ? "danger" : "primary");
         dialog.setDialogPane(pane);
         initOwnerIfPossible(dialog);
+        vcampus.client.view.CampusTheme.apply(dialog);
         dialog.showAndWait();
     }
 

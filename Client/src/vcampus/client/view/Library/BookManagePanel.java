@@ -51,7 +51,7 @@ public class BookManagePanel extends VBox {
 
         // ========== 顶部标题 ==========
         //Label titleLabel = new Label("📚 图书管理");
-        //titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1a237e;");
+        //titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #203629;");
 
         // ========== 搜索区 ==========
         searchField = new TextField();
@@ -60,16 +60,16 @@ public class BookManagePanel extends VBox {
         searchField.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-color: #ddd;");
 
         searchBtn.setPrefHeight(35);
-        searchBtn.setStyle("-fx-background-color: #1a73e8; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-cursor: hand;");
+        searchBtn.setStyle("-fx-background-color: #3f8f46; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-cursor: hand;");
 
         HBox searchBox = new HBox(10, searchField, searchBtn);
         searchBox.setPadding(new Insets(10, 0, 10, 0));
 
         // ========== 操作按钮区 ==========
-        addBtn = createActionButton("➕ 新增", "#4CAF50");
-        editBtn = createActionButton("✏️ 修改", "#FF9800");
-        deleteBtn = createActionButton("🗑️ 删除", "#f44336");
-        refreshBtn = createActionButton("🔄 刷新", "#607D8B");
+        addBtn = createActionButton("➕ 新增", "#3f8f46");
+        editBtn = createActionButton("✏️ 修改", "#c88a18");
+        deleteBtn = createActionButton("🗑️ 删除", "#c43c3c");
+        refreshBtn = createActionButton("🔄 刷新", "#477a61");
 
         editBtn.setDisable(true);
         deleteBtn.setDisable(true);
@@ -137,6 +137,7 @@ public class BookManagePanel extends VBox {
 
     private void handleAdd() {
         BookFormDialog dialog = new BookFormDialog(null);
+        vcampus.client.view.CampusTheme.apply(dialog);
         dialog.showAndWait().ifPresent(book -> {
             new Thread(() -> {
                 try {
@@ -164,6 +165,7 @@ public class BookManagePanel extends VBox {
         if (selected == null) return;
 
         BookFormDialog dialog = new BookFormDialog(selected);
+        vcampus.client.view.CampusTheme.apply(dialog);
         dialog.showAndWait().ifPresent(updatedBook -> {
             new Thread(() -> {
                 try {
@@ -194,6 +196,7 @@ public class BookManagePanel extends VBox {
         confirm.setTitle("确认删除");
         confirm.setHeaderText("确认删除《" + selected.getBookName() + "》？");
         confirm.setContentText("书号：" + selected.getBookId() + "\n此操作不可恢复！");
+        vcampus.client.view.CampusTheme.apply(confirm);
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 new Thread(() -> {
@@ -288,6 +291,7 @@ public class BookManagePanel extends VBox {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(content);
+        vcampus.client.view.CampusTheme.apply(alert);
         alert.showAndWait();
     }
 

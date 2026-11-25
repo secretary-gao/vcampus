@@ -199,6 +199,7 @@ public class AutoSchedulePane extends VBox {
             alert.setContentText("已检查 " + count
                     + " 个教学班：方案内部无冲突，且与全部已有课程排课无冲突。");
             CourseViewSupport.styleDialog(alert.getDialogPane());
+            vcampus.client.view.CampusTheme.apply(alert);
             alert.showAndWait();
         });
     }
@@ -214,6 +215,7 @@ public class AutoSchedulePane extends VBox {
                     : "演示数据加载成功，共生成 " + count
                     + " 个待排课教学班，请点击生成预览。");
             CourseViewSupport.styleDialog(alert.getDialogPane());
+            vcampus.client.view.CampusTheme.apply(alert);
             alert.showAndWait();
             refresh();
         });

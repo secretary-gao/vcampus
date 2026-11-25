@@ -1,0 +1,62 @@
+/* Shared baseline taken from the Course workspace. Module states stay local. */
+.root {
+    -fx-font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+    -fx-base: #f4f8f1;
+    -fx-background: #f4f8f1;
+    -fx-accent: #3f8f46;
+    -fx-focus-color: #6aa04a;
+    -fx-faint-focus-color: rgba(106,160,74,0.15);
+    -fx-selection-bar: #e4f0df;
+    -fx-selection-bar-non-focused: #edf4e9;
+    -fx-selection-bar-text: #203629;
+}
+.label { -fx-text-fill: #304137; }
+.button, .toggle-button {
+    -fx-background-color: #e8f2e3;
+    -fx-text-fill: #2f7540;
+    -fx-background-radius: 8;
+    -fx-padding: 7 15;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+.button:hover, .toggle-button:hover { -fx-background-color: #dbead5; }
+.button:default, .toggle-button:selected { -fx-background-color: #3f8f46; -fx-text-fill: white; }
+.button:default:hover { -fx-background-color: #32783b; }
+.button:disabled { -fx-opacity: 0.55; -fx-cursor: default; }
+.text-field, .text-area, .combo-box, .date-picker, .spinner {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-color: #cbdcc7;
+    -fx-border-radius: 8;
+    -fx-padding: 6 10;
+    -fx-prompt-text-fill: #87948a;
+}
+.text-area .content { -fx-background-color: white; -fx-background-radius: 8; }
+.text-field:focused, .text-area:focused, .combo-box:focused { -fx-border-color: #6aa04a; }
+.table-view { -fx-background-color: white; -fx-border-color: #d7e4d3; -fx-border-radius: 8; -fx-background-radius: 8; }
+.table-view .column-header-background { -fx-background-color: #e7f1df; -fx-background-radius: 8 8 0 0; }
+.table-view .column-header, .table-view .filler { -fx-background-color: transparent; -fx-size: 42; }
+.table-view .column-header .label { -fx-text-fill: #38543e; -fx-font-weight: bold; }
+.table-view .table-row-cell { -fx-background-color: white; -fx-cell-size: 44; -fx-border-color: transparent transparent #e9eee7 transparent; }
+.table-view .table-row-cell:hover { -fx-background-color: #f3f8f0; }
+.table-view .table-row-cell:selected { -fx-background-color: #e4f0df; }
+.table-view .table-cell { -fx-text-fill: #304137; -fx-border-color: transparent; -fx-alignment: center-left; }
+.tab-pane > .tab-header-area > .tab-header-background { -fx-background-color: #f4f8f1; }
+.tab-pane > .tab-header-area > .headers-region > .tab { -fx-background-color: transparent; -fx-background-radius: 9; -fx-padding: 7 18; }
+.tab-pane > .tab-header-area > .headers-region > .tab:selected { -fx-background-color: #3f8f46; }
+.tab-pane > .tab-header-area > .headers-region > .tab .tab-label { -fx-text-fill: #526457; -fx-font-weight: bold; }
+.tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label { -fx-text-fill: white; }
+.scroll-bar { -fx-background-color: transparent; }
+.scroll-bar .track { -fx-background-color: #f4f8f1; }
+.scroll-bar .thumb { -fx-background-color: #bfceba; -fx-background-radius: 8; }
+.scroll-bar .thumb:hover { -fx-background-color: #8ca780; }
+.list-view { -fx-background-color: white; -fx-border-color: #d7e4d3; -fx-border-radius: 8; }
+.list-cell { -fx-background-color: white; -fx-text-fill: #304137; -fx-padding: 9; }
+.list-cell:filled:selected { -fx-background-color: #e4f0df; -fx-text-fill: #203629; }
+.dialog-pane { -fx-background-color: #f4f8f1; -fx-padding: 16; }
+.dialog-pane > .header-panel { -fx-background-color: #e7f1df; -fx-background-radius: 8; }
+.dialog-pane > .header-panel .label { -fx-text-fill: #203629; -fx-font-size: 17px; -fx-font-weight: bold; }
+.campus-header { -fx-background-color: linear-gradient(to right, #2f7d4b, #78a943); -fx-background-radius: 18 18 0 0; -fx-padding: 16 22; }
+.campus-header .label { -fx-text-fill: white; }
+.campus-header .campus-subtitle { -fx-text-fill: #edf5e7; -fx-font-size: 12px; }
